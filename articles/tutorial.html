@@ -99,7 +99,7 @@ representational dissimilarity.</li>
 </ul>
 <p>Critically, none of this requires a phase-2 trait-rating study. The
 metrics read directly from the pixel-level signal produced by the
-original producers, sidestepping the two-phase design Cone et al. (2020)
+original producers, sidestepping the two-phase design Cone et al. (2021)
 flagged.</p>
 <div class="section level3">
 <h3 id="infoval-and-rcicrely-together">
@@ -580,7 +580,7 @@ threshold. <code>$mean_r</code> / <code>$sd_r</code> /
 both rules so you can compare. <code>$flag_method</code>,
 <code>$flag_threshold</code> record what was used.</p>
 <p><strong>Common mistakes.</strong> Treating <code>$flagged</code> as
-“drop these producers” - investigate first (Cone et al. 2020 caveat: a
+“drop these producers” - investigate first (Cone et al. 2021 caveat: a
 flagged producer may have a genuinely atypical mental representation).
 Cross-check with <code>rcicrdiagnostics</code> to rule out
 response-coding errors.</p>
@@ -892,9 +892,9 @@ scaling step and will give a wrong reference comparison).</p>
 <h2 id="interpreting-results-and-common-pitfalls">8. Interpreting results and common pitfalls<a class="anchor" aria-label="anchor" href="#interpreting-results-and-common-pitfalls"></a>
 </h2>
 <p><strong>Sample size.</strong> <code>rcicrely</code> aborts below 4
-producers per condition and warns below 30 (Cone et al. 2020 recommend N
-&gt;= 60 for stable reliability assessment). At N = 10 the metrics are
-computable but their CIs are wide.</p>
+producers per condition and warns below 30 (see Cone et al. 2021; who
+recommend N &gt;= 60 for stable reliability assessment). At N = 10 the
+metrics are computable but their CIs are wide.</p>
 <p><strong>Split-half.</strong> Think of <code>r_hh</code> ~ 0.3 as
 weak, 0.5 as moderate, 0.7+ as strong producer-level consistency.
 <code>r_SB</code> is what to report when asked about the full-sample
@@ -940,9 +940,10 @@ Dotsch, R., &amp; Aarts, H. (2019). Quantifying the informational value
 of classification images. <em>Behavior Research Methods</em>, 51(5),
 2059-2073. <a href="https://doi.org/10.3758/s13428-019-01232-2" class="external-link uri">https://doi.org/10.3758/s13428-019-01232-2</a>
 </li>
-<li>Cone, J., Flaharty, K., &amp; Ferguson, M. J. (2019). Believability
-of evidence matters for correcting social impressions. <em>Proceedings
-of the National Academy of Sciences</em>, 116(20), 9802-9807. <a href="https://doi.org/10.1073/pnas.1903222116" class="external-link uri">https://doi.org/10.1073/pnas.1903222116</a>
+<li>Cone, J., Brown-Iannuzzi, J. L., Lei, R., &amp; Dotsch, R. (2021).
+Type I Error Is Inflated in the Two-Phase Reverse Correlation Procedure.
+<em>Social Psychological and Personality Science</em>, 12(5), 760-768.
+<a href="https://doi.org/10.1177/1948550620938616" class="external-link uri">https://doi.org/10.1177/1948550620938616</a>
 </li>
 <li>Dotsch, R. (2023). <em>rcicr</em>: Reverse-Correlation
 Image-Classification Toolbox. R package v1.0.1. <a href="https://github.com/rdotsch/rcicr" class="external-link uri">https://github.com/rdotsch/rcicr</a>

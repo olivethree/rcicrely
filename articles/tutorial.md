@@ -31,7 +31,7 @@ producers*, or *distinguishable from another condition’s CI*.
 
 Critically, none of this requires a phase-2 trait-rating study. The
 metrics read directly from the pixel-level signal produced by the
-original producers, sidestepping the two-phase design Cone et al. (2020)
+original producers, sidestepping the two-phase design Cone et al. (2021)
 flagged.
 
 ### `infoVal` and `rcicrely` together
@@ -492,7 +492,7 @@ Per-producer LOO correlation.
 `$flag_method`, `$flag_threshold` record what was used.
 
 **Common mistakes.** Treating `$flagged` as “drop these producers” -
-investigate first (Cone et al. 2020 caveat: a flagged producer may have
+investigate first (Cone et al. 2021 caveat: a flagged producer may have
 a genuinely atypical mental representation). Cross-check with
 `rcicrdiagnostics` to rule out response-coding errors.
 
@@ -810,7 +810,7 @@ will give a wrong reference comparison).
 ## 8. Interpreting results and common pitfalls
 
 **Sample size.** `rcicrely` aborts below 4 producers per condition and
-warns below 30 (Cone et al. 2020 recommend N \>= 60 for stable
+warns below 30 (see Cone et al. 2021; who recommend N \>= 60 for stable
 reliability assessment). At N = 10 the metrics are computable but their
 CIs are wide.
 
@@ -857,10 +857,10 @@ comparison and produces wrong significance verdicts.
   Dotsch, R., & Aarts, H. (2019). Quantifying the informational value of
   classification images. *Behavior Research Methods*, 51(5), 2059-2073.
   <https://doi.org/10.3758/s13428-019-01232-2>
-- Cone, J., Flaharty, K., & Ferguson, M. J. (2019). Believability of
-  evidence matters for correcting social impressions. *Proceedings of
-  the National Academy of Sciences*, 116(20), 9802-9807.
-  <https://doi.org/10.1073/pnas.1903222116>
+- Cone, J., Brown-Iannuzzi, J. L., Lei, R., & Dotsch, R. (2021). Type I
+  Error Is Inflated in the Two-Phase Reverse Correlation Procedure.
+  *Social Psychological and Personality Science*, 12(5), 760-768.
+  <https://doi.org/10.1177/1948550620938616>
 - Dotsch, R. (2023). *rcicr*: Reverse-Correlation Image-Classification
   Toolbox. R package v1.0.1. <https://github.com/rdotsch/rcicr>
 - Maris, E., & Oostenveld, R. (2007). Nonparametric statistical testing
