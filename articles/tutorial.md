@@ -54,7 +54,7 @@ settings affect the rendered CI but not the infoVal computation.
 The scaling caveat applies when you compute `infoVal` outside that path:
 
 - **Brief-RC** has no canonical `infoVal` function. Anyone computing it
-  for Brief-RC is rolling their own – feed the raw mask
+  for Brief-RC is rolling their own, feed the raw mask
   (`res$signal_matrix` from
   [`ci_from_responses_briefrc()`](https://olivethree.github.io/rcicrely/reference/ci_from_responses_briefrc.md)),
   not `res$rendered_ci` or anything PNG-derived.
@@ -62,7 +62,7 @@ The scaling caveat applies when you compute `infoVal` outside that path:
   [`read_cis()`](https://olivethree.github.io/rcicrely/reference/read_cis.md)
   output to `computeInfoVal2IFC()` directly (it expects an rcicr
   CI-list, not a bare matrix). If you reconstruct one or hand-roll the
-  norm calculation, use the raw mask – not the PNG pixel values minus
+  norm calculation, use the raw mask, not the PNG pixel values minus
   base, which are `scaling(mask)`.
 
 ## 2. Installation
@@ -113,7 +113,7 @@ mask:
 |                                                               `rel_dissimilarity` (Euclidean half) | **Distorted** by any scaling.                            |
 |                                                                                          `rel_icc` | **Distorted** by any scaling.                            |
 |                                                                 `pixel_t_test`, `rel_cluster_test` | **Distorted** by per-CI scaling.                         |
-| [`rcicr::computeInfoVal2IFC()`](https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html) (canonical) | Uses raw `$ci` internally – unaffected.                  |
+| [`rcicr::computeInfoVal2IFC()`](https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html) (canonical) | Uses raw `$ci` internally, unaffected.                   |
 |                                                           Hand-rolled `infoVal` (Brief-RC, custom) | **Distorted** by any scaling. Use the raw mask.          |
 
 ### 3.2 Two paths to the signal matrix
@@ -368,8 +368,8 @@ res <- ci_from_responses_briefrc(
   base_image_path = "data/base.jpg",
   scaling         = "matched"        # Schmitz default for visualisation
 )
-# res$signal_matrix  -- raw mask, feed to rel_*
-# res$rendered_ci    -- base + matched(mask), for PNG / plotting only
+# res$signal_matrix is the raw mask, feed to rel_*
+# res$rendered_ci is base + matched(mask), for PNG / plotting only
 ```
 
 **Reading the result.** `$signal_matrix` is **always** the raw mask,
@@ -804,8 +804,8 @@ either rcicr or rcicrely). It needs a reference distribution matched to
 each producer’s trial count, not the pool size. The `rel_*` reliability
 metrics do not depend on it. If you hand-roll an `infoVal` for Brief-RC
 today, compute it on the **raw mask** (`res$signal_matrix`), not on
-`res$rendered_ci` or any saved PNG – those carry the scaling step and
-will give a wrong reference comparison.
+`res$rendered_ci` or any saved PNG (those carry the scaling step and
+will give a wrong reference comparison).
 
 ## 8. Interpreting results and common pitfalls
 
@@ -842,30 +842,40 @@ scaling that was applied at PNG-write time. Mode 2 is the safe path.
 [`rcicr::computeInfoVal2IFC()`](https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html)
 extracts the raw `$ci` from its input CI-list internally, so the
 canonical 2IFC path is safe regardless of `scaling`. The pitfall is in
-hand-rolled `infoVal` implementations – for Brief-RC, or for any custom
-code that consumes a bare matrix – which must be fed the raw mask.
+hand-rolled `infoVal` implementations, for Brief-RC, or for any custom
+code that consumes a bare matrix, which must be fed the raw mask.
 Feeding rendered/scaled values silently distorts the reference
 comparison and produces wrong significance verdicts.
 
 ## 9. References
 
-- Brinkman, L., Dotsch, R., Zondergeld, J., & Aarts, H. (2019).
-  Visualising mental representations: a primer on noise-based reverse
-  correlation in social psychology. *European Review of Social
-  Psychology*, 28(1), 333-361.
-- Cone, J., Flaharty, K., & Ferguson, M. J. (2020). Believability of
-  evidence matters for correcting social impressions. *PNAS*.
+- Brinkman, L., Todorov, A., & Dotsch, R. (2017). Visualising mental
+  representations: A primer on noise-based reverse correlation in social
+  psychology. *European Review of Social Psychology*, 28(1), 333-361.
+  <https://doi.org/10.1080/10463283.2017.1381469>
+- Brinkman, L., Goffin, S., van de Schoot, R., van Haren, N. E. M.,
+  Dotsch, R., & Aarts, H. (2019). Quantifying the informational value of
+  classification images. *Behavior Research Methods*, 51(5), 2059-2073.
+  <https://doi.org/10.3758/s13428-019-01232-2>
+- Cone, J., Flaharty, K., & Ferguson, M. J. (2019). Believability of
+  evidence matters for correcting social impressions. *Proceedings of
+  the National Academy of Sciences*, 116(20), 9802-9807.
+  <https://doi.org/10.1073/pnas.1903222116>
 - Dotsch, R. (2023). *rcicr*: Reverse-Correlation Image-Classification
-  Toolbox. R package v1.0.1.
+  Toolbox. R package v1.0.1. <https://github.com/rdotsch/rcicr>
 - Maris, E., & Oostenveld, R. (2007). Nonparametric statistical testing
-  of EEG- and MEG-data. *Journal of Neuroscience Methods*.
+  of EEG- and MEG-data. *Journal of Neuroscience Methods*, 164(1),
+  177-190. <https://doi.org/10.1016/j.jneumeth.2007.03.024>
 - McGraw, K. O., & Wong, S. P. (1996). Forming inferences about some
-  intraclass correlation coefficients. *Psychological Methods*.
+  intraclass correlation coefficients. *Psychological Methods*, 1(1),
+  30-46. <https://doi.org/10.1037/1082-989X.1.1.30>
 - Nichols, T. E., & Holmes, A. P. (2002). Nonparametric permutation
-  tests for functional neuroimaging: a primer with examples. *Human
-  Brain Mapping*.
+  tests for functional neuroimaging: A primer with examples. *Human
+  Brain Mapping*, 15(1), 1-25. <https://doi.org/10.1002/hbm.1058>
 - Schmitz, M., Rougier, M., & Yzerbyt, V. (2024). Introducing the brief
-  reverse correlation: an improved tool to assess visual
-  representations. *Behavior Research Methods*.
-- Shrout, P. E., & Fleiss, J. L. (1979). Intraclass correlations: uses
-  in assessing rater reliability. *Psychological Bulletin*.
+  reverse correlation: An improved tool to assess visual
+  representations. *European Journal of Social Psychology*.
+  <https://doi.org/10.1002/ejsp.3100>
+- Shrout, P. E., & Fleiss, J. L. (1979). Intraclass correlations: Uses
+  in assessing rater reliability. *Psychological Bulletin*, 86(2),
+  420-428. <https://doi.org/10.1037/0033-2909.86.2.420>

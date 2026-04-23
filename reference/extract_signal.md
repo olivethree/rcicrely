@@ -4,7 +4,7 @@ The pixel values returned by
 [`read_cis()`](https://olivethree.github.io/rcicrely/reference/read_cis.md)
 contain the shared base image plus a (typically scaled) noise
 contribution. Reliability computations must operate on the **noise**
-alone – otherwise the shared base inflates inter-participant
+alone, otherwise the shared base inflates inter-participant
 correlations. This function reads the base image, converts to grayscale
 if needed, validates dimensions, and returns `cis - base` column-wise.
 
@@ -43,7 +43,7 @@ missing).
 
 ## Common mistakes
 
-- Passing a base image with different dimensions – aborts with a clear
+- Passing a base image with different dimensions, aborts with a clear
   pixel-count mismatch.
 
 - Treating the result as the raw mask. The output is `scaling(mask)` if
@@ -66,9 +66,9 @@ are sensitive to the scaling transform; only correlation-based metrics
 [`rel_loo()`](https://olivethree.github.io/rcicrely/reference/rel_loo.md),
 correlation half of
 [`rel_dissimilarity()`](https://olivethree.github.io/rcicrely/reference/rel_dissimilarity.md))
-survive a single uniform linear scaling unmodified – and even those
-break under per-CI `"matched"`-style scaling. The canonical 2IFC
-`infoVal` path
+survive a single uniform linear scaling unmodified, and even those break
+under per-CI `"matched"`-style scaling. The canonical 2IFC `infoVal`
+path
 ([`rcicr::computeInfoVal2IFC()`](https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html))
 extracts the raw `$ci` internally from the rcicr CI-list and is **not**
 affected; hand-rolled `infoVal` implementations (Brief-RC, custom code)

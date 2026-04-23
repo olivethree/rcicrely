@@ -18,7 +18,7 @@ produced by reverse-correlation experiments. It answers the questions
 
 Supports both standard **2IFC** (via the canonical
 [`rcicr`](https://github.com/rdotsch/rcicr)) and **Brief-RC 12**
-(Schmitz, Rougier & Yzerbyt, 2024 — implemented natively).
+(Schmitz, Rougier & Yzerbyt, 2024; implemented natively).
 
 Companion to
 [`rcicrdiagnostics`](https://github.com/olivethree/rcicrdiagnostics):
@@ -37,7 +37,7 @@ remotes::install_github("rdotsch/rcicr")      # 2IFC path only
 remotes::install_github("olivethree/rcicrely")
 ```
 
-If you only use Brief-RC, you can skip `rcicr` — the Brief-RC CI
+If you only use Brief-RC, you can skip `rcicr`; the Brief-RC CI
 implementation is fully native.
 
 ## Quick start
@@ -117,8 +117,8 @@ guide](https://olivethree.github.io/rcicrely/articles/tutorial.html).
 ## What’s different from the trait-rating ICCs in the RC literature
 
 Most ICCs published in reverse-correlation papers are **trait-rating**
-reliability — phase-2 naive raters scoring CIs on dimensions like
-“trustworthy” or “competent”. `rcicrely`’s ICC is a structurally
+reliability (phase-2 naive raters scoring CIs on dimensions like
+“trustworthy” or “competent”). `rcicrely`’s ICC is a structurally
 different object: it operates on the pixel-level signal produced by the
 original producers, so no phase-2 rating study is involved. This
 sidesteps the two-phase design Cone et al. (2020) flagged.

@@ -80,7 +80,7 @@ Subset of <code>c("3_1", "3_k", "2_1", "2_k")</code>. Defaults to
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Reports <strong>ICC(3,1)</strong> and <strong>ICC(3,k)</strong>  –  two-way mixed model with
+    <p>Reports <strong>ICC(3,1)</strong> and <strong>ICC(3,k)</strong>, two-way mixed model with
 pixels fixed and participants random. Pixels are a fixed
 <code>img_size x img_size</code> grid (not a random sample), so ICC(2,\*) is
 mis-specified even when numerically similar. ICC(2,1) and
@@ -91,11 +91,11 @@ explicitly ask.</p>
 a 262,144 x 30 matrix).</p>
     </div>
     <div class="section level2">
-    <h2 id="what-this-icc-is-and-is-not">What this ICC is  –  and is not<a class="anchor" aria-label="anchor" href="#what-this-icc-is-and-is-not"></a></h2>
+    <h2 id="what-this-icc-is-and-is-not">What this ICC is, and is not<a class="anchor" aria-label="anchor" href="#what-this-icc-is-and-is-not"></a></h2>
 
 
 <p>Most ICCs reported in the reverse-correlation literature are
-<strong>trait-rating</strong> reliability  –  phase-2 naive raters scoring CIs on
+<strong>trait-rating</strong> reliability, phase-2 naive raters scoring CIs on
 trait dimensions (trustworthy, competent, ...). rcicrely's ICC is
 structurally different: it operates on the pixel-level signal
 produced by the original producers. No phase-2 rating study is
@@ -106,10 +106,10 @@ criticised.</p>
     <h2 id="reading-the-result">Reading the result<a class="anchor" aria-label="anchor" href="#reading-the-result"></a></h2>
 
 
-<ul><li><p><code>$icc_3_1</code>, <code>$icc_3_k</code>  –  two-way-mixed ICCs for single rater
+<ul><li><p><code>$icc_3_1</code>, <code>$icc_3_k</code>, two-way-mixed ICCs for single rater
 and average rater respectively. <code>$icc_2_1</code> / <code>$icc_2_k</code> only
 present if requested via <code>variants</code>.</p></li>
-<li><p><code>$ms_rows</code>, <code>$ms_cols</code>, <code>$ms_error</code>  –  the underlying ANOVA mean
+<li><p><code>$ms_rows</code>, <code>$ms_cols</code>, <code>$ms_error</code>, the underlying ANOVA mean
 squares for transparency / reproducibility.</p></li>
 <li><p><code>$n_raters</code> (= participants), <code>$n_targets</code> (= pixels),
 <code>$model</code> (description string), <code>$variants</code> (which were returned).</p></li>
@@ -120,7 +120,7 @@ squares for transparency / reproducibility.</p></li>
 
 <ul><li><p>Asking for ICC(2,<em>) because a reviewer expects it. ICC(2,</em>)
 treats pixels as a random sample from a pixel population, which
-they aren't  –  the image grid is fixed. Numbers are usually
+they aren't, the image grid is fixed. Numbers are usually
 close to ICC(3,*) at high pixel counts but the model is
 mis-specified. Use <code>variants = c("3_1", "3_k", "2_1", "2_k")</code> to
 report both side-by-side.</p></li>
@@ -142,11 +142,15 @@ the result will not match what raw responses would produce. See
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
     <p>Shrout, P. E., &amp; Fleiss, J. L. (1979). Intraclass correlations:
-uses in assessing rater reliability. <em>Psychological Bulletin</em>.</p>
+uses in assessing rater reliability. <em>Psychological Bulletin</em>,
+86(2), 420-428.</p>
 <p>McGraw, K. O., &amp; Wong, S. P. (1996). Forming inferences about some
-intraclass correlation coefficients. <em>Psychological Methods</em>.</p>
-<p>Cone, J., Flaharty, K., &amp; Ferguson, M. J. (2020). Believability of
-evidence matters for correcting social impressions. <em>PNAS</em>.</p>
+intraclass correlation coefficients. <em>Psychological Methods</em>,
+1(1), 30-46.</p>
+<p>Cone, J., Flaharty, K., &amp; Ferguson, M. J. (2019). Believability of
+evidence matters for correcting social impressions. <em>Proceedings
+of the National Academy of Sciences</em>, 116(20), 9802-9807.
+<a href="https://doi.org/10.1073/pnas.1903222116" class="external-link">doi:10.1073/pnas.1903222116</a></p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

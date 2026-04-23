@@ -31,7 +31,7 @@ ci_from_responses_2ifc(
 
   A data frame with one row per trial. Must contain `participant_col`
   (producer id), the column named by `stimulus_col` (stimulus id,
-  integer – index into the rcicr noise pool), and `response_col` with
+  integer, index into the rcicr noise pool), and `response_col` with
   values in `{-1, +1}`.
 
 - rdata_path:
@@ -56,7 +56,7 @@ ci_from_responses_2ifc(
   rcicr scaling option; one of `"autoscale"`, `"independent"`,
   `"constant"`, `"none"`. Passed through to
   [`rcicr::batchGenerateCI2IFC()`](https://rdrr.io/pkg/rcicr/man/batchGenerateCI2IFC.html).
-  Scaling only affects the `$combined` (rendered) image, not `$ci` – so
+  Scaling only affects the `$combined` (rendered) image, not `$ci`, so
   the returned `$signal_matrix` is the raw mask regardless of this
   argument.
 
@@ -81,20 +81,20 @@ ci_from_responses_2ifc(
 
 A list with
 
-- `signal_matrix` – pixels x participants raw mask (always raw,
+- `signal_matrix`, pixels x participants raw mask (always raw,
   regardless of `scaling`).
 
-- `rendered_ci` – pixels x participants, present only when
+- `rendered_ci`, pixels x participants, present only when
   `keep_rendered = TRUE`. Visualisation only.
 
-- `participants` – character vector of participant ids in the column
+- `participants`, character vector of participant ids in the column
   order of `signal_matrix`.
 
-- `img_dims` – integer `c(nrow, ncol)`.
+- `img_dims`, integer `c(nrow, ncol)`.
 
-- `scaling` – the `scaling` value passed to rcicr.
+- `scaling`, the `scaling` value passed to rcicr.
 
-- `rcicr_result` – the raw rcicr list (one element per producer).
+- `rcicr_result`, the raw rcicr list (one element per producer).
 
 ## Details
 
@@ -108,7 +108,7 @@ What the wrapper does for you:
 
 - Extracts the per-participant CI **noise component** (`$ci`) from the
   rcicr result list and stacks it into a pixels x participants signal
-  matrix – already base-subtracted, ready for `rel_*()`.
+  matrix, already base-subtracted, ready for `rel_*()`.
 
 - When `keep_rendered = TRUE`, also extracts the rendered `$combined`
   image and stacks it as `$rendered_ci` for visualisation (display only,
@@ -133,7 +133,7 @@ What the wrapper does for you:
 
 ## Common mistakes
 
-- Passing `$rendered_ci` to `rel_*` functions – it carries the scaling
+- Passing `$rendered_ci` to `rel_*` functions, it carries the scaling
   step, which distorts variance-based metrics.
 
 - Forgetting that the warning about Mode 1 also applies if you later

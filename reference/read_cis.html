@@ -113,7 +113,7 @@ automatically.</p>
 <ul><li><p>Forgetting to subtract the base. The matrix returned here
 contains the <strong>rendered CI</strong> (base + scaled noise). Pass it
 through <code><a href="extract_signal.html">extract_signal()</a></code> before any reliability metric.</p></li>
-<li><p>Mixing CIs from different image sizes in one directory  –  this
+<li><p>Mixing CIs from different image sizes in one directory, this
 aborts with a clear error rather than silently misaligning.</p></li>
 <li><p>Trusting reliability numbers without first reading the <strong>Note</strong>
 below on raw vs. rendered CIs.</p></li>
@@ -130,7 +130,7 @@ reliability metrics (<code><a href="rel_icc.html">rel_icc()</a></code>, Euclidea
 sensitive to the scaling transform; only correlation-based metrics
 (<code><a href="rel_split_half.html">rel_split_half()</a></code>, <code><a href="rel_loo.html">rel_loo()</a></code>, correlation half of
 <code><a href="rel_dissimilarity.html">rel_dissimilarity()</a></code>) survive a single uniform linear scaling
-unmodified  –  and even those break under per-CI <code>"matched"</code>-style
+unmodified, and even those break under per-CI <code>"matched"</code>-style
 scaling. The canonical 2IFC <code>infoVal</code> path
 (<code><a href="https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html" class="external-link">rcicr::computeInfoVal2IFC()</a></code>) extracts the raw <code>$ci</code> internally
 from the rcicr CI-list and is <strong>not</strong> affected; hand-rolled

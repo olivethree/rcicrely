@@ -3,7 +3,7 @@
 group CI computed without that producer. A producer whose LOO
 correlation falls more than flag_threshold units below the
 centre (mean or median, depending on flag_method) is flagged as
-an influential outlier  –  their removal changes the group CI
+an influential outlier, their removal changes the group CI
 noticeably more than the others.
 Use this to spot producers whose individual CI sits far from the
 group pattern. A flag does not imply a bad producer; it could
@@ -13,7 +13,7 @@ errors."><meta property="og:description" content="For each producer, correlates 
 group CI computed without that producer. A producer whose LOO
 correlation falls more than flag_threshold units below the
 centre (mean or median, depending on flag_method) is flagged as
-an influential outlier  –  their removal changes the group CI
+an influential outlier, their removal changes the group CI
 noticeably more than the others.
 Use this to spot producers whose individual CI sits far from the
 group pattern. A flag does not imply a bad producer; it could
@@ -59,7 +59,7 @@ errors."></head><body>
 group CI computed without that producer. A producer whose LOO
 correlation falls more than <code>flag_threshold</code> units below the
 centre (mean or median, depending on <code>flag_method</code>) is flagged as
-an influential outlier  –  their removal changes the group CI
+an influential outlier, their removal changes the group CI
 noticeably more than the others.</p>
 <p>Use this to spot producers whose individual CI sits far from the
 group pattern. A flag does not imply a bad producer; it could
@@ -125,17 +125,17 @@ factor.</p>
     <h2 id="reading-the-result">Reading the result<a class="anchor" aria-label="anchor" href="#reading-the-result"></a></h2>
 
 
-<ul><li><p><code>$correlations</code>  –  named numeric vector, per-producer correlation
+<ul><li><p><code>$correlations</code>, named numeric vector, per-producer correlation
 between the full-sample mean and the leave-one-out mean.
 Higher = the producer's CI looks like the rest.</p></li>
-<li><p><code>$mean_r</code>, <code>$sd_r</code>, <code>$median_r</code>, <code>$mad_r</code>  –  centre / spread of
+<li><p><code>$mean_r</code>, <code>$sd_r</code>, <code>$median_r</code>, <code>$mad_r</code>, centre / spread of
 the correlation distribution.</p></li>
-<li><p><code>$threshold</code>  –  the cutoff value computed under the chosen
+<li><p><code>$threshold</code>, the cutoff value computed under the chosen
 <code>flag_method</code>.</p></li>
-<li><p><code>$flagged</code>  –  character vector of producer ids below threshold.</p></li>
-<li><p><code>$summary_df</code>  –  one row per producer, with <code>correlation</code> and
+<li><p><code>$flagged</code>, character vector of producer ids below threshold.</p></li>
+<li><p><code>$summary_df</code>, one row per producer, with <code>correlation</code> and
 <code>flag</code>.</p></li>
-<li><p><code>$flag_method</code>, <code>$flag_threshold</code>  –  what was used.</p></li>
+<li><p><code>$flag_method</code>, <code>$flag_threshold</code>, what was used.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="common-mistakes">Common mistakes<a class="anchor" aria-label="anchor" href="#common-mistakes"></a></h2>

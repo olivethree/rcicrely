@@ -66,7 +66,7 @@
 <li>
 <strong>Between-condition</strong>: vectorised Welch pixel <em>t</em>, cluster-based permutation with max-statistic FWER control, bootstrap representational dissimilarity.</li>
 </ul>
-<p>Supports both standard <strong>2IFC</strong> (via the canonical <a href="https://github.com/rdotsch/rcicr" class="external-link"><code>rcicr</code></a>) and <strong>Brief-RC 12</strong> (Schmitz, Rougier &amp; Yzerbyt, 2024 — implemented natively).</p>
+<p>Supports both standard <strong>2IFC</strong> (via the canonical <a href="https://github.com/rdotsch/rcicr" class="external-link"><code>rcicr</code></a>) and <strong>Brief-RC 12</strong> (Schmitz, Rougier &amp; Yzerbyt, 2024; implemented natively).</p>
 <p>Companion to <a href="https://github.com/olivethree/rcicrdiagnostics" class="external-link"><code>rcicrdiagnostics</code></a>: diagnostics catches silent data-processing errors <em>before</em> CI computation; <code>rcicrely</code> asks whether the CIs <em>themselves</em> are reliable and discriminable <em>after</em> they have been cleanly computed.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -76,7 +76,7 @@
 <code class="sourceCode R"><span><span class="co"># install.packages("remotes")</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"rdotsch/rcicr"</span><span class="op">)</span>      <span class="co"># 2IFC path only</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"olivethree/rcicrely"</span><span class="op">)</span></span></code></pre></div>
-<p>If you only use Brief-RC, you can skip <code>rcicr</code> — the Brief-RC CI implementation is fully native.</p>
+<p>If you only use Brief-RC, you can skip <code>rcicr</code>; the Brief-RC CI implementation is fully native.</p>
 </div>
 <div class="section level2">
 <h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
@@ -123,7 +123,7 @@
 <div class="section level2">
 <h2 id="whats-different-from-the-trait-rating-iccs-in-the-rc-literature">What’s different from the trait-rating ICCs in the RC literature<a class="anchor" aria-label="anchor" href="#whats-different-from-the-trait-rating-iccs-in-the-rc-literature"></a>
 </h2>
-<p>Most ICCs published in reverse-correlation papers are <strong>trait-rating</strong> reliability — phase-2 naive raters scoring CIs on dimensions like “trustworthy” or “competent”. <code>rcicrely</code>’s ICC is a structurally different object: it operates on the pixel-level signal produced by the original producers, so no phase-2 rating study is involved. This sidesteps the two-phase design Cone et al. (2020) flagged.</p>
+<p>Most ICCs published in reverse-correlation papers are <strong>trait-rating</strong> reliability (phase-2 naive raters scoring CIs on dimensions like “trustworthy” or “competent”). <code>rcicrely</code>’s ICC is a structurally different object: it operates on the pixel-level signal produced by the original producers, so no phase-2 rating study is involved. This sidesteps the two-phase design Cone et al. (2020) flagged.</p>
 <p>The package reports <strong>ICC(3,1)</strong> and <strong>ICC(3,k)</strong> by positive argument, not convention: pixels are a fixed <code>img_size × img_size</code> grid (two-way mixed, pixels fixed, participants random), not a random sample from a pixel population. ICC(2,*) is available via the <code>variants</code> argument if your reviewer explicitly asks.</p>
 </div>
 <div class="section level2">

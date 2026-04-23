@@ -36,7 +36,7 @@ rel_split_half(
 
 - n_permutations:
 
-  Integer number of random splits. Default 2000 – cheap and keeps Monte
+  Integer number of random splits. Default 2000, cheap and keeps Monte
   Carlo error on tail probabilities below 0.01.
 
 - seed:
@@ -55,17 +55,17 @@ the result** above.
 
 ## Reading the result
 
-- `$r_hh` – mean per-permutation Pearson r between the two halves.
+- `$r_hh`, mean per-permutation Pearson r between the two halves.
 
-- `$r_sb` – Spearman-Brown projected reliability of the full sample.
-  This is usually the headline number to report.
+- `$r_sb`, Spearman-Brown projected reliability of the full sample. This
+  is usually the headline number to report.
 
-- `$ci_95`, `$ci_95_sb` – percentile 95% CIs on each.
+- `$ci_95`, `$ci_95_sb`, percentile 95% CIs on each.
 
-- `$distribution` – the full per-permutation r vector for plotting or
+- `$distribution`, the full per-permutation r vector for plotting or
   custom CIs.
 
-- `$n_participants`, `$n_permutations` – metadata.
+- `$n_participants`, `$n_permutations`, metadata.
 
 ## Common mistakes
 
@@ -73,7 +73,7 @@ the result** above.
   full-sample CI's reliability (almost always).
 
 - Running with a small `n_permutations` (\< 200) to save time, then
-  trusting the CI bounds – CIs widen with low n_perm.
+  trusting the CI bounds, CIs widen with low n_perm.
 
 ## Reliability metrics expect raw masks
 
@@ -85,11 +85,12 @@ chapter 3.
 ## References
 
 Brinkman, L., Goffin, S., van de Schoot, R., van Haren, N. E. M.,
-Dotsch, R., & Aarts, H. (2017). Quantifying the informational value of
-classification images. *Behavior Research Methods*.
+Dotsch, R., & Aarts, H. (2019). Quantifying the informational value of
+classification images. *Behavior Research Methods*, 51(5), 2059-2073.
+[doi:10.3758/s13428-019-01232-2](https://doi.org/10.3758/s13428-019-01232-2)
 
 Shrout, P. E., & Fleiss, J. L. (1979). Intraclass correlations: uses in
-assessing rater reliability. *Psychological Bulletin*.
+assessing rater reliability. *Psychological Bulletin*, 86(2), 420-428.
 
 ## See also
 

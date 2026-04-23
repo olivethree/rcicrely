@@ -3,7 +3,7 @@
 For each producer, correlates the full-sample group CI with the group CI
 computed without that producer. A producer whose LOO correlation falls
 more than `flag_threshold` units below the centre (mean or median,
-depending on `flag_method`) is flagged as an influential outlier – their
+depending on `flag_method`) is flagged as an influential outlier, their
 removal changes the group CI noticeably more than the others.
 
 Use this to spot producers whose individual CI sits far from the group
@@ -69,21 +69,21 @@ comparable thanks to MAD's 1.4826 consistency factor.
 
 ## Reading the result
 
-- `$correlations` – named numeric vector, per-producer correlation
+- `$correlations`, named numeric vector, per-producer correlation
   between the full-sample mean and the leave-one-out mean. Higher = the
   producer's CI looks like the rest.
 
-- `$mean_r`, `$sd_r`, `$median_r`, `$mad_r` – centre / spread of the
+- `$mean_r`, `$sd_r`, `$median_r`, `$mad_r`, centre / spread of the
   correlation distribution.
 
-- `$threshold` – the cutoff value computed under the chosen
+- `$threshold`, the cutoff value computed under the chosen
   `flag_method`.
 
-- `$flagged` – character vector of producer ids below threshold.
+- `$flagged`, character vector of producer ids below threshold.
 
-- `$summary_df` – one row per producer, with `correlation` and `flag`.
+- `$summary_df`, one row per producer, with `correlation` and `flag`.
 
-- `$flag_method`, `$flag_threshold` – what was used.
+- `$flag_method`, `$flag_threshold`, what was used.
 
 ## Common mistakes
 

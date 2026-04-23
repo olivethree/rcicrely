@@ -160,18 +160,18 @@ in <strong>Reading the result</strong> above.</p>
     <h2 id="reading-the-result">Reading the result<a class="anchor" aria-label="anchor" href="#reading-the-result"></a></h2>
 
 
-<ul><li><p><code>$observed_t</code>  –  per-pixel Welch t vector for the observed
+<ul><li><p><code>$observed_t</code>, per-pixel Welch t vector for the observed
 condition labelling.</p></li>
-<li><p><code>$clusters</code>  –  data.frame with <code>cluster_id</code>, <code>direction</code>
+<li><p><code>$clusters</code>, data.frame with <code>cluster_id</code>, <code>direction</code>
 (<code>"pos"</code>/<code>"neg"</code>), <code>mass</code>, <code>size</code>, <code>p_value</code>, <code>significant</code>. One
 row per supra-threshold cluster, sorted by direction then mass.</p></li>
-<li><p><code>$null_distribution</code>  –  list with <code>$pos</code> and <code>$neg</code> vectors of
+<li><p><code>$null_distribution</code>, list with <code>$pos</code> and <code>$neg</code> vectors of
 per-permutation max masses, useful for plotting the null.</p></li>
-<li><p><code>$pos_labels</code>, <code>$neg_labels</code>  –  integer matrices the same shape
+<li><p><code>$pos_labels</code>, <code>$neg_labels</code>, integer matrices the same shape
 as the image, where each non-zero value labels a cluster. Drives
 the contour overlay in the result's <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> method.</p></li>
 <li><p><code>$cluster_threshold</code>, <code>$alpha</code>, <code>$n_permutations</code>,
-<code>$n_participants_a</code>, <code>$n_participants_b</code>  –  metadata.</p></li>
+<code>$n_participants_a</code>, <code>$n_participants_b</code>, metadata.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="common-mistakes">Common mistakes<a class="anchor" aria-label="anchor" href="#common-mistakes"></a></h2>
@@ -180,8 +180,8 @@ the contour overlay in the result's <code><a href="https://rdrr.io/r/graphics/pl
 <ul><li><p>Reading <code>cluster_threshold</code> (default 2.0) as a p-value cutoff. It
 is the t-value above which pixels join a cluster; significance
 is decided afterwards by comparing cluster mass to the null.</p></li>
-<li><p>Trusting cluster significance with <code>n_permutations &lt; 1000</code>  –
-tail probabilities are noisy.</p></li>
+<li><p>Trusting cluster significance with <code>n_permutations &lt; 1000</code>
+(tail probabilities are noisy at low iter counts).</p></li>
 <li><p>Permuting <strong>pixels</strong> instead of condition labels (the function
 does the right thing internally; this is just a warning if you
 reimplement it yourself).</p></li>
@@ -198,10 +198,11 @@ results are distorted. See
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
     <p>Maris, E., &amp; Oostenveld, R. (2007). Nonparametric statistical
-testing of EEG- and MEG-data. <em>Journal of Neuroscience Methods</em>.</p>
+testing of EEG- and MEG-data. <em>Journal of Neuroscience Methods</em>,
+164(1), 177-190. <a href="https://doi.org/10.1016/j.jneumeth.2007.03.024" class="external-link">doi:10.1016/j.jneumeth.2007.03.024</a></p>
 <p>Nichols, T. E., &amp; Holmes, A. P. (2002). Nonparametric permutation
 tests for functional neuroimaging: a primer with examples.
-<em>Human Brain Mapping</em>.</p>
+<em>Human Brain Mapping</em>, 15(1), 1-25. <a href="https://doi.org/10.1002/hbm.1058" class="external-link">doi:10.1002/hbm.1058</a></p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

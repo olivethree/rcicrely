@@ -1,7 +1,7 @@
 # Compute individual Brief-RC CIs from trial-level responses
 
 Native implementation of Schmitz, Rougier & Yzerbyt (2024)'s Brief-RC
-mask. **Does not** call any `rcicr::*_brief` function – those do not
+mask. **Does not** call any `rcicr::*_brief` function, those do not
 exist in canonical rcicr v1.0.1. Only rcicr's noise-pattern pool (the
 `stimuli` object inside an `.Rdata` from `generateStimuli2IFC()`) is
 reused; the mask is computed in pure R.
@@ -63,7 +63,7 @@ ci_from_responses_briefrc(
 
   Visualisation-only scaling for the optional `$rendered_ci` field. One
   of `"none"` (default; no rendered_ci returned), `"matched"` (stretch
-  mask to base range, then add to base – Schmitz's default), or
+  mask to base range, then add to base, Schmitz's default), or
   `"constant"` (multiply mask by `scaling_constant`, then add to base).
   The mathematical `$signal_matrix` returned by this function is always
   the raw unscaled mask, regardless of this argument.
@@ -77,17 +77,17 @@ ci_from_responses_briefrc(
 
 A list with
 
-- `signal_matrix` – pixels x participants raw mask (always raw, even
-  when `scaling != "none"`).
+- `signal_matrix`, pixels x participants raw mask (always raw, even when
+  `scaling != "none"`).
 
-- `rendered_ci` – pixels x participants, present only when
+- `rendered_ci`, pixels x participants, present only when
   `scaling != "none"`. Visualisation only.
 
-- `participants` – character vector of participant ids.
+- `participants`, character vector of participant ids.
 
-- `img_dims` – integer `c(nrow, ncol)`.
+- `img_dims`, integer `c(nrow, ncol)`.
 
-- `scaling` – the scaling option that was used.
+- `scaling`, the scaling option that was used.
 
 ## Details
 
@@ -104,13 +104,13 @@ responses, those two cancel.
 
 ## Reading the result
 
-- `$signal_matrix` is the **raw mask** per producer – the object every
+- `$signal_matrix` is the **raw mask** per producer, the object every
   `rel_*` function expects. Always pass this (and only this) to
   reliability metrics or to any external infoVal computation.
 
 - `$rendered_ci`, when present, is `base + scaling(mask)` per producer.
   **Visualization only.** Save to PNG, plot for inspection, but do not
-  feed into reliability metrics – the scaling step distorts
+  feed into reliability metrics, the scaling step distorts
   variance-based statistics. Also do not feed it to a hand-rolled
   Brief-RC `infoVal` (no canonical implementation exists in either rcicr
   or rcicrely): the reference distribution would compare against a
@@ -127,14 +127,15 @@ responses, those two cancel.
 - Using `$rendered_ci` for downstream stats. It exists only because the
   user often wants to save a PNG.
 
-- Asking for `method = "briefrc20"` – that's reserved for a future
+- Asking for `method = "briefrc20"`, that's reserved for a future
   release and aborts.
 
 ## References
 
 Schmitz, M., Rougier, M., & Yzerbyt, V. (2024). Introducing the brief
 reverse correlation: an improved tool to assess visual representations.
-*Behavior Research Methods*.
+*European Journal of Social Psychology*.
+[doi:10.1002/ejsp.3100](https://doi.org/10.1002/ejsp.3100)
 
 ## See also
 

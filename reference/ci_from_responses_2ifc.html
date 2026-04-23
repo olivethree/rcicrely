@@ -73,7 +73,7 @@ package to compute individual CIs ready for the reliability metrics.</p>
 <dl><dt id="arg-responses">responses<a class="anchor" aria-label="anchor" href="#arg-responses"></a></dt>
 <dd><p>A data frame with one row per trial. Must contain
 <code>participant_col</code> (producer id), the column named by <code>stimulus_col</code>
-(stimulus id, integer  –  index into the rcicr noise pool), and
+(stimulus id, integer, index into the rcicr noise pool), and
 <code>response_col</code> with values in <code>{-1, +1}</code>.</p></dd>
 
 
@@ -98,7 +98,7 @@ stored in <code>rdata_path</code>.</p></dd>
 <dd><p>rcicr scaling option; one of <code>"autoscale"</code>,
 <code>"independent"</code>, <code>"constant"</code>, <code>"none"</code>. Passed through to
 <code><a href="https://rdrr.io/pkg/rcicr/man/batchGenerateCI2IFC.html" class="external-link">rcicr::batchGenerateCI2IFC()</a></code>. Scaling only affects the
-<code>$combined</code> (rendered) image, not <code>$ci</code>  –  so the returned
+<code>$combined</code> (rendered) image, not <code>$ci</code>, so the returned
 <code>$signal_matrix</code> is the raw mask regardless of this argument.</p></dd>
 
 
@@ -121,15 +121,15 @@ Defaults to <code>FALSE</code> for speed in a pure reliability pipeline.</p></dd
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list with</p><ul><li><p><code>signal_matrix</code>  –  pixels x participants raw mask (always raw,
+    <p>A list with</p><ul><li><p><code>signal_matrix</code>, pixels x participants raw mask (always raw,
 regardless of <code>scaling</code>).</p></li>
-<li><p><code>rendered_ci</code>  –  pixels x participants, present only when
+<li><p><code>rendered_ci</code>, pixels x participants, present only when
 <code>keep_rendered = TRUE</code>. Visualisation only.</p></li>
-<li><p><code>participants</code>  –  character vector of participant ids in the
+<li><p><code>participants</code>, character vector of participant ids in the
 column order of <code>signal_matrix</code>.</p></li>
-<li><p><code>img_dims</code>  –  integer <code>c(nrow, ncol)</code>.</p></li>
-<li><p><code>scaling</code>  –  the <code>scaling</code> value passed to rcicr.</p></li>
-<li><p><code>rcicr_result</code>  –  the raw rcicr list (one element per producer).</p></li>
+<li><p><code>img_dims</code>, integer <code>c(nrow, ncol)</code>.</p></li>
+<li><p><code>scaling</code>, the <code>scaling</code> value passed to rcicr.</p></li>
+<li><p><code>rcicr_result</code>, the raw rcicr list (one element per producer).</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -140,7 +140,7 @@ rcicr).</p></li>
 lowercase on some filesystems).</p></li>
 <li><p>Extracts the per-participant CI <strong>noise component</strong> (<code>$ci</code>) from
 the rcicr result list and stacks it into a pixels x participants
-signal matrix  –  already base-subtracted, ready for <code>rel_*()</code>.</p></li>
+signal matrix, already base-subtracted, ready for <code>rel_*()</code>.</p></li>
 <li><p>When <code>keep_rendered = TRUE</code>, also extracts the rendered
 <code>$combined</code> image and stacks it as <code>$rendered_ci</code> for
 visualisation (display only, not for downstream stats).</p></li>
@@ -164,7 +164,7 @@ This is what every <code>rel_*</code> function expects.</p></li>
     <h2 id="common-mistakes">Common mistakes<a class="anchor" aria-label="anchor" href="#common-mistakes"></a></h2>
 
 
-<ul><li><p>Passing <code>$rendered_ci</code> to <code>rel_*</code> functions  –  it carries the
+<ul><li><p>Passing <code>$rendered_ci</code> to <code>rel_*</code> functions, it carries the
 scaling step, which distorts variance-based metrics.</p></li>
 <li><p>Forgetting that the warning about Mode 1 also applies if you
 later read <code>$rendered_ci</code> back from PNG instead of using

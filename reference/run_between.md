@@ -85,7 +85,7 @@ Object of class `rcicrely_report` with `$results` = named list of two
 
 ## Reading the result
 
-`$results$cluster_test` and `$results$dissimilarity` – one result object
+`$results$cluster_test` and `$results$dissimilarity`, one result object
 each, fields as in the standalone functions. `$method = "between"`.
 
 ## Reliability metrics expect raw masks

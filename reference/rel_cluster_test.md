@@ -81,23 +81,23 @@ the result** above.
 
 ## Reading the result
 
-- `$observed_t` – per-pixel Welch t vector for the observed condition
+- `$observed_t`, per-pixel Welch t vector for the observed condition
   labelling.
 
-- `$clusters` – data.frame with `cluster_id`, `direction`
+- `$clusters`, data.frame with `cluster_id`, `direction`
   (`"pos"`/`"neg"`), `mass`, `size`, `p_value`, `significant`. One row
   per supra-threshold cluster, sorted by direction then mass.
 
-- `$null_distribution` – list with `$pos` and `$neg` vectors of
+- `$null_distribution`, list with `$pos` and `$neg` vectors of
   per-permutation max masses, useful for plotting the null.
 
-- `$pos_labels`, `$neg_labels` – integer matrices the same shape as the
+- `$pos_labels`, `$neg_labels`, integer matrices the same shape as the
   image, where each non-zero value labels a cluster. Drives the contour
   overlay in the result's
   [`plot()`](https://rdrr.io/r/graphics/plot.default.html) method.
 
 - `$cluster_threshold`, `$alpha`, `$n_permutations`,
-  `$n_participants_a`, `$n_participants_b` – metadata.
+  `$n_participants_a`, `$n_participants_b`, metadata.
 
 ## Common mistakes
 
@@ -105,8 +105,8 @@ the result** above.
   the t-value above which pixels join a cluster; significance is decided
   afterwards by comparing cluster mass to the null.
 
-- Trusting cluster significance with `n_permutations < 1000` – tail
-  probabilities are noisy.
+- Trusting cluster significance with `n_permutations < 1000` (tail
+  probabilities are noisy at low iter counts).
 
 - Permuting **pixels** instead of condition labels (the function does
   the right thing internally; this is just a warning if you reimplement
@@ -123,11 +123,13 @@ chapter 3.
 ## References
 
 Maris, E., & Oostenveld, R. (2007). Nonparametric statistical testing of
-EEG- and MEG-data. *Journal of Neuroscience Methods*.
+EEG- and MEG-data. *Journal of Neuroscience Methods*, 164(1), 177-190.
+[doi:10.1016/j.jneumeth.2007.03.024](https://doi.org/10.1016/j.jneumeth.2007.03.024)
 
 Nichols, T. E., & Holmes, A. P. (2002). Nonparametric permutation tests
 for functional neuroimaging: a primer with examples. *Human Brain
-Mapping*.
+Mapping*, 15(1), 1-25.
+[doi:10.1002/hbm.1058](https://doi.org/10.1002/hbm.1058)
 
 ## See also
 

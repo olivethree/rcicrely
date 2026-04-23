@@ -25,7 +25,7 @@ Three input formats are supported:
 3.  **Plain text** (whitespace- or comma-delimited) matrix, one column
     per trial.
 
-The loader dispatches on file magic bytes (not extension — rcicr writes
+The loader dispatches on file magic bytes (not extension; rcicr writes
 lowercase `.Rdata` on some filesystems, which trips case-sensitive
 matching).
 
@@ -48,7 +48,7 @@ read_noise_matrix(path, baseimage = NULL, stimuli_object = "stimuli")
 
 - stimuli_object:
 
-  For `.Rdata` files that contain a pre-saved `stimuli` object (rare –
+  For `.Rdata` files that contain a pre-saved `stimuli` object (rare,
   rcicr does not save one by default), the name to look up. Defaults to
   `"stimuli"`.
 
@@ -66,7 +66,7 @@ matrix.
 ## Common mistakes
 
 - Pointing at the rcicr `.Rdata` and assuming it contains a `stimuli`
-  object – it doesn't. The loader reconstructs by calling
+  object, it doesn't. The loader reconstructs by calling
   [`rcicr::generateNoiseImage()`](https://rdrr.io/pkg/rcicr/man/generateNoiseImage.html)
   per row, which is correct but slow (~4s per 120 trials at 64x64).
 

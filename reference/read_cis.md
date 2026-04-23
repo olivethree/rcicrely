@@ -62,7 +62,7 @@ functions read automatically.
   [`extract_signal()`](https://olivethree.github.io/rcicrely/reference/extract_signal.md)
   before any reliability metric.
 
-- Mixing CIs from different image sizes in one directory – this aborts
+- Mixing CIs from different image sizes in one directory, this aborts
   with a clear error rather than silently misaligning.
 
 - Trusting reliability numbers without first reading the **Note** below
@@ -85,9 +85,9 @@ are sensitive to the scaling transform; only correlation-based metrics
 [`rel_loo()`](https://olivethree.github.io/rcicrely/reference/rel_loo.md),
 correlation half of
 [`rel_dissimilarity()`](https://olivethree.github.io/rcicrely/reference/rel_dissimilarity.md))
-survive a single uniform linear scaling unmodified – and even those
-break under per-CI `"matched"`-style scaling. The canonical 2IFC
-`infoVal` path
+survive a single uniform linear scaling unmodified, and even those break
+under per-CI `"matched"`-style scaling. The canonical 2IFC `infoVal`
+path
 ([`rcicr::computeInfoVal2IFC()`](https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html))
 extracts the raw `$ci` internally from the rcicr CI-list and is **not**
 affected; hand-rolled `infoVal` implementations (Brief-RC, custom code)

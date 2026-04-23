@@ -76,8 +76,8 @@ Object of class `rcicrely_report` with `$results` = named list of three
 
 ## Reading the result
 
-`$results$split_half`, `$results$loo`, `$results$icc` – one result
-object each, with the same fields as the standalone functions.
+`$results$split_half`, `$results$loo`, `$results$icc`, one result object
+each, with the same fields as the standalone functions.
 `$method = "within"`.
 
 ## Reliability metrics expect raw masks

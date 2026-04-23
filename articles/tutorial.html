@@ -123,7 +123,7 @@ outside that path:</p>
 <ul>
 <li>
 <strong>Brief-RC</strong> has no canonical <code>infoVal</code>
-function. Anyone computing it for Brief-RC is rolling their own – feed
+function. Anyone computing it for Brief-RC is rolling their own, feed
 the raw mask (<code>res$signal_matrix</code> from
 <code><a href="../reference/ci_from_responses_briefrc.html">ci_from_responses_briefrc()</a></code>), not
 <code>res$rendered_ci</code> or anything PNG-derived.</li>
@@ -131,8 +131,8 @@ the raw mask (<code>res$signal_matrix</code> from
 <strong>PNG-derived data</strong>: you cannot pass
 <code><a href="../reference/read_cis.html">read_cis()</a></code> output to <code>computeInfoVal2IFC()</code>
 directly (it expects an rcicr CI-list, not a bare matrix). If you
-reconstruct one or hand-roll the norm calculation, use the raw mask –
-not the PNG pixel values minus base, which are
+reconstruct one or hand-roll the norm calculation, use the raw mask, not
+the PNG pixel values minus base, which are
 <code>scaling(mask)</code>.</li>
 </ul>
 </div>
@@ -220,7 +220,7 @@ recover the raw mask:</p>
 <td align="right">
 <code><a href="https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html" class="external-link">rcicr::computeInfoVal2IFC()</a></code>
 (canonical)</td>
-<td align="left">Uses raw <code>$ci</code> internally – unaffected.</td>
+<td align="left">Uses raw <code>$ci</code> internally, unaffected.</td>
 </tr>
 <tr class="odd">
 <td align="right">Hand-rolled <code>infoVal</code> (Brief-RC,
@@ -469,8 +469,8 @@ responses and the noise pool used at stimulus generation.</p>
 <span>  base_image_path <span class="op">=</span> <span class="st">"data/base.jpg"</span>,</span>
 <span>  scaling         <span class="op">=</span> <span class="st">"matched"</span>        <span class="co"># Schmitz default for visualisation</span></span>
 <span><span class="op">)</span></span>
-<span><span class="co"># res$signal_matrix  -- raw mask, feed to rel_*</span></span>
-<span><span class="co"># res$rendered_ci    -- base + matched(mask), for PNG / plotting only</span></span></code></pre></div>
+<span><span class="co"># res$signal_matrix is the raw mask, feed to rel_*</span></span>
+<span><span class="co"># res$rendered_ci is base + matched(mask), for PNG / plotting only</span></span></code></pre></div>
 <p><strong>Reading the result.</strong> <code>$signal_matrix</code> is
 <strong>always</strong> the raw mask, regardless of
 <code>scaling</code>. <code>$rendered_ci</code> exists only when
@@ -885,8 +885,8 @@ reference distribution matched to each producer’s trial count, not the
 pool size. The <code>rel_*</code> reliability metrics do not depend on
 it. If you hand-roll an <code>infoVal</code> for Brief-RC today, compute
 it on the <strong>raw mask</strong> (<code>res$signal_matrix</code>),
-not on <code>res$rendered_ci</code> or any saved PNG – those carry the
-scaling step and will give a wrong reference comparison.</p>
+not on <code>res$rendered_ci</code> or any saved PNG (those carry the
+scaling step and will give a wrong reference comparison).</p>
 </div>
 <div class="section level2">
 <h2 id="interpreting-results-and-common-pitfalls">8. Interpreting results and common pitfalls<a class="anchor" aria-label="anchor" href="#interpreting-results-and-common-pitfalls"></a>
@@ -921,8 +921,8 @@ time. Mode 2 is the safe path.</p>
 <code><a href="https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html" class="external-link">rcicr::computeInfoVal2IFC()</a></code> extracts the raw
 <code>$ci</code> from its input CI-list internally, so the canonical
 2IFC path is safe regardless of <code>scaling</code>. The pitfall is in
-hand-rolled <code>infoVal</code> implementations – for Brief-RC, or for
-any custom code that consumes a bare matrix – which must be fed the raw
+hand-rolled <code>infoVal</code> implementations, for Brief-RC, or for
+any custom code that consumes a bare matrix, which must be fed the raw
 mask. Feeding rendered/scaled values silently distorts the reference
 comparison and produces wrong significance verdicts.</p>
 </div>
@@ -930,30 +930,43 @@ comparison and produces wrong significance verdicts.</p>
 <h2 id="references">9. References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
 <ul>
-<li>Brinkman, L., Dotsch, R., Zondergeld, J., &amp; Aarts, H. (2019).
-Visualising mental representations: a primer on noise-based reverse
-correlation in social psychology. <em>European Review of Social
-Psychology</em>, 28(1), 333-361.</li>
-<li>Cone, J., Flaharty, K., &amp; Ferguson, M. J. (2020). Believability
-of evidence matters for correcting social impressions.
-<em>PNAS</em>.</li>
+<li>Brinkman, L., Todorov, A., &amp; Dotsch, R. (2017). Visualising
+mental representations: A primer on noise-based reverse correlation in
+social psychology. <em>European Review of Social Psychology</em>, 28(1),
+333-361. <a href="https://doi.org/10.1080/10463283.2017.1381469" class="external-link uri">https://doi.org/10.1080/10463283.2017.1381469</a>
+</li>
+<li>Brinkman, L., Goffin, S., van de Schoot, R., van Haren, N. E. M.,
+Dotsch, R., &amp; Aarts, H. (2019). Quantifying the informational value
+of classification images. <em>Behavior Research Methods</em>, 51(5),
+2059-2073. <a href="https://doi.org/10.3758/s13428-019-01232-2" class="external-link uri">https://doi.org/10.3758/s13428-019-01232-2</a>
+</li>
+<li>Cone, J., Flaharty, K., &amp; Ferguson, M. J. (2019). Believability
+of evidence matters for correcting social impressions. <em>Proceedings
+of the National Academy of Sciences</em>, 116(20), 9802-9807. <a href="https://doi.org/10.1073/pnas.1903222116" class="external-link uri">https://doi.org/10.1073/pnas.1903222116</a>
+</li>
 <li>Dotsch, R. (2023). <em>rcicr</em>: Reverse-Correlation
-Image-Classification Toolbox. R package v1.0.1.</li>
+Image-Classification Toolbox. R package v1.0.1. <a href="https://github.com/rdotsch/rcicr" class="external-link uri">https://github.com/rdotsch/rcicr</a>
+</li>
 <li>Maris, E., &amp; Oostenveld, R. (2007). Nonparametric statistical
-testing of EEG- and MEG-data. <em>Journal of Neuroscience
-Methods</em>.</li>
+testing of EEG- and MEG-data. <em>Journal of Neuroscience Methods</em>,
+164(1), 177-190. <a href="https://doi.org/10.1016/j.jneumeth.2007.03.024" class="external-link uri">https://doi.org/10.1016/j.jneumeth.2007.03.024</a>
+</li>
 <li>McGraw, K. O., &amp; Wong, S. P. (1996). Forming inferences about
 some intraclass correlation coefficients. <em>Psychological
-Methods</em>.</li>
+Methods</em>, 1(1), 30-46. <a href="https://doi.org/10.1037/1082-989X.1.1.30" class="external-link uri">https://doi.org/10.1037/1082-989X.1.1.30</a>
+</li>
 <li>Nichols, T. E., &amp; Holmes, A. P. (2002). Nonparametric
-permutation tests for functional neuroimaging: a primer with examples.
-<em>Human Brain Mapping</em>.</li>
+permutation tests for functional neuroimaging: A primer with examples.
+<em>Human Brain Mapping</em>, 15(1), 1-25. <a href="https://doi.org/10.1002/hbm.1058" class="external-link uri">https://doi.org/10.1002/hbm.1058</a>
+</li>
 <li>Schmitz, M., Rougier, M., &amp; Yzerbyt, V. (2024). Introducing the
-brief reverse correlation: an improved tool to assess visual
-representations. <em>Behavior Research Methods</em>.</li>
+brief reverse correlation: An improved tool to assess visual
+representations. <em>European Journal of Social Psychology</em>. <a href="https://doi.org/10.1002/ejsp.3100" class="external-link uri">https://doi.org/10.1002/ejsp.3100</a>
+</li>
 <li>Shrout, P. E., &amp; Fleiss, J. L. (1979). Intraclass correlations:
-uses in assessing rater reliability. <em>Psychological
-Bulletin</em>.</li>
+Uses in assessing rater reliability. <em>Psychological Bulletin</em>,
+86(2), 420-428. <a href="https://doi.org/10.1037/0033-2909.86.2.420" class="external-link uri">https://doi.org/10.1037/0033-2909.86.2.420</a>
+</li>
 </ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

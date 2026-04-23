@@ -94,7 +94,7 @@ corrected reliability <code>r_SB = (2 r) / (1 + r)</code>. 95% CI is the
 
 <dt id="arg-n-permutations">n_permutations<a class="anchor" aria-label="anchor" href="#arg-n-permutations"></a></dt>
 <dd><p>Integer number of random splits. Default
-2000  –  cheap and keeps Monte Carlo error on tail probabilities
+2000, cheap and keeps Monte Carlo error on tail probabilities
 below 0.01.</p></dd>
 
 
@@ -116,13 +116,13 @@ in <strong>Reading the result</strong> above.</p>
     <h2 id="reading-the-result">Reading the result<a class="anchor" aria-label="anchor" href="#reading-the-result"></a></h2>
 
 
-<ul><li><p><code>$r_hh</code>  –  mean per-permutation Pearson r between the two halves.</p></li>
-<li><p><code>$r_sb</code>  –  Spearman-Brown projected reliability of the full
+<ul><li><p><code>$r_hh</code>, mean per-permutation Pearson r between the two halves.</p></li>
+<li><p><code>$r_sb</code>, Spearman-Brown projected reliability of the full
 sample. This is usually the headline number to report.</p></li>
-<li><p><code>$ci_95</code>, <code>$ci_95_sb</code>  –  percentile 95% CIs on each.</p></li>
-<li><p><code>$distribution</code>  –  the full per-permutation r vector for plotting
+<li><p><code>$ci_95</code>, <code>$ci_95_sb</code>, percentile 95% CIs on each.</p></li>
+<li><p><code>$distribution</code>, the full per-permutation r vector for plotting
 or custom CIs.</p></li>
-<li><p><code>$n_participants</code>, <code>$n_permutations</code>  –  metadata.</p></li>
+<li><p><code>$n_participants</code>, <code>$n_permutations</code>, metadata.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="common-mistakes">Common mistakes<a class="anchor" aria-label="anchor" href="#common-mistakes"></a></h2>
@@ -131,7 +131,7 @@ or custom CIs.</p></li>
 <ul><li><p>Reporting <code>$r_hh</code> instead of <code>$r_sb</code> when the audience cares
 about the full-sample CI's reliability (almost always).</p></li>
 <li><p>Running with a small <code>n_permutations</code> (&lt; 200) to save time, then
-trusting the CI bounds  –  CIs widen with low n_perm.</p></li>
+trusting the CI bounds, CIs widen with low n_perm.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="reliability-metrics-expect-raw-masks">Reliability metrics expect raw masks<a class="anchor" aria-label="anchor" href="#reliability-metrics-expect-raw-masks"></a></h2>
@@ -144,10 +144,12 @@ trusting the CI bounds  –  CIs widen with low n_perm.</p></li>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
     <p>Brinkman, L., Goffin, S., van de Schoot, R., van Haren, N. E. M.,
-Dotsch, R., &amp; Aarts, H. (2017). Quantifying the informational
-value of classification images. <em>Behavior Research Methods</em>.</p>
+Dotsch, R., &amp; Aarts, H. (2019). Quantifying the informational
+value of classification images. <em>Behavior Research Methods</em>,
+51(5), 2059-2073. <a href="https://doi.org/10.3758/s13428-019-01232-2" class="external-link">doi:10.3758/s13428-019-01232-2</a></p>
 <p>Shrout, P. E., &amp; Fleiss, J. L. (1979). Intraclass correlations:
-uses in assessing rater reliability. <em>Psychological Bulletin</em>.</p>
+uses in assessing rater reliability. <em>Psychological Bulletin</em>,
+86(2), 420-428.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

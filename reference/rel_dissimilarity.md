@@ -1,7 +1,7 @@
 # Representational dissimilarity with bootstrap CIs
 
 Compute two scalar dissimilarity metrics between two conditions'
-group-level signals – Pearson correlation and Euclidean distance – with
+group-level signals (Pearson correlation and Euclidean distance), with
 percentile bootstrap confidence intervals.
 
 Use this when you want a single number (or two) summarising "how
@@ -57,15 +57,15 @@ result** above.
 
 ## Reading the result
 
-- `$correlation`, `$euclidean` – observed values on the full sample.
+- `$correlation`, `$euclidean`, observed values on the full sample.
   Pearson r is scale-tolerant for a single uniform scaling; Euclidean
   distance is sensitive to any scaling.
 
-- `$boot_cor`, `$boot_dist` – full bootstrap distributions.
+- `$boot_cor`, `$boot_dist`, full bootstrap distributions.
 
-- `$ci_cor`, `$ci_dist` – percentile CIs at `ci_level`.
+- `$ci_cor`, `$ci_dist`, percentile CIs at `ci_level`.
 
-- `$boot_se_cor`, `$boot_se_dist` – bootstrap SEs.
+- `$boot_se_cor`, `$boot_se_dist`, bootstrap SEs.
 
 ## Common mistakes
 
@@ -73,8 +73,8 @@ result** above.
   CIs with identical spatial pattern but different magnitudes produce r
   near 1; the magnitude difference shows up in `$euclidean`.
 
-- Treating `$euclidean` as comparable across pixel resolutions – it
-  scales with sqrt(n_pixels). Use it as a within-study metric.
+- Treating `$euclidean` as comparable across pixel resolutions (it
+  scales with sqrt(n_pixels)). Use it as a within-study metric.
 
 ## Reliability metrics expect raw masks
 

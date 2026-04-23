@@ -1,7 +1,7 @@
 # Vectorised pixel-wise Welch t-test
 
-Computes Welch's t (unequal variances, Student's is **not** appropriate
-– conditions can differ in both N and variance) per pixel between two
+Computes Welch's t (unequal variances, Student's is **not** appropriate,
+conditions can differ in both N and variance) per pixel between two
 condition signal matrices. Fully vectorised: no per-row
 [`apply()`](https://rdrr.io/r/base/apply.html). Returns a
 length-`n_pixels` numeric vector.
