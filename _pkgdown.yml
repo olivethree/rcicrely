@@ -1,0 +1,57 @@
+url: https://olivethree.github.io/rcicrely
+
+template:
+  bootstrap: 5
+  bslib:
+    primary: "#0054AD"
+    base_font: {google: "Source Sans 3"}
+    heading_font: {google: "Source Sans 3"}
+    code_font: {google: "JetBrains Mono"}
+
+home:
+  title: rcicrely — reliability assessment for reverse-correlation CIs
+  description: >
+    Within-condition consistency and between-condition discriminability
+    for reverse-correlation classification images, without a second-phase
+    trait-rating study.
+
+navbar:
+  structure:
+    left:  [intro, reference, articles, news]
+    right: [search, github]
+
+reference:
+  - title: "Loading data"
+    desc: "Read CI images, build the signal matrix."
+    contents:
+      - load_signal_matrix
+      - read_cis
+      - extract_signal
+      - read_noise_matrix
+
+  - title: "CI from raw responses"
+    desc: "Compute individual CIs from trial-level response data."
+    contents:
+      - ci_from_responses_2ifc
+      - ci_from_responses_briefrc
+
+  - title: "Within-condition reliability"
+    desc: "How consistent is a single condition's CI?"
+    contents:
+      - rel_split_half
+      - rel_loo
+      - rel_icc
+      - run_within
+
+  - title: "Between-condition inference"
+    desc: "Is condition A's CI distinguishable from condition B's?"
+    contents:
+      - pixel_t_test
+      - rel_cluster_test
+      - rel_dissimilarity
+      - run_between
+
+articles:
+  - title: "Tutorial"
+    contents:
+      - tutorial

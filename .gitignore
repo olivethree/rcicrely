@@ -1,0 +1,13 @@
+.Rproj.user
+CLAUDE.md
+.claude/
+.vscode/
+data-raw/generated/
+temp/
+docs/
+inst/doc/
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj.user
+/pkgdown/

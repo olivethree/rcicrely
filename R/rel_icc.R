@@ -1,0 +1,97 @@
+#' Intraclass correlation coefficients via direct mean squares
+#'
+#' Reports **ICC(3,1)** and **ICC(3,k)**  --  two-way mixed model with
+#' pixels fixed and participants random. See CLAUDE.md sec.7.3 for the
+#' model-selection argument: pixels are a fixed `img_size x img_size`
+#' grid (not a random sample), so ICC(2,\*) is mis-specified even
+#' when numerically similar. ICC(2,1) and ICC(2,k) are available via
+#' `variants` for users whose reviewers explicitly ask.
+#'
+#' Computed directly from ANOVA mean squares (never via
+#' `psych::ICC()`, which allocates intermediates that blow memory on
+#' a 262,144 x 30 matrix).
+#'
+#' @section What this ICC is  --  and is not:
+#' Most ICCs reported in the reverse-correlation literature are
+#' **trait-rating** reliability  --  phase-2 naive raters scoring CIs on
+#' trait dimensions (trustworthy, competent, ...). rcicrely's ICC is
+#' structurally different: it operates on the pixel-level signal
+#' produced by the original producers. No phase-2 rating study is
+#' involved. This sidesteps the two-phase design Cone et al. (2020)
+#' criticised.
+#'
+#' @param signal_matrix Pixels x participants (targets x raters),
+#'   base-subtracted.
+#' @param variants Character vector of which ICC variants to return.
+#'   Subset of `c("3_1", "3_k", "2_1", "2_k")`. Defaults to
+#'   `c("3_1", "3_k")`.
+#' @return Object of class `rcicrely_icc`. Fields: `$icc_3_1`,
+#'   `$icc_3_k`, `$icc_2_1`, `$icc_2_k` (the latter two `NA` unless
+#'   requested), `$ms_rows`, `$ms_cols`, `$ms_error`,
+#'   `$n_raters`, `$n_targets`, `$model` (description string),
+#'   `$variants` (which were returned).
+#' @seealso [rel_split_half()], [rel_loo()], [run_within()]
+#' @references
+#' Shrout, P. E., & Fleiss, J. L. (1979). Intraclass correlations:
+#' uses in assessing rater reliability. *Psychological Bulletin*.
+#'
+#' McGraw, K. O., & Wong, S. P. (1996). Forming inferences about some
+#' intraclass correlation coefficients. *Psychological Methods*.
+#'
+#' Cone, J., Flaharty, K., & Ferguson, M. J. (2020). Believability of
+#' evidence matters for correcting social impressions. *PNAS*.
+#' @export
+rel_icc <- function(signal_matrix,
+                    variants = c("3_1", "3_k")) {
+  validate_signal_matrix(signal_matrix)
+  variants <- match.arg(variants,
+                        choices = c("3_1", "3_k", "2_1", "2_k"),
+                        several.ok = TRUE)
+
+  n <- nrow(signal_matrix)   # targets (pixels  --  fixed)
+  k <- ncol(signal_matrix)   # raters (participants  --  random)
+
+  row_means  <- rowMeans(signal_matrix)
+  col_means  <- colMeans(signal_matrix)
+  grand_mean <- mean(signal_matrix)
+
+  ss_rows  <- k * sum((row_means - grand_mean)^2)
+  ss_cols  <- n * sum((col_means - grand_mean)^2)
+  ss_total <- sum((signal_matrix - grand_mean)^2)
+  ss_error <- ss_total - ss_rows - ss_cols
+
+  ms_rows  <- ss_rows  / (n - 1)
+  ms_cols  <- ss_cols  / (k - 1)
+  ms_error <- ss_error / ((n - 1) * (k - 1))
+
+  icc_3_1 <- if ("3_1" %in% variants) {
+    (ms_rows - ms_error) / (ms_rows + (k - 1) * ms_error)
+  } else NA_real_
+  icc_3_k <- if ("3_k" %in% variants) {
+    (ms_rows - ms_error) / ms_rows
+  } else NA_real_
+  icc_2_1 <- if ("2_1" %in% variants) {
+    (ms_rows - ms_error) /
+      (ms_rows + (k - 1) * ms_error + (k / n) * (ms_cols - ms_error))
+  } else NA_real_
+  icc_2_k <- if ("2_k" %in% variants) {
+    (ms_rows - ms_error) / (ms_rows + (ms_cols - ms_error) / n)
+  } else NA_real_
+
+  model <-
+    "ICC(3,*) / two-way mixed; pixels fixed, participants random"
+
+  new_rcicrely_icc(
+    icc_3_1   = icc_3_1,
+    icc_3_k   = icc_3_k,
+    icc_2_1   = icc_2_1,
+    icc_2_k   = icc_2_k,
+    ms_rows   = ms_rows,
+    ms_cols   = ms_cols,
+    ms_error  = ms_error,
+    n_raters  = k,
+    n_targets = n,
+    model     = model,
+    variants  = variants
+  )
+}

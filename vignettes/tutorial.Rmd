@@ -1,0 +1,353 @@
+---
+title: "rcicrely tutorial: assessing reverse-correlation CI reliability"
+author: "Manuel Oliveira"
+date: "`r Sys.Date()`"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{rcicrely tutorial: assessing reverse-correlation CI reliability}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  fig.align = "center",
+  fig.width = 7,
+  fig.height = 4.5,
+  dpi      = 96
+)
+```
+
+## 1. What `rcicrely` is — and isn't
+
+In reverse correlation (RC), participants' trial-level choices are
+projected onto a pool of noise patterns to reconstruct the mental
+representation they used to make those choices — a **classification
+image** (CI). You end up with one CI per participant, plus a group-level
+CI obtained by averaging.
+
+`infoVal` (Brinkman et al., 2019) tells you whether a CI contains more
+signal than chance. It does **not** tell you whether that signal is
+stable across producers, replicable on a different subset of the
+producers, or distinguishable from another condition's CI.
+
+`rcicrely` fills that gap with a reliability-assessment toolkit that
+operates at the **pixel level**, directly on the CI signal. It gives
+you two families of answers:
+
+- **Within-condition** (how consistent is a condition's CI across
+  producers?): permuted split-half with Spearman–Brown correction,
+  leave-one-out sensitivity, ICC(3,1) and ICC(3,k) via direct
+  mean-squares — [`rel_split_half()`][rcicrely::rel_split_half],
+  [`rel_loo()`][rcicrely::rel_loo], [`rel_icc()`][rcicrely::rel_icc],
+  orchestrated by [`run_within()`][rcicrely::run_within].
+- **Between-condition** (is condition A's CI distinguishable from
+  condition B's?): vectorised Welch pixel t, cluster-based permutation
+  with max-statistic family-wise error control, and bootstrap
+  representational dissimilarity — [`rel_cluster_test()`][rcicrely::rel_cluster_test],
+  [`rel_dissimilarity()`][rcicrely::rel_dissimilarity], orchestrated by
+  [`run_between()`][rcicrely::run_between].
+
+Critically, `rcicrely` does not require a second-phase trait-rating
+study: the reliability metrics read from the pixel-level signal
+produced by the original producers. This sidesteps the two-phase
+design that Cone et al. (2020) flagged as problematic.
+
+## 2. Installation
+
+`rcicrely` is distributed on GitHub. The canonical `rcicr` package
+(required only for the 2IFC path; Brief-RC is native here) is also
+GitHub-only in its current form:
+
+```{r install, eval = FALSE}
+# install.packages("remotes")
+remotes::install_github("rdotsch/rcicr")     # 2IFC path
+remotes::install_github("olivethree/rcicrely")
+```
+
+If you only work with Brief-RC you can skip `rcicr` — the Brief-RC CI
+implementation in `rcicrely` is fully native (Schmitz, Rougier &
+Yzerbyt, 2024).
+
+## 3. Two input modes
+
+```{r load}
+library(rcicrely)
+```
+
+Every reliability metric takes a **signal matrix**: pixels ×
+participants, base-subtracted. You can get there in two ways.
+
+### 3.1 Mode 1: pre-computed CI images
+
+If you already have individual CIs on disk as PNG/JPEG:
+
+```{r mode1, eval = FALSE}
+signal <- load_signal_matrix(
+  dir             = "data/cis_condition_A/",
+  base_image_path = "data/base.jpg"
+)
+# or split the steps:
+cis    <- read_cis("data/cis_condition_A/")
+signal <- extract_signal(cis, base_image_path = "data/base.jpg")
+```
+
+### 3.2 Mode 2: from raw response data
+
+If you have trial-level responses and want the package to compute
+CIs internally, dispatch by paradigm.
+
+**2IFC** — wraps `rcicr::batchGenerateCI2IFC()`:
+
+```{r mode2-2ifc, eval = FALSE}
+res <- ci_from_responses_2ifc(
+  responses       = my_responses,
+  rdata_path      = "data/rcicr_stimuli.Rdata",
+  baseimage       = "base",
+  participant_col = "participant_id"
+)
+signal <- res$signal_matrix
+```
+
+**Brief-RC 12** — native, no `rcicr` dependency:
+
+```{r mode2-briefrc, eval = FALSE}
+res <- ci_from_responses_briefrc(
+  responses       = my_responses,
+  rdata_path      = "data/rcicr_stimuli.Rdata",  # noise pool
+  base_image_path = "data/base.jpg",
+  method          = "briefrc12"
+)
+signal <- res$signal_matrix
+```
+
+### 3.3 Fake data for this vignette
+
+To keep the vignette self-contained, we simulate a small "condition A
+vs condition B" dataset where the two conditions have different latent
+signals in different face regions. This makes the reliability metrics
+produce non-trivial outputs we can inspect.
+
+```{r fake-data}
+set.seed(1)
+make_condition <- function(region_top, n_pix = 32L * 32L, n_p = 30L,
+                           snr = 0.3) {
+  noise <- matrix(rnorm(n_pix * n_p, sd = 0.05), n_pix, n_p)
+  mask <- if (region_top) {
+    c(rep(1, n_pix / 2L), rep(0, n_pix / 2L))
+  } else {
+    c(rep(0, n_pix / 2L), rep(1, n_pix / 2L))
+  }
+  out <- noise + snr * outer(mask, runif(n_p, 0.7, 1.3))
+  attr(out, "img_dims") <- c(32L, 32L)
+  out
+}
+
+sig_A <- make_condition(region_top = TRUE,  n_p = 30L)
+sig_B <- make_condition(region_top = FALSE, n_p = 30L)
+```
+
+## 4. Within-condition reliability
+
+Run all three within-condition metrics at once via
+[`run_within()`][rcicrely::run_within]:
+
+```{r run-within}
+within_A <- run_within(
+  sig_A,
+  n_permutations = 500L,   # 2000+ recommended for production
+  seed           = 1L,
+  progress       = FALSE
+)
+print(within_A)
+```
+
+### 4.1 Permuted split-half (Spearman–Brown)
+
+For each of `n_permutations` iterations: randomly split the producers
+into two halves, average each half to get two group vectors, correlate
+them. Spearman–Brown correction
+$r_{SB} = 2 r_{hh} / (1 + r_{hh})$ projects to the full sample.
+For **odd N**, one producer is randomly dropped per permutation
+(re-drawn each iteration).
+
+```{r plot-split-half, fig.cap = "Permutation distribution of split-half r."}
+plot(within_A$results$split_half)
+```
+
+### 4.2 Leave-one-out sensitivity
+
+For each producer, correlate the full-sample group CI with the group CI
+computed without them. Outliers are producers whose LOO correlation
+sits more than `flag_threshold_sd` (default 2.5) standard deviations
+below the mean — removing them noticeably changes the group CI.
+
+```{r plot-loo, fig.height = 5, fig.cap = "Per-producer LOO correlation."}
+plot(within_A$results$loo)
+```
+
+### 4.3 ICC(3,1) and ICC(3,k)
+
+Two-way mixed model: pixels are **fixed** (the `img_size × img_size`
+grid), participants are **random** (drawn from a producer
+population). ICC(3,1) is the reliability of a single producer's CI as
+an estimate of the group pattern; ICC(3,k) is the reliability of the
+group-mean CI across `k` producers — usually the headline number for
+a paper.
+
+```{r plot-icc, fig.cap = "ICC variants reported."}
+plot(within_A$results$icc)
+```
+
+See [`rel_icc()`][rcicrely::rel_icc]'s help page for why we report
+ICC(3,\*) rather than ICC(2,\*) by default — pixels aren't a random
+sample from a population of pixels, so ICC(2,\*) is mis-specified even
+though it numerically approximates ICC(3,\*) at high pixel counts.
+ICC(2,\*) is available via `variants = c("2_1", "2_k")` for reviewers
+who expect it.
+
+## 5. Between-condition inference
+
+Run both between-condition metrics at once via
+[`run_between()`][rcicrely::run_between]:
+
+```{r run-between}
+between_AB <- run_between(
+  sig_A, sig_B,
+  img_dims        = c(32L, 32L),
+  n_permutations  = 500L,
+  n_boot          = 500L,
+  cluster_threshold = 2.0,
+  alpha           = 0.05,
+  seed            = 1L,
+  progress        = FALSE
+)
+print(between_AB)
+```
+
+### 5.1 Cluster-based permutation test
+
+Pixels where `|Welch t| > cluster_threshold` form candidate clusters
+via 4-connectivity (the more conservative choice vs. 8-connectivity).
+Each cluster's "mass" is the sum of t-values inside it (captures both
+extent and magnitude). A null distribution of max-mass is built by
+**stratified** label permutation — shuffling condition labels across
+producers while preserving `(N_A, N_B)`. An observed cluster's p-value
+is the fraction of null max-masses (matching sign) that equal or
+exceed it. Maximum-statistic approach gives FWER control.
+
+```{r plot-cluster, fig.cap = "Per-pixel Welch t-map; significant clusters outlined."}
+plot(between_AB$results$cluster_test)
+```
+
+### 5.2 Representational dissimilarity
+
+Bootstrap the Pearson correlation and Euclidean distance between the
+two conditions' group-level signals. Percentile CIs via base R
+`quantile()` — no `boot` dependency.
+
+```{r plot-dissim, fig.cap = "Bootstrap distributions for Pearson r and Euclidean distance."}
+plot(between_AB$results$dissimilarity)
+```
+
+## 6. Brief-RC workflow end-to-end
+
+The end-to-end Brief-RC path, minus the slow stimulus-generation step
+(which you'd run once per project using
+`rcicr::generateStimuli2IFC()` to build the noise pool).
+
+```{r briefrc-demo, eval = FALSE}
+# 1. Generate a shared noise pool (once).
+rcicr::generateStimuli2IFC(
+  base_face_files     = list(base = "data/base.jpg"),
+  n_trials            = 600L,        # becomes the Brief-RC pool size
+  img_size            = 256L,
+  stimulus_path       = "data/stim",
+  label               = "mystudy",
+  ncores              = 1L,          # CLAUDE.md §8.4 — macOS-safe
+  return_as_dataframe = TRUE,
+  seed                = 1L
+)
+
+# 2. Collect trial-level responses in the per-trial format
+#    (one row per trial, columns: participant_id, trial, stimulus,
+#     response in {-1, +1}). Schmitz et al. 2024, §3.1.2.
+
+# 3. Compute individual CIs, extract signal.
+res <- ci_from_responses_briefrc(
+  responses       = my_brief_rc_responses,
+  rdata_path      = list.files("data/stim", pattern = "\\.rdata$",
+                               ignore.case = TRUE, full.names = TRUE)[1],
+  base_image_path = "data/base.jpg",
+  method          = "briefrc12"
+)
+
+# 4. Reliability assessment — same functions as any other paradigm.
+within  <- run_within(res$signal_matrix,   seed = 1L)
+between <- run_between(res_A$signal_matrix, res_B$signal_matrix,
+                       seed = 1L)
+```
+
+**Brief-RC infoVal** is deferred to a later release — computing it
+correctly requires a reference distribution matched to each
+participant's trial count, which is non-trivial. The `rel_*`
+reliability metrics don't depend on infoVal.
+
+## 7. Interpreting results and common pitfalls
+
+**Split-half r** — think of $r_{hh}$ around 0.3 as weak, 0.5 as
+moderate, 0.7+ as strong for producer-level CI consistency. Because
+Spearman–Brown projects from half-samples to the full sample, $r_{SB}$
+is the number to report when asked "how reliable is the group CI I'm
+publishing?"
+
+**LOO flagging** — a flagged producer means their CI sits far from
+the group pattern. That doesn't imply bad data; it could be a
+genuinely atypical mental representation. Cross-check against
+[`rcicrdiagnostics`][rcicrdiagnostics-link] first to rule out
+response-coding errors.
+
+**Cluster test** — a significant cluster tells you *where* two
+conditions differ, not *how different they are on average*. Pair with
+`rel_dissimilarity()` for a scalar magnitude.
+
+**Sample size** — `rcicrely` warns at N < 30 participants per
+condition. Cone et al. (2020) recommend N ≥ 60 for stable reliability
+assessment. At N = 10 the metrics are computable but the CIs on them
+will be wide.
+
+**ICC(3,\*) vs ICC(2,\*)** — numerically close at high pixel counts,
+but ICC(3,\*) is the correctly-specified model (pixels fixed,
+producers random). Don't swap to ICC(2,\*) because a reviewer is used
+to seeing it — use `variants = c("3_1", "3_k", "2_1", "2_k")` to
+report both.
+
+## 8. References
+
+- Brinkman, L., Dotsch, R., Zondergeld, J., Aarts, H. (2019).
+  Visualising mental representations: a primer on noise-based reverse
+  correlation in social psychology. *European Review of Social
+  Psychology*, 28(1), 333–361.
+- Cone, J., Flaharty, K., & Ferguson, M. J. (2020). Believability of
+  evidence matters for correcting social impressions. *PNAS*.
+- Dotsch, R. (2023). *rcicr*: Reverse-Correlation Image-Classification
+  Toolbox. R package v1.0.1.
+- Maris, E., & Oostenveld, R. (2007). Nonparametric statistical
+  testing of EEG- and MEG-data. *Journal of Neuroscience Methods*.
+- McGraw, K. O., & Wong, S. P. (1996). Forming inferences about some
+  intraclass correlation coefficients. *Psychological Methods*.
+- Nichols, T. E., & Holmes, A. P. (2002). Nonparametric permutation
+  tests for functional neuroimaging: a primer with examples.
+  *Human Brain Mapping*.
+- Schmitz, M., Rougier, M., & Yzerbyt, V. (2024). Introducing the
+  brief reverse correlation: an improved tool to assess visual
+  representations. *Behavior Research Methods*.
+- Shrout, P. E., & Fleiss, J. L. (1979). Intraclass correlations:
+  uses in assessing rater reliability. *Psychological Bulletin*.
+
+[rcicrdiagnostics-link]: https://github.com/olivethree/rcicrdiagnostics

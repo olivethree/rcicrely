@@ -1,0 +1,50 @@
+Package: rcicrely
+Title: Reliability Assessment for Reverse-Correlation Classification Images
+Version: 0.1.0
+Authors@R:
+    person("Manuel", "Oliveira",
+           email = "manuel.olivethree@gmail.com",
+           role  = c("aut", "cre"))
+Description: Assess the reliability of classification images (CIs) produced
+    by reverse-correlation experiments. Covers within-condition consistency
+    (permuted split-half with Spearman-Brown correction, leave-one-out
+    sensitivity, ICC(3,1) and ICC(3,k) via direct mean-squares) and
+    between-condition discriminability (pixel-wise Welch t, cluster-based
+    permutation with max-statistic family-wise error control, bootstrap
+    representational dissimilarity). Supports both standard 2IFC (via the
+    canonical rcicr package) and Brief-RC 12 (Schmitz, Rougier & Yzerbyt,
+    2024 — implemented natively in this package). Operates directly on the
+    pixel-level signal produced by the original producers, so it does not
+    depend on a second-phase trait-rating study.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Language: en-GB
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+URL: https://github.com/olivethree/rcicrely, https://olivethree.github.io/rcicrely
+BugReports: https://github.com/olivethree/rcicrely/issues
+Depends:
+    R (>= 4.1)
+Imports:
+    cli,
+    data.table,
+    grDevices,
+    graphics,
+    stats,
+    tools
+Suggests:
+    dplyr,
+    foreach,
+    jpeg,
+    knitr,
+    png,
+    psych,
+    rcicr,
+    rmarkdown,
+    testthat (>= 3.0.0),
+    tibble,
+    withr
+Remotes:
+    rdotsch/rcicr
+VignetteBuilder: knitr
+Config/testthat/edition: 3

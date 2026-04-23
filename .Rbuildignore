@@ -1,0 +1,14 @@
+^rcicrely\.Rproj$
+^\.Rproj\.user$
+^LICENSE\.md$
+^temp$
+^data-raw$
+^CLAUDE\.md$
+^CLAUDE_rcicrely\.md$
+^\.claude$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^\.github$
+^README\.Rmd$
+^cran-comments\.md$
