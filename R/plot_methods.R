@@ -2,7 +2,7 @@
 ##
 ## These are registered via roxygen @exportS3Method tags so R CMD
 ## check is happy even though none of the generics are imported from
-## another package  --  they all come from `base`.
+## another package, they all come from `base`.
 
 # ---- rcicrely_split_half ---------------------------------------------------
 
@@ -57,9 +57,18 @@ print.rcicrely_loo <- function(x, ...) {
   cat(sprintf("  N producers:        %d\n", length(x$correlations)))
   cat(sprintf("  mean LOO r:         %.3f\n", x$mean_r))
   cat(sprintf("  SD:                 %.3f\n", x$sd_r))
-  cat(sprintf("  flag threshold:     r < %.3f  (mean - %.2f SD)\n",
-              x$threshold,
-              (x$mean_r - x$threshold) / x$sd_r))
+  if (!is.null(x$median_r)) {
+    cat(sprintf("  median LOO r:       %.3f\n", x$median_r))
+    cat(sprintf("  MAD:                %.3f\n", x$mad_r))
+  }
+  method  <- if (is.null(x$flag_method))    "sd"        else x$flag_method
+  thresh  <- if (is.null(x$flag_threshold)) NA_real_    else x$flag_threshold
+  centre  <- if (method == "sd")  "mean"   else "median"
+  spread  <- if (method == "sd")  "SD"     else "MAD"
+  cat(sprintf(
+    "  flag rule:          r < %s - %.2f * %s   (=> r < %.3f)\n",
+    centre, thresh, spread, x$threshold
+  ))
   if (length(x$flagged) == 0L) {
     cat("  flagged producers:  none\n")
   } else {
@@ -71,6 +80,7 @@ print.rcicrely_loo <- function(x, ...) {
   }
   invisible(x)
 }
+
 
 #' @export
 summary.rcicrely_loo <- function(object, ...) {

@@ -4,34 +4,97 @@
 \alias{rel_loo}
 \title{Leave-one-out sensitivity}
 \usage{
-rel_loo(signal_matrix, flag_threshold_sd = 2.5)
+rel_loo(
+  signal_matrix,
+  flag_threshold = 2.5,
+  flag_method = c("sd", "mad"),
+  flag_threshold_sd = NULL
+)
 }
 \arguments{
 \item{signal_matrix}{Pixels x participants, base-subtracted.}
 
-\item{flag_threshold_sd}{Numeric threshold in standard deviations
-below the mean LOO correlation.}
+\item{flag_threshold}{Numeric multiplier on \code{sd} (or \code{mad}) below
+the centre, defining the outlier cutoff. Default 2.5. Was
+\code{flag_threshold_sd} before v0.1.1; the old name still works as
+an alias.}
+
+\item{flag_method}{One of \code{"sd"} (default) or \code{"mad"}. See
+\strong{Details} for which to choose.}
+
+\item{flag_threshold_sd}{Deprecated alias for \code{flag_threshold}.
+Kept for backwards compatibility with v0.1.0.}
 }
 \value{
-Object of class \code{rcicrely_loo}. Fields: \verb{$correlations}
-(named vector), \verb{$mean_r}, \verb{$sd_r}, \verb{$threshold}, \verb{$flagged}
-(character vector of participant ids), \verb{$summary_df} (a
-data.frame with per-participant correlation and a \code{flag} logical).
+Object of class \code{rcicrely_loo}. Fields described in
+\strong{Reading the result} above.
 }
 \description{
-For each participant \code{i}, correlates the full-sample group CI
-(\code{rowMeans(signal_matrix)}) with the group CI computed after
-removing participant \code{i} (\code{rowMeans(signal_matrix[, -i])}). A
-participant whose LOO correlation falls more than
-\code{flag_threshold_sd} standard deviations below the mean is flagged
-as an influential outlier  --  their removal changes the group CI
+For each producer, correlates the full-sample group CI with the
+group CI computed without that producer. A producer whose LOO
+correlation falls more than \code{flag_threshold} units below the
+centre (mean or median, depending on \code{flag_method}) is flagged as
+an influential outlier, their removal changes the group CI
 noticeably more than the others.
+
+Use this to spot producers whose individual CI sits far from the
+group pattern. A flag does not imply a bad producer; it could
+equally indicate a genuinely atypical mental representation. Cross-
+check against \code{rcicrdiagnostics} first to rule out response-coding
+errors.
 }
 \details{
-The default \code{flag_threshold_sd = 2.5} is calibrated so that a
-30-participant dataset flags roughly 0.3 participants by chance
-rather than the ~1.5 that a 2-SD rule would produce.
+Two outlier rules are available:
+\itemize{
+\item \code{"sd"} (default): flag producers with \code{r_loo < mean(r) - flag_threshold * sd(r)}. Standard convention; sensitive to the
+very outliers it is trying to detect.
+\item \code{"mad"}: flag producers with \code{r_loo < median(r) - flag_threshold * mad(r)}. Robust to the few atypical producers
+that often show up in RC datasets and to skewed correlation
+distributions.
 }
+
+The default \code{flag_threshold = 2.5} is calibrated so that a
+30-producer dataset flags roughly 0.3 producers by chance under
+\code{"sd"}, rather than the ~1.5 a 2-SD rule would produce. Under
+\code{"mad"} it is roughly comparable thanks to MAD's 1.4826 consistency
+factor.
+}
+\section{Reading the result}{
+
+\itemize{
+\item \verb{$correlations}, named numeric vector, per-producer correlation
+between the full-sample mean and the leave-one-out mean.
+Higher = the producer's CI looks like the rest.
+\item \verb{$mean_r}, \verb{$sd_r}, \verb{$median_r}, \verb{$mad_r}, centre / spread of
+the correlation distribution.
+\item \verb{$threshold}, the cutoff value computed under the chosen
+\code{flag_method}.
+\item \verb{$flagged}, character vector of producer ids below threshold.
+\item \verb{$summary_df}, one row per producer, with \code{correlation} and
+\code{flag}.
+\item \verb{$flag_method}, \verb{$flag_threshold}, what was used.
+}
+}
+
+\section{Common mistakes}{
+
+\itemize{
+\item Treating \verb{$flagged} as "drop these producers". Investigate first
+(response coding, fatigue, atypical strategy).
+\item Lowering \code{flag_threshold} below 2 to flag more producers. That
+trades real signal for noise; use \code{flag_method = "mad"} instead
+if the SD rule is dominated by the outliers it would otherwise
+catch.
+}
+}
+
+\section{Reliability metrics expect raw masks}{
+
+Operates on the raw mask; results may be distorted if
+\code{signal_matrix} was extracted from rendered (scaled) PNGs. See
+\code{vignette("tutorial", package = "rcicrely")} chapter 3.
+}
+
 \seealso{
 \code{\link[=rel_split_half]{rel_split_half()}}, \code{\link[=rel_icc]{rel_icc()}}, \code{\link[=run_within]{run_within()}}
 }

@@ -47,8 +47,26 @@ named list of two \verb{rcicrely_*} objects (\code{cluster_test},
 \description{
 Convenience orchestrator that runs \code{\link[=rel_cluster_test]{rel_cluster_test()}} and
 \code{\link[=rel_dissimilarity]{rel_dissimilarity()}} on two condition signal matrices and wraps
-both results in an \code{rcicrely_report}.
+both results in an \code{rcicrely_report} for joint printing / plotting.
+
+Use this when you want both the spatial-pattern test and the
+overall magnitude test in one call.
 }
+\section{Reading the result}{
+
+\verb{$results$cluster_test} and \verb{$results$dissimilarity}, one result
+object each, fields as in the standalone functions.
+\verb{$method = "between"}.
+}
+
+\section{Reliability metrics expect raw masks}{
+
+Both downstream metrics are scale-sensitive in different ways
+(cluster test entirely; dissimilarity's Pearson r partly,
+Euclidean entirely). See
+\code{vignette("tutorial", package = "rcicrely")} chapter 3.
+}
+
 \seealso{
 \code{\link[=rel_cluster_test]{rel_cluster_test()}}, \code{\link[=rel_dissimilarity]{rel_dissimilarity()}}, \code{\link[=run_within]{run_within()}}
 }

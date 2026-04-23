@@ -1,4 +1,4 @@
-## S3 constructors for result classes. None are exported  --  users get
+## S3 constructors for result classes. None are exported, users get
 ## these back from `rel_*()`, `run_within()`, `run_between()`.
 ## Print / summary / plot methods live in R/plot_methods.R.
 
@@ -19,16 +19,22 @@ new_rcicrely_split_half <- function(r_hh, r_sb, ci_95, ci_95_sb,
   )
 }
 
-new_rcicrely_loo <- function(correlations, mean_r, sd_r, threshold,
-                             flagged, summary_df) {
+new_rcicrely_loo <- function(correlations, mean_r, sd_r,
+                             median_r, mad_r,
+                             threshold, flagged, summary_df,
+                             flag_method, flag_threshold) {
   structure(
     list(
-      correlations = correlations,
-      mean_r       = mean_r,
-      sd_r         = sd_r,
-      threshold    = threshold,
-      flagged      = flagged,
-      summary_df   = summary_df
+      correlations   = correlations,
+      mean_r         = mean_r,
+      sd_r           = sd_r,
+      median_r       = median_r,
+      mad_r          = mad_r,
+      threshold      = threshold,
+      flagged        = flagged,
+      summary_df     = summary_df,
+      flag_method    = flag_method,
+      flag_threshold = flag_threshold
     ),
     class = c("rcicrely_loo", "rcicrely_result")
   )

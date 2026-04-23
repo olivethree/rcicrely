@@ -21,6 +21,7 @@ test_that("variants argument exposes ICC(2,*)", {
 
 test_that("rel_icc matches psych::ICC on a small matrix", {
   skip_if_not_installed("psych")
+  skip_if_not_installed("lme4")  # psych::ICC needs lme4 for some calls
   set.seed(10)
   m <- matrix(rnorm(50L * 8L), 50L, 8L)
   pkg <- suppressWarnings(rel_icc(m, variants = c("3_1", "3_k",

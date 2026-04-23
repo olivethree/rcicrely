@@ -7,7 +7,9 @@
 run_within(
   signal_matrix,
   n_permutations = 2000L,
-  flag_threshold_sd = 2.5,
+  flag_threshold = 2.5,
+  flag_method = c("sd", "mad"),
+  flag_threshold_sd = NULL,
   icc_variants = c("3_1", "3_k"),
   seed = NULL,
   progress = TRUE
@@ -18,7 +20,11 @@ run_within(
 
 \item{n_permutations}{Passed to \code{\link[=rel_split_half]{rel_split_half()}}. Default 2000.}
 
-\item{flag_threshold_sd}{Passed to \code{\link[=rel_loo]{rel_loo()}}. Default 2.5.}
+\item{flag_threshold}{Passed to \code{\link[=rel_loo]{rel_loo()}}. Default 2.5.}
+
+\item{flag_method}{Passed to \code{\link[=rel_loo]{rel_loo()}}. Default \code{"sd"}.}
+
+\item{flag_threshold_sd}{Deprecated alias for \code{flag_threshold}.}
 
 \item{icc_variants}{Passed to \code{\link[=rel_icc]{rel_icc()}}.}
 
@@ -34,8 +40,26 @@ named list of three \verb{rcicrely_*} objects (\code{split_half}, \code{loo},
 \description{
 Convenience orchestrator that runs \code{\link[=rel_split_half]{rel_split_half()}}, \code{\link[=rel_loo]{rel_loo()}},
 and \code{\link[=rel_icc]{rel_icc()}} on a single condition's signal matrix and wraps
-the three results in an \code{rcicrely_report}.
+the three results in an \code{rcicrely_report} for joint printing /
+plotting.
+
+Use this when you want the full within-condition reliability
+report in one call. Pass each metric individually if you need to
+tune arguments per metric.
 }
+\section{Reading the result}{
+
+\verb{$results$split_half}, \verb{$results$loo}, \verb{$results$icc}, one
+result object each, with the same fields as the standalone
+functions. \verb{$method = "within"}.
+}
+
+\section{Reliability metrics expect raw masks}{
+
+All three downstream metrics expect the raw mask. See
+\code{vignette("tutorial", package = "rcicrely")} chapter 3.
+}
+
 \seealso{
 \code{\link[=rel_split_half]{rel_split_half()}}, \code{\link[=rel_loo]{rel_loo()}}, \code{\link[=rel_icc]{rel_icc()}}, \code{\link[=run_between]{run_between()}}
 }

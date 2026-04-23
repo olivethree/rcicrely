@@ -1,7 +1,7 @@
 ## Internal helpers for cluster-based permutation testing.
 ## Pure R, no compiled code. Connected-component labelling via
-## breadth-first search with 4-connectivity (CLAUDE.md sec.7.5  --  the more
-## conservative choice than 8-connectivity).
+## breadth-first search with 4-connectivity (the more conservative
+## choice than 8-connectivity).
 
 #' Label connected components in a 2D boolean mask, 4-connectivity
 #'
@@ -69,8 +69,8 @@ label_components_4conn <- function(mask) {
 #' @param img_dims Integer `c(nrow, ncol)`.
 #' @param threshold Cluster-forming threshold (positive scalar).
 #' @return List with:
-#'   * `pos_labels`, `neg_labels`  --  integer matrices (`img_dims`).
-#'   * `pos_masses`, `neg_masses`  --  numeric vectors of per-cluster
+#'   * `pos_labels`, `neg_labels`, integer matrices (`img_dims`).
+#'   * `pos_masses`, `neg_masses`, numeric vectors of per-cluster
 #'     masses. Positive masses are sums of t-values inside positive
 #'     clusters (so always > threshold x cluster_size). Negative
 #'     masses are sums (so always < -threshold x cluster_size).

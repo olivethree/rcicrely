@@ -6,7 +6,7 @@
 #' dissimilarity) for reverse-correlation classification images.
 #'
 #' Works with both standard 2IFC (via the canonical `rcicr` package) and
-#' Brief-RC 12 (Schmitz, Rougier & Yzerbyt, 2024  --  implemented natively
+#' Brief-RC 12 (Schmitz, Rougier & Yzerbyt, 2024, implemented natively
 #' in this package). Operates directly on the pixel-level signal
 #' produced by the original producers, so reliability does not depend
 #' on a second-phase trait-rating study.

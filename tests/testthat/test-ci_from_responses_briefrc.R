@@ -90,3 +90,108 @@ test_that("briefrc20 method aborts with a clear message", {
     "not supported"
   )
 })
+
+test_that("default scaling = 'none' returns no rendered_ci field", {
+  skip_if_not_installed("png")
+  set.seed(2)
+  n_pix <- 8L * 8L
+  noise_matrix <- matrix(rnorm(n_pix * 20L), n_pix, 20L)
+  base_path <- tempfile(fileext = ".png")
+  png::writePNG(matrix(0.5, 8L, 8L), base_path)
+  responses <- data.frame(
+    participant_id = rep("p1", 10L),
+    trial          = 1:10,
+    stimulus       = sample.int(20L, 10L),
+    response       = sample(c(-1L, 1L), 10L, replace = TRUE)
+  )
+  res <- ci_from_responses_briefrc(
+    responses       = responses,
+    noise_matrix    = noise_matrix,
+    base_image_path = base_path
+  )
+  expect_null(res$rendered_ci)
+  expect_equal(res$scaling, "none")
+})
+
+test_that("scaling = 'matched' adds rendered_ci, signal_matrix unchanged", {
+  skip_if_not_installed("png")
+  set.seed(3)
+  n_pix <- 8L * 8L
+  noise_matrix <- matrix(rnorm(n_pix * 20L), n_pix, 20L)
+  # base must have within-image variance for "matched" to do anything
+  base_img <- matrix(seq(0, 1, length.out = n_pix), 8L, 8L)
+  base_path <- tempfile(fileext = ".png")
+  png::writePNG(base_img, base_path)
+  responses <- data.frame(
+    participant_id = rep(c("p1", "p2"), each = 8L),
+    trial          = c(1:8, 1:8),
+    stimulus       = sample.int(20L, 16L, replace = TRUE),
+    response       = sample(c(-1L, 1L), 16L, replace = TRUE)
+  )
+  res_none <- ci_from_responses_briefrc(
+    responses, noise_matrix = noise_matrix,
+    base_image_path = base_path, scaling = "none"
+  )
+  res_match <- ci_from_responses_briefrc(
+    responses, noise_matrix = noise_matrix,
+    base_image_path = base_path, scaling = "matched"
+  )
+  expect_equal(res_match$signal_matrix, res_none$signal_matrix)
+  expect_false(is.null(res_match$rendered_ci))
+  expect_equal(dim(res_match$rendered_ci), dim(res_match$signal_matrix))
+  # matched stretches mask range to base range, then adds base.
+  # Per-column rendered range should be at least the base range
+  # (since rendered = base + matched(mask), and matched(mask) has
+  # the same range as base).
+  base_rng <- diff(range(base_img))
+  rendered_rngs <- vapply(seq_len(ncol(res_match$rendered_ci)),
+                          function(j) diff(range(res_match$rendered_ci[, j])),
+                          numeric(1L))
+  expect_true(all(rendered_rngs >= base_rng - 1e-3))
+})
+
+test_that("scaling = 'constant' applies the requested multiplier", {
+  skip_if_not_installed("png")
+  set.seed(4)
+  n_pix <- 8L * 8L
+  noise_matrix <- matrix(rnorm(n_pix * 20L), n_pix, 20L)
+  # Use a base value that round-trips PNG losslessly: png stores
+  # 8-bit integers so 0.5 becomes 127/255 != 0.5.
+  base_img <- matrix(127 / 255, 8L, 8L)
+  base_path <- tempfile(fileext = ".png")
+  png::writePNG(base_img, base_path)
+  responses <- data.frame(
+    participant_id = rep("p1", 10L),
+    trial          = 1:10,
+    stimulus       = sample.int(20L, 10L),
+    response       = sample(c(-1L, 1L), 10L, replace = TRUE)
+  )
+  res <- ci_from_responses_briefrc(
+    responses, noise_matrix = noise_matrix,
+    base_image_path  = base_path,
+    scaling          = "constant",
+    scaling_constant = 3
+  )
+  # rendered = base_read_back + 3 * mask
+  base_read <- as.vector(png::readPNG(base_path))
+  expect_equal(res$rendered_ci[, 1L],
+               base_read + 3 * res$signal_matrix[, 1L],
+               tolerance = 1e-6)
+})
+
+test_that("scaling = 'constant' without scaling_constant aborts", {
+  skip_if_not_installed("png")
+  base_path <- tempfile(fileext = ".png")
+  png::writePNG(matrix(0.5, 4L, 4L), base_path)
+  responses <- data.frame(
+    participant_id = "p1", trial = 1L, stimulus = 1L, response = 1L
+  )
+  expect_error(
+    ci_from_responses_briefrc(
+      responses, noise_matrix = matrix(0, 16L, 2L),
+      base_image_path = base_path,
+      scaling = "constant"
+    ),
+    "scaling_constant"
+  )
+})

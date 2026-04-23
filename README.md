@@ -1,4 +1,4 @@
-<!-- README.md — rendered at https://olivethree.github.io/rcicrely/ -->
+<!-- README.md (rendered at https://olivethree.github.io/rcicrely/) -->
 
 # rcicrely
 
@@ -26,7 +26,7 @@ produced by reverse-correlation experiments. It answers the questions
 
 Supports both standard **2IFC** (via the canonical
 [`rcicr`](https://github.com/rdotsch/rcicr)) and **Brief-RC 12**
-(Schmitz, Rougier & Yzerbyt, 2024 — implemented natively).
+(Schmitz, Rougier & Yzerbyt, 2024; implemented natively).
 
 Companion to [`rcicrdiagnostics`](https://github.com/olivethree/rcicrdiagnostics):
 diagnostics catches silent data-processing errors *before* CI
@@ -44,7 +44,7 @@ remotes::install_github("rdotsch/rcicr")      # 2IFC path only
 remotes::install_github("olivethree/rcicrely")
 ```
 
-If you only use Brief-RC, you can skip `rcicr` — the Brief-RC CI
+If you only use Brief-RC, you can skip `rcicr`; the Brief-RC CI
 implementation is fully native.
 
 ## Quick start
@@ -76,15 +76,41 @@ print(within);  plot(within)
 print(between); plot(between)
 ```
 
-See the [tutorial vignette](https://olivethree.github.io/rcicrely/articles/tutorial.html)
-for an end-to-end walkthrough covering both paradigms, cluster-map
-interpretation, sample-size warnings, and the ICC-variant decision.
+See the [user guide vignette](https://olivethree.github.io/rcicrely/articles/tutorial.html)
+for a function-by-function walkthrough covering both paradigms,
+cluster-map interpretation, sample-size warnings, and the
+ICC-variant decision.
+
+## Important: raw vs. rendered CIs
+
+Reliability metrics in this package operate on the **raw mask** (the
+participant's noise contribution before any display transformation).
+The two ways to get there:
+
+- **Mode 2 (raw responses)** - `ci_from_responses_2ifc()` and
+  `ci_from_responses_briefrc()` return the raw mask directly. Safe.
+- **Mode 1 (PNGs on disk)** - `read_cis()` / `extract_signal()` /
+  `load_signal_matrix()` load the *rendered* CI (`base + scaling(mask)`)
+  because that's what was saved to disk; subtracting the base then
+  yields `scaling(mask)`, **not** the raw mask.
+
+Variance-based reliability metrics (`rel_icc()`, Euclidean half of
+`rel_dissimilarity()`, `pixel_t_test()`, `rel_cluster_test()`) are
+sensitive to the scaling transform. The canonical 2IFC `infoVal`
+path (`rcicr::computeInfoVal2IFC()`) extracts the raw `$ci` from
+the rcicr CI-list internally and is unaffected; hand-rolled
+`infoVal` implementations (Brief-RC, custom code) need the raw mask
+and should not be fed PNG-derived data. The package emits a
+one-time per-session warning when you use Mode 1; silence with
+`acknowledge_scaling = TRUE` or
+`options(rcicrely.silence_scaling_warning = TRUE)` once you've read
+[chapter 3 of the user guide](https://olivethree.github.io/rcicrely/articles/tutorial.html).
 
 ## What's different from the trait-rating ICCs in the RC literature
 
 Most ICCs published in reverse-correlation papers are **trait-rating**
-reliability — phase-2 naive raters scoring CIs on dimensions like
-"trustworthy" or "competent". `rcicrely`'s ICC is a structurally
+reliability (phase-2 naive raters scoring CIs on dimensions like
+"trustworthy" or "competent"). `rcicrely`'s ICC is a structurally
 different object: it operates on the pixel-level signal produced by
 the original producers, so no phase-2 rating study is involved. This
 sidesteps the two-phase design Cone et al. (2020) flagged.

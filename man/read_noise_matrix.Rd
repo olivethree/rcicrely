@@ -2,42 +2,84 @@
 % Please edit documentation in R/read_noise_matrix.R
 \name{read_noise_matrix}
 \alias{read_noise_matrix}
-\title{Load the noise matrix from an rcicr \code{.Rdata} file or a text file}
+\title{Load the noise matrix from an rcicr \code{.Rdata}, an \code{.rds}, or a text file}
 \usage{
-read_noise_matrix(path, stimuli_object = "stimuli")
+read_noise_matrix(path, baseimage = NULL, stimuli_object = "stimuli")
 }
 \arguments{
 \item{path}{Path to the file.}
 
-\item{stimuli_object}{Name of the object inside the \code{.Rdata} that
-holds the noise patterns. Defaults to \code{"stimuli"}, the rcicr
-v1.0.1 convention.}
+\item{baseimage}{For rcicr \code{.Rdata} inputs: which base label to
+reconstruct noise for. Defaults to the first key in \code{base_faces}
+if there is exactly one.}
+
+\item{stimuli_object}{For \code{.Rdata} files that contain a pre-saved
+\code{stimuli} object (rare, rcicr does not save one by default),
+the name to look up. Defaults to \code{"stimuli"}.}
 }
 \value{
 A numeric pixels x n_trials matrix.
 }
 \description{
-rcicr's \code{\link[rcicr:generateStimuli2IFC]{rcicr::generateStimuli2IFC()}} writes a timestamped \code{.Rdata}
-containing a \code{stimuli} object (pixels x n_trials data frame / matrix
-of noise patterns). For Brief-RC workflows this same pool of noise
-patterns is the input to the native mask computation. This loader
-accepts either:
-}
-\details{
-\itemize{
-\item an \code{.Rdata} file as produced by rcicr  --  \code{stimuli} is extracted and
-coerced to a numeric matrix;
-\item a whitespace- or comma-delimited text file  --  read with
-\code{\link[data.table:fread]{data.table::fread()}}, then coerced.
+Produces the pixels x n_trials numeric matrix of individual noise
+patterns that \code{\link[=ci_from_responses_briefrc]{ci_from_responses_briefrc()}} needs. Use this when
+you want to load (or reconstruct) the noise pool once and pass it
+to multiple Brief-RC CI computations without re-loading.
+
+Three input formats are supported:
+\enumerate{
+\item \strong{rcicr \code{.Rdata}} (the output of
+\code{\link[rcicr:generateStimuli2IFC]{rcicr::generateStimuli2IFC()}}). The rdata does not store the
+noise matrix directly; it stores \code{stimuli_params} (per-trial
+parameter rows) and \code{p} (the sinusoid / gabor basis). This loader
+reconstructs each trial's noise pattern via
+\code{\link[rcicr:generateNoiseImage]{rcicr::generateNoiseImage()}} and stacks them. Requires \code{rcicr}
+to be installed.
+\item \strong{R \code{.rds}} previously saved from
+\code{rcicr::generateStimuli2IFC(return_as_dataframe = TRUE)}. No
+reconstruction needed.
+\item \strong{Plain text} (whitespace- or comma-delimited) matrix, one
+column per trial.
 }
 
-rcicr writes its file with a lowercase \code{.Rdata} extension on some
-filesystems and \code{.RData} on others. The loader matches both by
-examining the first magic bytes (gzip / RData markers) rather than
-trusting the extension (CLAUDE.md sec.8.8).
+The loader dispatches on file magic bytes (not extension; rcicr
+writes lowercase \code{.Rdata} on some filesystems, which trips
+case-sensitive matching).
 }
+\section{Reading the result}{
+
+Numeric pixels x n_trials matrix. Each column is one trial's noise
+pattern (a sinusoidal or gabor combination of the basis \code{p}).
+Pool ids referenced by Brief-RC \code{responses$stimulus} are column
+indices into this matrix.
+}
+
+\section{Common mistakes}{
+
+\itemize{
+\item Pointing at the rcicr \code{.Rdata} and assuming it contains a
+\code{stimuli} object, it doesn't. The loader reconstructs by
+calling \code{\link[rcicr:generateNoiseImage]{rcicr::generateNoiseImage()}} per row, which is correct
+but slow (~4s per 120 trials at 64x64).
+\item Caching the captured return of
+\code{rcicr::generateStimuli2IFC(return_as_dataframe = TRUE)} to
+\code{.rds} once and reusing it is much faster than reconstructing
+from the rdata each run.
+\item Multiple stale \code{.rdata} accumulating in a directory because
+rcicr timestamps its filenames; pick the most recent by mtime if
+you have several.
+}
+}
+
 \examples{
 \dontrun{
-nm <- read_noise_matrix("data/rcicr_bogus_20250101_1200.Rdata")
+# From an rcicr rdata:
+nm <- read_noise_matrix("data/rcicr_stimuli.Rdata")
+
+# From a cached rds you saved earlier:
+nm <- read_noise_matrix("data/noise_matrix.rds")
 }
+}
+\seealso{
+\code{\link[=ci_from_responses_briefrc]{ci_from_responses_briefrc()}}
 }

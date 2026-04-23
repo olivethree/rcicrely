@@ -4,24 +4,67 @@
 \alias{extract_signal}
 \title{Subtract the base image from each column of a CI matrix}
 \usage{
-extract_signal(cis, base_image_path)
+extract_signal(cis, base_image_path, acknowledge_scaling = FALSE)
 }
 \arguments{
 \item{cis}{A numeric matrix from \code{\link[=read_cis]{read_cis()}} (pixels x participants).}
 
 \item{base_image_path}{Path to the base face image. PNG or JPEG.}
+
+\item{acknowledge_scaling}{Set to \code{TRUE} to silence the
+once-per-session warning. See \code{\link[=read_cis]{read_cis()}}.}
 }
 \value{
 A numeric matrix the same shape as \code{cis}, base-subtracted.
 }
 \description{
-The raw CI pixels returned by \code{\link[=read_cis]{read_cis()}} contain the shared base
-image plus the participant's signal contribution. Reliability
-computations must operate on the \strong{signal} alone  --  otherwise the
+The pixel values returned by \code{\link[=read_cis]{read_cis()}} contain the shared base
+image plus a (typically scaled) noise contribution. Reliability
+computations must operate on the \strong{noise} alone, otherwise the
 shared base inflates inter-participant correlations. This function
 reads the base image, converts to grayscale if needed, validates
 dimensions, and returns \code{cis - base} column-wise.
 }
+\section{Reading the result}{
+
+Numeric matrix the same shape as \code{cis}. Column names propagate.
+The \code{img_dims} attribute is preserved (or filled in from the base
+image if missing).
+}
+
+\section{Common mistakes}{
+
+\itemize{
+\item Passing a base image with different dimensions, aborts with a
+clear pixel-count mismatch.
+\item Treating the result as the raw mask. The output is
+\code{scaling(mask)} if the input PNGs were rendered with any scaling.
+See \strong{Raw vs. rendered CIs} below.
+}
+}
+
+\section{Raw vs. rendered CIs}{
+
+PNG pixel values are necessarily what was rendered to disk:
+\code{base + scaling(mask)}. Subtracting the base in \code{\link[=extract_signal]{extract_signal()}}
+therefore yields \code{scaling(mask)}, not the raw mask. Variance-based
+reliability metrics (\code{\link[=rel_icc]{rel_icc()}}, Euclidean half of
+\code{\link[=rel_dissimilarity]{rel_dissimilarity()}}, \code{\link[=pixel_t_test]{pixel_t_test()}}, \code{\link[=rel_cluster_test]{rel_cluster_test()}}) are
+sensitive to the scaling transform; only correlation-based metrics
+(\code{\link[=rel_split_half]{rel_split_half()}}, \code{\link[=rel_loo]{rel_loo()}}, correlation half of
+\code{\link[=rel_dissimilarity]{rel_dissimilarity()}}) survive a single uniform linear scaling
+unmodified, and even those break under per-CI \code{"matched"}-style
+scaling. The canonical 2IFC \code{infoVal} path
+(\code{rcicr::computeInfoVal2IFC()}) extracts the raw \verb{$ci} internally
+from the rcicr CI-list and is \strong{not} affected; hand-rolled
+\code{infoVal} implementations (Brief-RC, custom code) \strong{are}, and
+should be fed the raw mask. Prefer \code{\link[=ci_from_responses_2ifc]{ci_from_responses_2ifc()}} /
+\code{\link[=ci_from_responses_briefrc]{ci_from_responses_briefrc()}} when raw responses are available;
+both return the raw mask. See
+\code{vignette("tutorial", package = "rcicrely")} chapter 3 for the
+full discussion.
+}
+
 \seealso{
 \code{\link[=read_cis]{read_cis()}}, \code{\link[=load_signal_matrix]{load_signal_matrix()}}
 }

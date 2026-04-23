@@ -15,29 +15,33 @@ Subset of \code{c("3_1", "3_k", "2_1", "2_k")}. Defaults to
 \code{c("3_1", "3_k")}.}
 }
 \value{
-Object of class \code{rcicrely_icc}. Fields: \verb{$icc_3_1},
-\verb{$icc_3_k}, \verb{$icc_2_1}, \verb{$icc_2_k} (the latter two \code{NA} unless
-requested), \verb{$ms_rows}, \verb{$ms_cols}, \verb{$ms_error},
-\verb{$n_raters}, \verb{$n_targets}, \verb{$model} (description string),
-\verb{$variants} (which were returned).
+Object of class \code{rcicrely_icc}. Fields described in
+\strong{Reading the result} above.
 }
 \description{
-Reports \strong{ICC(3,1)} and \strong{ICC(3,k)}  --  two-way mixed model with
-pixels fixed and participants random. See CLAUDE.md sec.7.3 for the
-model-selection argument: pixels are a fixed \verb{img_size x img_size}
-grid (not a random sample), so ICC(2,\*) is mis-specified even
-when numerically similar. ICC(2,1) and ICC(2,k) are available via
-\code{variants} for users whose reviewers explicitly ask.
+Reports the reliability of producer-level CI signals as a single
+scalar (or two scalars) per condition. Use \strong{ICC(3,1)} to ask
+"how informative is one producer's CI as a noisy estimate of the
+group pattern?" and \strong{ICC(3,k)} to ask "how stable is the
+group-mean CI this experiment produced?". Most papers report
+ICC(3,k) as the headline.
 }
 \details{
+Reports \strong{ICC(3,1)} and \strong{ICC(3,k)}, two-way mixed model with
+pixels fixed and participants random. Pixels are a fixed
+\verb{img_size x img_size} grid (not a random sample), so ICC(2,\*) is
+mis-specified even when numerically similar. ICC(2,1) and
+ICC(2,k) are available via \code{variants} for users whose reviewers
+explicitly ask.
+
 Computed directly from ANOVA mean squares (never via
 \code{psych::ICC()}, which allocates intermediates that blow memory on
 a 262,144 x 30 matrix).
 }
-\section{What this ICC is  --  and is not}{
+\section{What this ICC is, and is not}{
 
 Most ICCs reported in the reverse-correlation literature are
-\strong{trait-rating} reliability  --  phase-2 naive raters scoring CIs on
+\strong{trait-rating} reliability, phase-2 naive raters scoring CIs on
 trait dimensions (trustworthy, competent, ...). rcicrely's ICC is
 structurally different: it operates on the pixel-level signal
 produced by the original producers. No phase-2 rating study is
@@ -45,15 +49,57 @@ involved. This sidesteps the two-phase design Cone et al. (2020)
 criticised.
 }
 
+\section{Reading the result}{
+
+\itemize{
+\item \verb{$icc_3_1}, \verb{$icc_3_k}, two-way-mixed ICCs for single rater
+and average rater respectively. \verb{$icc_2_1} / \verb{$icc_2_k} only
+present if requested via \code{variants}.
+\item \verb{$ms_rows}, \verb{$ms_cols}, \verb{$ms_error}, the underlying ANOVA mean
+squares for transparency / reproducibility.
+\item \verb{$n_raters} (= participants), \verb{$n_targets} (= pixels),
+\verb{$model} (description string), \verb{$variants} (which were returned).
+}
+}
+
+\section{Common mistakes}{
+
+\itemize{
+\item Asking for ICC(2,\emph{) because a reviewer expects it. ICC(2,})
+treats pixels as a random sample from a pixel population, which
+they aren't, the image grid is fixed. Numbers are usually
+close to ICC(3,*) at high pixel counts but the model is
+mis-specified. Use \code{variants = c("3_1", "3_k", "2_1", "2_k")} to
+report both side-by-side.
+\item Comparing this ICC to a phase-2 trait-rating ICC from a different
+paper. Different statistical objects (see \strong{What this ICC is}
+section below).
+}
+}
+
+\section{Reliability metrics expect raw masks}{
+
+ICC is a variance-based statistic. \strong{Strongly} sensitive to any
+scaling step. If \code{signal_matrix} was extracted from rendered
+(scaled) PNGs via \code{\link[=read_cis]{read_cis()}} / \code{\link[=extract_signal]{extract_signal()}}, the variance
+decomposition is computed on \code{scaling(mask)} rather than \code{mask} and
+the result will not match what raw responses would produce. See
+\code{vignette("tutorial", package = "rcicrely")} chapter 3.
+}
+
 \references{
 Shrout, P. E., & Fleiss, J. L. (1979). Intraclass correlations:
-uses in assessing rater reliability. \emph{Psychological Bulletin}.
+uses in assessing rater reliability. \emph{Psychological Bulletin},
+86(2), 420-428.
 
 McGraw, K. O., & Wong, S. P. (1996). Forming inferences about some
-intraclass correlation coefficients. \emph{Psychological Methods}.
+intraclass correlation coefficients. \emph{Psychological Methods},
+1(1), 30-46.
 
-Cone, J., Flaharty, K., & Ferguson, M. J. (2020). Believability of
-evidence matters for correcting social impressions. \emph{PNAS}.
+Cone, J., Flaharty, K., & Ferguson, M. J. (2019). Believability of
+evidence matters for correcting social impressions. \emph{Proceedings
+of the National Academy of Sciences}, 116(20), 9802-9807.
+\doi{10.1073/pnas.1903222116}
 }
 \seealso{
 \code{\link[=rel_split_half]{rel_split_half()}}, \code{\link[=rel_loo]{rel_loo()}}, \code{\link[=run_within]{run_within()}}

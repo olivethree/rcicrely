@@ -35,20 +35,15 @@ clusters. Default 2.0 (~ two-tailed p < 0.05 at large df).}
 \item{progress}{Show a \code{cli} progress bar.}
 }
 \value{
-Object of class \code{rcicrely_cluster_test}. Fields:
-\verb{$observed_t}, \verb{$clusters} (a data.frame with \code{cluster_id},
-\code{direction}, \code{mass}, \code{size}, \code{p_value}, \code{significant}),
-\verb{$null_distribution} (list with \code{pos} and \code{neg} vectors),
-\verb{$img_dims}, \verb{$pos_labels}, \verb{$neg_labels} (integer matrices for
-plotting), \verb{$cluster_threshold}, \verb{$alpha}, \verb{$n_permutations},
-\verb{$n_participants_a}, \verb{$n_participants_b}.
+Object of class \code{rcicrely_cluster_test}. Fields described
+in \strong{Reading the result} above.
 }
 \description{
 Pixel-level discriminability test between two condition signal
-matrices. Implements the Maris & Oostenveld (2007) approach with
+matrices. Use this to identify \strong{where} in the image two
+conditions' CIs differ, with family-wise error control across
+pixels. Pair with \code{\link[=rel_dissimilarity]{rel_dissimilarity()}} for an overall magnitude. Implements the Maris & Oostenveld (2007) approach with
 Nichols & Holmes (2002) max-statistic family-wise error control:
-}
-\details{
 \enumerate{
 \item Compute observed pixel-wise Welch t.
 \item Threshold at \verb{|t| > cluster_threshold} (separately for positive
@@ -69,13 +64,54 @@ sizes drift, which changes Welch degrees of freedom under the null
 and biases the max-mass distribution. We preserve \verb{(N_A, N_B)}
 exactly.
 }
+\section{Reading the result}{
+
+\itemize{
+\item \verb{$observed_t}, per-pixel Welch t vector for the observed
+condition labelling.
+\item \verb{$clusters}, data.frame with \code{cluster_id}, \code{direction}
+(\code{"pos"}/\code{"neg"}), \code{mass}, \code{size}, \code{p_value}, \code{significant}. One
+row per supra-threshold cluster, sorted by direction then mass.
+\item \verb{$null_distribution}, list with \verb{$pos} and \verb{$neg} vectors of
+per-permutation max masses, useful for plotting the null.
+\item \verb{$pos_labels}, \verb{$neg_labels}, integer matrices the same shape
+as the image, where each non-zero value labels a cluster. Drives
+the contour overlay in the result's \code{plot()} method.
+\item \verb{$cluster_threshold}, \verb{$alpha}, \verb{$n_permutations},
+\verb{$n_participants_a}, \verb{$n_participants_b}, metadata.
+}
+}
+
+\section{Common mistakes}{
+
+\itemize{
+\item Reading \code{cluster_threshold} (default 2.0) as a p-value cutoff. It
+is the t-value above which pixels join a cluster; significance
+is decided afterwards by comparing cluster mass to the null.
+\item Trusting cluster significance with \code{n_permutations < 1000}
+(tail probabilities are noisy at low iter counts).
+\item Permuting \strong{pixels} instead of condition labels (the function
+does the right thing internally; this is just a warning if you
+reimplement it yourself).
+}
+}
+
+\section{Reliability metrics expect raw masks}{
+
+Welch t and cluster mass are variance-based and sensitive to any
+scaling. If \code{signal_matrix_a} / \verb{_b} came from rendered PNGs,
+results are distorted. See
+\code{vignette("tutorial", package = "rcicrely")} chapter 3.
+}
+
 \references{
 Maris, E., & Oostenveld, R. (2007). Nonparametric statistical
-testing of EEG- and MEG-data. \emph{Journal of Neuroscience Methods}.
+testing of EEG- and MEG-data. \emph{Journal of Neuroscience Methods},
+164(1), 177-190. \doi{10.1016/j.jneumeth.2007.03.024}
 
 Nichols, T. E., & Holmes, A. P. (2002). Nonparametric permutation
 tests for functional neuroimaging: a primer with examples.
-\emph{Human Brain Mapping}.
+\emph{Human Brain Mapping}, 15(1), 1-25. \doi{10.1002/hbm.1058}
 }
 \seealso{
 \code{\link[=rel_dissimilarity]{rel_dissimilarity()}}, \code{\link[=run_between]{run_between()}}

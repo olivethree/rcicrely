@@ -8,7 +8,7 @@
 #' `tibble`, and `dplyr` **attached** (not just loaded) when
 #' `rcicr::generateStimuli2IFC()` or `computeInfoVal2IFC()` run
 #' because they use `%dopar%`, `tribble()`, `%>%` and `filter()` at
-#' evaluation time without namespace prefixes. CLAUDE.md sec.8.3, sec.8.7.
+#' evaluation time without namespace prefixes.
 #'
 #' @param pkgs Character vector of package names to attach.
 #' @return Invisibly `TRUE` if all attached; errors if any missing.
@@ -160,6 +160,105 @@ progress_tick <- function(id) {
 progress_done <- function(id) {
   if (is.null(id)) return(invisible())
   cli::cli_progress_done(id = id)
+}
+
+## ---- session-state warning helpers ----------------------------------
+##
+## The "raw vs rendered" caveat is the load-bearing distinction in this
+## package: PNG-derived signals contain `scaling(noise)`, not raw `noise`.
+## We emit the warning once per session so the user sees it without being
+## hammered every call. State lives in a package-private env that the
+## test suite can reset via `reset_session_warnings()`.
+
+.rcicrely_session_state <- new.env(parent = emptyenv())
+.rcicrely_session_state$mode1_warning_emitted     <- FALSE
+.rcicrely_session_state$looks_scaled_warning_emitted <- FALSE
+
+#' @keywords internal
+#' @noRd
+reset_session_warnings <- function() {
+  .rcicrely_session_state$mode1_warning_emitted     <- FALSE
+  .rcicrely_session_state$looks_scaled_warning_emitted <- FALSE
+  invisible()
+}
+
+#' Emit the once-per-session Mode-1 scaling warning
+#'
+#' Called by `read_cis()`, `extract_signal()`, `load_signal_matrix()`.
+#' Silent if `acknowledge_scaling = TRUE`, if the option
+#' `rcicrely.silence_scaling_warning` is `TRUE`, or if the warning has
+#' already fired in this session.
+#'
+#' @keywords internal
+#' @noRd
+warn_mode1_scaling <- function(acknowledge_scaling = FALSE) {
+  if (isTRUE(acknowledge_scaling)) return(invisible())
+  if (isTRUE(getOption("rcicrely.silence_scaling_warning", FALSE))) {
+    return(invisible())
+  }
+  if (isTRUE(.rcicrely_session_state$mode1_warning_emitted)) {
+    return(invisible())
+  }
+  cli::cli_warn(c(
+    "PNG-derived signal matrix contains the {.strong rendered} CI, \\
+     not the raw mask.",
+    "i" = "PNGs encode {.code base + scaling(mask)}, so \\
+           {.code cis - base} recovers {.code scaling(mask)}, not the \\
+           raw mask itself.",
+    "*" = "Pearson-based metrics ({.fn rel_split_half}, \\
+           {.fn rel_loo}, correlation half of {.fn rel_dissimilarity}) \\
+           survive a uniform linear scaling but are still distorted by \\
+           per-CI {.val matched} scaling.",
+    "*" = "{.fn rel_icc}, Euclidean half of {.fn rel_dissimilarity}, \\
+           {.fn pixel_t_test}, {.fn rel_cluster_test} and any \\
+           hand-rolled {.code infoVal} computation (e.g. for Brief-RC, \\
+           which has no canonical implementation) are sensitive to \\
+           {.strong any} scaling.",
+    "i" = "{.code rcicr::computeInfoVal2IFC()} extracts the raw \\
+           {.field $ci} component internally, so the canonical 2IFC \\
+           infoVal path is unaffected.",
+    "i" = "Prefer Mode 2 ({.fn ci_from_responses_2ifc} / \\
+           {.fn ci_from_responses_briefrc}) when raw responses are \\
+           available, those return the raw mask.",
+    "i" = "Silence: pass {.code acknowledge_scaling = TRUE}, set \\
+           {.code options(rcicrely.silence_scaling_warning = TRUE)}, \\
+           or generate PNGs with {.code scaling = \"none\"} so the \\
+           output is effectively raw.",
+    "i" = "See {.code vignette(\"tutorial\", package = \"rcicrely\")} \\
+           chapter 3 for the full discussion."
+  ))
+  .rcicrely_session_state$mode1_warning_emitted <- TRUE
+  invisible()
+}
+
+#' Emit the once-per-session "looks scaled" warning
+#'
+#' Called by every `rel_*()` and `run_*()` on entry when
+#' `looks_scaled()` flags the input. Quieter than the Mode-1 warning
+#' (which targets the input boundary directly).
+#'
+#' @keywords internal
+#' @noRd
+warn_looks_scaled <- function(name = "signal_matrix") {
+  if (isTRUE(getOption("rcicrely.silence_scaling_warning", FALSE))) {
+    return(invisible())
+  }
+  if (isTRUE(.rcicrely_session_state$looks_scaled_warning_emitted)) {
+    return(invisible())
+  }
+  cli::cli_warn(c(
+    "{.arg {name}} looks like it may be a {.strong rendered} CI \\
+     (per-column dynamic range is highly heterogeneous).",
+    "i" = "If the matrix came from {.fn read_cis} / \\
+           {.fn extract_signal} on rendered PNGs, downstream metrics \\
+           may be distorted. Mode 2 ({.fn ci_from_responses_2ifc} / \\
+           {.fn ci_from_responses_briefrc}) returns the raw mask.",
+    "i" = "Heuristic only, silence with \\
+           {.code options(rcicrely.silence_scaling_warning = TRUE)} \\
+           if the matrix is genuinely raw."
+  ))
+  .rcicrely_session_state$looks_scaled_warning_emitted <- TRUE
+  invisible()
 }
 
 #' Read and convert an image file to a grayscale numeric matrix

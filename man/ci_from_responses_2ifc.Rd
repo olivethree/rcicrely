@@ -12,6 +12,7 @@ ci_from_responses_2ifc(
   stimulus_col = "stimulus",
   response_col = "response",
   scaling = "autoscale",
+  keep_rendered = FALSE,
   targetpath = tempfile("rcicrely_2ifc_"),
   save_as_png = FALSE
 )
@@ -19,7 +20,7 @@ ci_from_responses_2ifc(
 \arguments{
 \item{responses}{A data frame with one row per trial. Must contain
 \code{participant_col} (producer id), the column named by \code{stimulus_col}
-(stimulus id, integer  --  index into the rcicr noise pool), and
+(stimulus id, integer, index into the rcicr noise pool), and
 \code{response_col} with values in \verb{\{-1, +1\}}.}
 
 \item{rdata_path}{Path to the \code{.Rdata} file produced by
@@ -36,8 +37,13 @@ stored in \code{rdata_path}.}
 \item{scaling}{rcicr scaling option; one of \code{"autoscale"},
 \code{"independent"}, \code{"constant"}, \code{"none"}. Passed through to
 \code{rcicr::batchGenerateCI2IFC()}. Scaling only affects the
-\verb{$combined} image, not \verb{$ci}  --  so the returned signal matrix is
-scaling-invariant.}
+\verb{$combined} (rendered) image, not \verb{$ci}, so the returned
+\verb{$signal_matrix} is the raw mask regardless of this argument.}
+
+\item{keep_rendered}{If \code{TRUE}, also extract rcicr's \verb{$combined}
+image (base + scaled noise) per producer and stack into
+\verb{$rendered_ci}. Default \code{FALSE}. Use only for visualisation; do
+not feed \verb{$rendered_ci} to \verb{rel_*} functions.}
 
 \item{targetpath}{Where rcicr writes PNGs (defaults to an
 auto-cleaned tempdir so the working directory isn't polluted).}
@@ -48,31 +54,69 @@ Defaults to \code{FALSE} for speed in a pure reliability pipeline.}
 \value{
 A list with
 \itemize{
-\item \code{signal_matrix}  --  pixels x participants numeric matrix.
-\item \code{participants}  --  character vector of participant ids in the
+\item \code{signal_matrix}, pixels x participants raw mask (always raw,
+regardless of \code{scaling}).
+\item \code{rendered_ci}, pixels x participants, present only when
+\code{keep_rendered = TRUE}. Visualisation only.
+\item \code{participants}, character vector of participant ids in the
 column order of \code{signal_matrix}.
-\item \code{img_dims}  --  integer \code{c(nrow, ncol)}.
-\item \code{rcicr_result}  --  the raw rcicr list (one element per producer).
+\item \code{img_dims}, integer \code{c(nrow, ncol)}.
+\item \code{scaling}, the \code{scaling} value passed to rcicr.
+\item \code{rcicr_result}, the raw rcicr list (one element per producer).
 }
 }
 \description{
-Thin wrapper around \code{\link[rcicr:batchGenerateCI2IFC]{rcicr::batchGenerateCI2IFC()}} that handles the
-rcicr-integration gotchas captured in CLAUDE.md sec.8:
+Thin wrapper around \code{\link[rcicr:batchGenerateCI2IFC]{rcicr::batchGenerateCI2IFC()}} that handles
+the known rcicr-integration gotchas and exposes a uniform return
+shape across the 2IFC and Brief-RC paths.
+
+Use this when you have 2IFC trial-level responses and want the
+package to compute individual CIs ready for the reliability metrics.
 }
 \details{
+What the wrapper does for you:
 \itemize{
 \item Attaches \code{foreach}, \code{tibble}, \code{dplyr} at runtime
 (\verb{\%dopar\%} / \code{tribble} / \verb{\%>\%} are not namespace-prefixed inside
-rcicr  --  sec.8.3, sec.8.7).
-\item Matches the \code{.Rdata} extension case-insensitively (sec.8.8).
+rcicr).
+\item Matches the \code{.Rdata} extension case-insensitively (rcicr writes
+lowercase on some filesystems).
 \item Extracts the per-participant CI \strong{noise component} (\verb{$ci}) from
 the rcicr result list and stacks it into a pixels x participants
-signal matrix  --  already base-subtracted, ready for \verb{rel_*()}.
+signal matrix, already base-subtracted, ready for \verb{rel_*()}.
+\item When \code{keep_rendered = TRUE}, also extracts the rendered
+\verb{$combined} image and stacks it as \verb{$rendered_ci} for
+visualisation (display only, not for downstream stats).
 }
 
 \code{rcicr} must be installed (it's a Suggests dep; install with
 \code{remotes::install_github("rdotsch/rcicr")} if needed).
 }
+\section{Reading the result}{
+
+\itemize{
+\item \verb{$signal_matrix} is the \strong{raw mask} (rcicr's \verb{$ci} per producer).
+This is what every \verb{rel_*} function expects.
+\item \verb{$rendered_ci}, present when \code{keep_rendered = TRUE}, is the
+\code{base + scaling(mask)} image rcicr would have written to PNG.
+\strong{Visualisation only.}
+\item \verb{$rcicr_result} is the raw return value of
+\code{\link[rcicr:batchGenerateCI2IFC]{rcicr::batchGenerateCI2IFC()}} in case you need anything else
+(e.g. the per-producer base, scaled-only ci).
+}
+}
+
+\section{Common mistakes}{
+
+\itemize{
+\item Passing \verb{$rendered_ci} to \verb{rel_*} functions, it carries the
+scaling step, which distorts variance-based metrics.
+\item Forgetting that the warning about Mode 1 also applies if you
+later read \verb{$rendered_ci} back from PNG instead of using
+\verb{$signal_matrix} directly.
+}
+}
+
 \examples{
 \dontrun{
 res <- ci_from_responses_2ifc(

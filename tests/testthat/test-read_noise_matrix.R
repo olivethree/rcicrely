@@ -17,9 +17,18 @@ test_that("read_noise_matrix accepts whitespace-delimited text files", {
   expect_equal(nm, m, tolerance = 1e-10)
 })
 
-test_that("read_noise_matrix errors when the named object is missing", {
+test_that("read_noise_matrix errors clearly on an unrecognised rdata", {
   tmp <- tempfile(fileext = ".Rdata")
   other_name <- matrix(1:10, 5L, 2L)
   save(other_name, file = tmp)
-  expect_error(read_noise_matrix(tmp), "not found")
+  expect_error(read_noise_matrix(tmp), "Unrecognised objects")
+})
+
+test_that("read_noise_matrix round-trips through .rds", {
+  tmp <- tempfile(fileext = ".rds")
+  m <- matrix(rnorm(30L), 10L, 3L)
+  saveRDS(m, tmp)
+  nm <- read_noise_matrix(tmp)
+  expect_equal(dim(nm), c(10L, 3L))
+  expect_equal(nm, m, tolerance = 1e-10)
 })

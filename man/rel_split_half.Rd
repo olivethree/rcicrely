@@ -15,7 +15,7 @@ rel_split_half(
 \item{signal_matrix}{Pixels x participants, base-subtracted.}
 
 \item{n_permutations}{Integer number of random splits. Default
-2000  --  cheap and keeps Monte Carlo error on tail probabilities
+2000, cheap and keeps Monte Carlo error on tail probabilities
 below 0.01.}
 
 \item{seed}{Optional integer; if set, results are reproducible.
@@ -24,10 +24,8 @@ The caller's global RNG state is restored on exit.}
 \item{progress}{Show a \code{cli} progress bar.}
 }
 \value{
-An object of class \code{rcicrely_split_half}. Fields:
-\verb{$r_hh}, \verb{$r_sb}, \verb{$ci_95}, \verb{$ci_95_sb}, \verb{$distribution}
-(length \code{n_permutations} vector of per-split \code{r}),
-\verb{$n_participants}, \verb{$n_permutations}.
+An object of class \code{rcicrely_split_half}. Fields described
+in \strong{Reading the result} above.
 }
 \description{
 Measures how stable a condition's group-level CI is across random
@@ -35,8 +33,10 @@ halves of its producer set. For each of \code{n_permutations}
 iterations: randomly partition the producers (columns of
 \code{signal_matrix}) into two roughly-equal halves, average each half
 to get two group vectors, and compute the Pearson correlation.
-}
-\details{
+
+Use this to answer "would I get the same group CI if I'd run a
+different half of my participants?".
+
 For \strong{odd N}, one randomly-chosen producer is dropped per
 permutation (re-drawn each iteration, not fixed) so both halves
 have \code{floor(N/2)} producers.
@@ -45,6 +45,36 @@ Reports both the mean per-permutation \code{r} and the Spearman-Brown
 corrected reliability \verb{r_SB = (2 r) / (1 + r)}. 95\% CI is the
 2.5 / 97.5 percentile of the permutation distribution.
 }
+\section{Reading the result}{
+
+\itemize{
+\item \verb{$r_hh}, mean per-permutation Pearson r between the two halves.
+\item \verb{$r_sb}, Spearman-Brown projected reliability of the full
+sample. This is usually the headline number to report.
+\item \verb{$ci_95}, \verb{$ci_95_sb}, percentile 95\% CIs on each.
+\item \verb{$distribution}, the full per-permutation r vector for plotting
+or custom CIs.
+\item \verb{$n_participants}, \verb{$n_permutations}, metadata.
+}
+}
+
+\section{Common mistakes}{
+
+\itemize{
+\item Reporting \verb{$r_hh} instead of \verb{$r_sb} when the audience cares
+about the full-sample CI's reliability (almost always).
+\item Running with a small \code{n_permutations} (< 200) to save time, then
+trusting the CI bounds, CIs widen with low n_perm.
+}
+}
+
+\section{Reliability metrics expect raw masks}{
+
+Operates on the raw mask; results may be distorted if
+\code{signal_matrix} was extracted from rendered (scaled) PNGs. See
+\code{vignette("tutorial", package = "rcicrely")} chapter 3.
+}
+
 \examples{
 \dontrun{
 r <- rel_split_half(signal_matrix, n_permutations = 2000, seed = 1)
@@ -53,11 +83,13 @@ print(r); plot(r)
 }
 \references{
 Brinkman, L., Goffin, S., van de Schoot, R., van Haren, N. E. M.,
-Dotsch, R., & Aarts, H. (2017). Quantifying the informational
-value of classification images. \emph{Behavior Research Methods}.
+Dotsch, R., & Aarts, H. (2019). Quantifying the informational
+value of classification images. \emph{Behavior Research Methods},
+51(5), 2059-2073. \doi{10.3758/s13428-019-01232-2}
 
 Shrout, P. E., & Fleiss, J. L. (1979). Intraclass correlations:
-uses in assessing rater reliability. \emph{Psychological Bulletin}.
+uses in assessing rater reliability. \emph{Psychological Bulletin},
+86(2), 420-428.
 }
 \seealso{
 \code{\link[=rel_loo]{rel_loo()}}, \code{\link[=rel_icc]{rel_icc()}}, \code{\link[=run_within]{run_within()}}

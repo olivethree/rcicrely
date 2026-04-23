@@ -1,7 +1,10 @@
 #' Cluster-based permutation test with max-statistic FWER control
 #'
+#' @description
 #' Pixel-level discriminability test between two condition signal
-#' matrices. Implements the Maris & Oostenveld (2007) approach with
+#' matrices. Use this to identify **where** in the image two
+#' conditions' CIs differ, with family-wise error control across
+#' pixels. Pair with [rel_dissimilarity()] for an overall magnitude. Implements the Maris & Oostenveld (2007) approach with
 #' Nichols & Holmes (2002) max-statistic family-wise error control:
 #'
 #' 1. Compute observed pixel-wise Welch t.
@@ -33,21 +36,47 @@
 #'   0.05.
 #' @param seed Optional integer; RNG state restored on exit.
 #' @param progress Show a `cli` progress bar.
-#' @return Object of class `rcicrely_cluster_test`. Fields:
-#'   `$observed_t`, `$clusters` (a data.frame with `cluster_id`,
-#'   `direction`, `mass`, `size`, `p_value`, `significant`),
-#'   `$null_distribution` (list with `pos` and `neg` vectors),
-#'   `$img_dims`, `$pos_labels`, `$neg_labels` (integer matrices for
-#'   plotting), `$cluster_threshold`, `$alpha`, `$n_permutations`,
-#'   `$n_participants_a`, `$n_participants_b`.
+#' @section Reading the result:
+#' * `$observed_t`, per-pixel Welch t vector for the observed
+#'   condition labelling.
+#' * `$clusters`, data.frame with `cluster_id`, `direction`
+#'   (`"pos"`/`"neg"`), `mass`, `size`, `p_value`, `significant`. One
+#'   row per supra-threshold cluster, sorted by direction then mass.
+#' * `$null_distribution`, list with `$pos` and `$neg` vectors of
+#'   per-permutation max masses, useful for plotting the null.
+#' * `$pos_labels`, `$neg_labels`, integer matrices the same shape
+#'   as the image, where each non-zero value labels a cluster. Drives
+#'   the contour overlay in the result's `plot()` method.
+#' * `$cluster_threshold`, `$alpha`, `$n_permutations`,
+#'   `$n_participants_a`, `$n_participants_b`, metadata.
+#'
+#' @section Common mistakes:
+#' * Reading `cluster_threshold` (default 2.0) as a p-value cutoff. It
+#'   is the t-value above which pixels join a cluster; significance
+#'   is decided afterwards by comparing cluster mass to the null.
+#' * Trusting cluster significance with `n_permutations < 1000`
+#'   (tail probabilities are noisy at low iter counts).
+#' * Permuting **pixels** instead of condition labels (the function
+#'   does the right thing internally; this is just a warning if you
+#'   reimplement it yourself).
+#'
+#' @section Reliability metrics expect raw masks:
+#' Welch t and cluster mass are variance-based and sensitive to any
+#' scaling. If `signal_matrix_a` / `_b` came from rendered PNGs,
+#' results are distorted. See
+#' `vignette("tutorial", package = "rcicrely")` chapter 3.
+#'
+#' @return Object of class `rcicrely_cluster_test`. Fields described
+#'   in **Reading the result** above.
 #' @seealso [rel_dissimilarity()], [run_between()]
 #' @references
 #' Maris, E., & Oostenveld, R. (2007). Nonparametric statistical
-#' testing of EEG- and MEG-data. *Journal of Neuroscience Methods*.
+#' testing of EEG- and MEG-data. *Journal of Neuroscience Methods*,
+#' 164(1), 177-190. \doi{10.1016/j.jneumeth.2007.03.024}
 #'
 #' Nichols, T. E., & Holmes, A. P. (2002). Nonparametric permutation
 #' tests for functional neuroimaging: a primer with examples.
-#' *Human Brain Mapping*.
+#' *Human Brain Mapping*, 15(1), 1-25. \doi{10.1002/hbm.1058}
 #' @export
 rel_cluster_test <- function(signal_matrix_a,
                              signal_matrix_b,
@@ -58,6 +87,9 @@ rel_cluster_test <- function(signal_matrix_a,
                              seed              = NULL,
                              progress          = TRUE) {
   validate_two_signal_matrices(signal_matrix_a, signal_matrix_b)
+  if (looks_scaled(signal_matrix_a) || looks_scaled(signal_matrix_b)) {
+    warn_looks_scaled("signal_matrix_a / _b")
+  }
   n_pix <- nrow(signal_matrix_a)
   n_a <- ncol(signal_matrix_a)
   n_b <- ncol(signal_matrix_b)
@@ -71,7 +103,7 @@ rel_cluster_test <- function(signal_matrix_a,
       side <- sqrt(n_pix)
       if (side != as.integer(side)) {
         cli::cli_abort(
-          "Cannot infer {.arg img_dims}  --  pixel count {n_pix} is \\
+          "Cannot infer {.arg img_dims}, pixel count {n_pix} is \\
            not a perfect square. Pass {.arg img_dims} explicitly."
         )
       }

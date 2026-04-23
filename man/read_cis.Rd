@@ -4,33 +4,84 @@
 \alias{read_cis}
 \title{Read a directory of CI images into a pixels x participants matrix}
 \usage{
-read_cis(dir, pattern = "\\\\.(png|jpe?g)$")
+read_cis(dir, pattern = "\\\\.(png|jpe?g)$", acknowledge_scaling = FALSE)
 }
 \arguments{
 \item{dir}{Directory containing the CI images.}
 
 \item{pattern}{Regular expression used to select files. Defaults
 to any PNG / JPG / JPEG (case-insensitive).}
+
+\item{acknowledge_scaling}{Set to \code{TRUE} to silence the
+once-per-session warning about Mode 1 returning rendered (scaled)
+pixel data. Recommended only when you generated the PNGs yourself
+with \code{rcicr::generateCI2IFC(scaling = "none")} (or equivalent)
+and the PNG truly carries unscaled noise.}
 }
 \value{
 A numeric matrix with \code{nrow = n_pixels} and
-\code{ncol = n_participants}. Row-major pixel ordering follows
-\code{as.vector(img)} of the image matrix.
+\code{ncol = n_participants}. Carries an \code{img_dims} attribute.
 }
 \description{
 Reads every PNG / JPEG in \code{dir} (non-recursive), converts each to
 grayscale via ITU-R BT.709 luminance weights
 (\verb{0.2126 R + 0.7152 G + 0.0722 B}), and returns a numeric matrix
 with one column per file, sorted alphabetically by filename.
-Column names are the filename without the extension.
+
+Use this when you have one CI image per producer already saved on
+disk and you want a numeric matrix you can pass to
+\code{\link[=extract_signal]{extract_signal()}} or \code{\link[=load_signal_matrix]{load_signal_matrix()}} for the base
+subtraction step.
 }
 \details{
 All images must share the same dimensions; mixed sizes abort.
-The returned matrix is the \strong{raw CI} pixel data  --  to obtain the
-base-subtracted signal matrix that every \verb{rel_*()} function takes,
-pass this through \code{\link[=extract_signal]{extract_signal()}} or use \code{\link[=load_signal_matrix]{load_signal_matrix()}}
-which composes the two steps.
+Column names are the filename without the extension.
 }
+\section{Reading the result}{
+
+The returned matrix has \code{nrow = n_pixels} and
+\code{ncol = n_participants}. Row-major pixel ordering follows
+\code{as.vector(img)} of the underlying image matrix. The integer
+\code{c(nrow, ncol)} of the original image is stamped on the result as
+an \code{img_dims} attribute, which downstream functions read
+automatically.
+}
+
+\section{Common mistakes}{
+
+\itemize{
+\item Forgetting to subtract the base. The matrix returned here
+contains the \strong{rendered CI} (base + scaled noise). Pass it
+through \code{\link[=extract_signal]{extract_signal()}} before any reliability metric.
+\item Mixing CIs from different image sizes in one directory, this
+aborts with a clear error rather than silently misaligning.
+\item Trusting reliability numbers without first reading the \strong{Note}
+below on raw vs. rendered CIs.
+}
+}
+
+\section{Raw vs. rendered CIs}{
+
+PNG pixel values are necessarily what was rendered to disk:
+\code{base + scaling(mask)}. Subtracting the base in \code{\link[=extract_signal]{extract_signal()}}
+therefore yields \code{scaling(mask)}, not the raw mask. Variance-based
+reliability metrics (\code{\link[=rel_icc]{rel_icc()}}, Euclidean half of
+\code{\link[=rel_dissimilarity]{rel_dissimilarity()}}, \code{\link[=pixel_t_test]{pixel_t_test()}}, \code{\link[=rel_cluster_test]{rel_cluster_test()}}) are
+sensitive to the scaling transform; only correlation-based metrics
+(\code{\link[=rel_split_half]{rel_split_half()}}, \code{\link[=rel_loo]{rel_loo()}}, correlation half of
+\code{\link[=rel_dissimilarity]{rel_dissimilarity()}}) survive a single uniform linear scaling
+unmodified, and even those break under per-CI \code{"matched"}-style
+scaling. The canonical 2IFC \code{infoVal} path
+(\code{rcicr::computeInfoVal2IFC()}) extracts the raw \verb{$ci} internally
+from the rcicr CI-list and is \strong{not} affected; hand-rolled
+\code{infoVal} implementations (Brief-RC, custom code) \strong{are}, and
+should be fed the raw mask. Prefer \code{\link[=ci_from_responses_2ifc]{ci_from_responses_2ifc()}} /
+\code{\link[=ci_from_responses_briefrc]{ci_from_responses_briefrc()}} when raw responses are available;
+both return the raw mask. See
+\code{vignette("tutorial", package = "rcicrely")} chapter 3 for the
+full discussion.
+}
+
 \examples{
 \dontrun{
 cis <- read_cis("data/cis_condition_A/")
@@ -38,5 +89,6 @@ signal <- extract_signal(cis, base_image_path = "data/base.jpg")
 }
 }
 \seealso{
-\code{\link[=extract_signal]{extract_signal()}}, \code{\link[=load_signal_matrix]{load_signal_matrix()}}
+\code{\link[=extract_signal]{extract_signal()}}, \code{\link[=load_signal_matrix]{load_signal_matrix()}},
+\code{\link[=ci_from_responses_2ifc]{ci_from_responses_2ifc()}}, \code{\link[=ci_from_responses_briefrc]{ci_from_responses_briefrc()}}
 }

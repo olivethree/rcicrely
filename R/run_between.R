@@ -1,8 +1,23 @@
 #' Run every between-condition discriminability metric
 #'
+#' @description
 #' Convenience orchestrator that runs [rel_cluster_test()] and
 #' [rel_dissimilarity()] on two condition signal matrices and wraps
-#' both results in an `rcicrely_report`.
+#' both results in an `rcicrely_report` for joint printing / plotting.
+#'
+#' Use this when you want both the spatial-pattern test and the
+#' overall magnitude test in one call.
+#'
+#' @section Reading the result:
+#' `$results$cluster_test` and `$results$dissimilarity`, one result
+#' object each, fields as in the standalone functions.
+#' `$method = "between"`.
+#'
+#' @section Reliability metrics expect raw masks:
+#' Both downstream metrics are scale-sensitive in different ways
+#' (cluster test entirely; dissimilarity's Pearson r partly,
+#' Euclidean entirely). See
+#' `vignette("tutorial", package = "rcicrely")` chapter 3.
 #'
 #' @param signal_matrix_a,signal_matrix_b Pixels x participants,
 #'   base-subtracted. Row counts must match.

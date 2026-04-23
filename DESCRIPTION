@@ -1,6 +1,6 @@
 Package: rcicrely
 Title: Reliability Assessment for Reverse-Correlation Classification Images
-Version: 0.1.0
+Version: 0.1.1
 Authors@R:
     person("Manuel", "Oliveira",
            email = "manuel.olivethree@gmail.com",

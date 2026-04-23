@@ -12,7 +12,9 @@ ci_from_responses_briefrc(
   participant_col = "participant_id",
   stimulus_col = "stimulus",
   response_col = "response",
-  method = c("briefrc12", "briefrc20")
+  method = c("briefrc12", "briefrc20"),
+  scaling = c("none", "matched", "constant"),
+  scaling_constant = NULL
 )
 }
 \arguments{
@@ -28,29 +30,48 @@ chosen. Unchosen faces are not recorded.}
 (\code{stimuli} object), or pass a pre-loaded \code{noise_matrix} directly.}
 
 \item{base_image_path}{Path to the base face image (PNG / JPEG).
-Used only to stamp \verb{$img_dims} on the result and to validate the
-noise matrix shape.}
+Used to validate the noise matrix shape and (when \code{scaling} is
+not \code{"none"}) to render the visualisation-only \verb{$rendered_ci}
+field.}
 
 \item{participant_col, stimulus_col, response_col}{Column names.}
 
 \item{method}{One of \code{"briefrc12"}. \code{"briefrc20"} is reserved for a
 future release and currently aborts with a clear message.}
+
+\item{scaling}{Visualisation-only scaling for the optional
+\verb{$rendered_ci} field. One of \code{"none"} (default; no rendered_ci
+returned), \code{"matched"} (stretch mask to base range, then add to
+base, Schmitz's default), or \code{"constant"} (multiply mask by
+\code{scaling_constant}, then add to base). The mathematical
+\verb{$signal_matrix} returned by this function is always the raw
+unscaled mask, regardless of this argument.}
+
+\item{scaling_constant}{Numeric multiplier used when
+\code{scaling = "constant"}. Ignored otherwise.}
 }
 \value{
 A list with
 \itemize{
-\item \code{signal_matrix}  --  pixels x participants numeric matrix (mask per
-producer).
-\item \code{participants}  --  character vector of participant ids.
-\item \code{img_dims}  --  integer \code{c(nrow, ncol)}.
+\item \code{signal_matrix}, pixels x participants raw mask (always raw,
+even when \code{scaling != "none"}).
+\item \code{rendered_ci}, pixels x participants, present only when
+\code{scaling != "none"}. Visualisation only.
+\item \code{participants}, character vector of participant ids.
+\item \code{img_dims}, integer \code{c(nrow, ncol)}.
+\item \code{scaling}, the scaling option that was used.
 }
 }
 \description{
 Native implementation of Schmitz, Rougier & Yzerbyt (2024)'s Brief-RC
-mask, per CLAUDE.md sec.5.2. \strong{Does not} call any \verb{rcicr::*_brief}
-function  --  those do not exist in canonical rcicr v1.0.1. Only rcicr's
-noise-pattern pool (the \code{stimuli} object inside an \code{.Rdata} from
+mask. \strong{Does not} call any \verb{rcicr::*_brief} function, those do
+not exist in canonical rcicr v1.0.1. Only rcicr's noise-pattern
+pool (the \code{stimuli} object inside an \code{.Rdata} from
 \code{generateStimuli2IFC()}) is reused; the mask is computed in pure R.
+
+Use this when you have Brief-RC 12 trial-level responses and want
+the package to produce per-producer noise masks ready for the
+reliability metrics.
 }
 \details{
 Formula (Schmitz's \code{genMask()} exactly):
@@ -65,6 +86,38 @@ ids chosen by that participant, not the raw trial count. If a
 participant chooses the same stimulus on two trials with opposite
 responses, those two cancel.
 }
+\section{Reading the result}{
+
+\itemize{
+\item \verb{$signal_matrix} is the \strong{raw mask} per producer, the object
+every \verb{rel_*} function expects. Always pass this (and only this)
+to reliability metrics or to any external infoVal computation.
+\item \verb{$rendered_ci}, when present, is \code{base + scaling(mask)} per
+producer. \strong{Visualization only.} Save to PNG, plot for
+inspection, but do not feed into reliability metrics, the
+scaling step distorts variance-based statistics. Also do not
+feed it to a hand-rolled Brief-RC \code{infoVal} (no canonical
+implementation exists in either rcicr or rcicrely): the
+reference distribution would compare against a different
+scale.
+\item \verb{$participants} and \verb{$img_dims} are convenience metadata.
+}
+}
+
+\section{Common mistakes}{
+
+\itemize{
+\item Passing the "expanded" 12-rows-per-trial response format. Brief-RC
+12 is one row per trial; \code{stimulus} is the chosen pool id and
+\code{response} is \code{+1} (oriented) or \code{-1} (inverted). Schmitz 2024
+sec.3.1.2.
+\item Using \verb{$rendered_ci} for downstream stats. It exists only because
+the user often wants to save a PNG.
+\item Asking for \code{method = "briefrc20"}, that's reserved for a future
+release and aborts.
+}
+}
+
 \examples{
 \dontrun{
 res <- ci_from_responses_briefrc(
@@ -72,13 +125,16 @@ res <- ci_from_responses_briefrc(
   rdata_path      = "data/rcicr_stimuli.Rdata",
   base_image_path = "data/base.jpg"
 )
+# signal_matrix goes into rel_*; rendered_ci is for plotting only.
+rel_split_half(res$signal_matrix, seed = 1L)
 }
 }
 \references{
 Schmitz, M., Rougier, M., & Yzerbyt, V. (2024). Introducing the
 brief reverse correlation: an improved tool to assess visual
-representations. \emph{Behavior Research Methods}.
+representations. \emph{European Journal of Social Psychology}.
+\doi{10.1002/ejsp.3100}
 }
 \seealso{
-\code{\link[=ci_from_responses_2ifc]{ci_from_responses_2ifc()}}
+\code{\link[=ci_from_responses_2ifc]{ci_from_responses_2ifc()}}, \code{\link[=run_within]{run_within()}}, \code{\link[=run_between]{run_between()}}
 }

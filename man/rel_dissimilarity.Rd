@@ -26,21 +26,58 @@ base-subtracted. Row counts must match.}
 \item{progress}{Show a \code{cli} progress bar.}
 }
 \value{
-Object of class \code{rcicrely_dissim}. Fields: \verb{$correlation},
-\verb{$euclidean}, \verb{$boot_cor}, \verb{$boot_dist}, \verb{$ci_cor}, \verb{$ci_dist},
-\verb{$boot_se_cor}, \verb{$boot_se_dist}, \verb{$n_boot}, \verb{$ci_level}.
+Object of class \code{rcicrely_dissim}. Fields described in
+\strong{Reading the result} above.
 }
 \description{
 Compute two scalar dissimilarity metrics between two conditions'
-group-level signals  --  Pearson correlation and Euclidean distance  --
+group-level signals (Pearson correlation and Euclidean distance),
 with percentile bootstrap confidence intervals.
-}
-\details{
+
+Use this when you want a single number (or two) summarising "how
+different are these two conditions' CIs?", with uncertainty.
+Pair with \code{\link[=rel_cluster_test]{rel_cluster_test()}} when you also want to know
+\strong{where} they differ.
+
 Bootstrap: within each condition, resample participants with
 replacement; recompute the group mean and the two metrics.
 \code{n_boot} replicates give percentile CIs via \code{quantile()}.
-No \code{boot} dependency (CLAUDE.md sec.10). BCa is future work.
+No \code{boot} dependency. BCa is future work.
 }
+\section{Reading the result}{
+
+\itemize{
+\item \verb{$correlation}, \verb{$euclidean}, observed values on the full
+sample. Pearson r is scale-tolerant for a single uniform scaling;
+Euclidean distance is sensitive to any scaling.
+\item \verb{$boot_cor}, \verb{$boot_dist}, full bootstrap distributions.
+\item \verb{$ci_cor}, \verb{$ci_dist}, percentile CIs at \code{ci_level}.
+\item \verb{$boot_se_cor}, \verb{$boot_se_dist}, bootstrap SEs.
+}
+}
+
+\section{Common mistakes}{
+
+\itemize{
+\item Reading \verb{$correlation} near 1 as "the conditions look the same".
+Two CIs with identical spatial pattern but different magnitudes
+produce r near 1; the magnitude difference shows up in
+\verb{$euclidean}.
+\item Treating \verb{$euclidean} as comparable across pixel resolutions
+(it scales with sqrt(n_pixels)). Use it as a within-study metric.
+}
+}
+
+\section{Reliability metrics expect raw masks}{
+
+Pearson r survives a single uniform linear scaling but breaks
+under per-CI \code{"matched"}-style scaling; Euclidean distance is
+sensitive to \strong{any} scaling. If \code{signal_matrix_a} / \verb{_b} came
+from \code{\link[=read_cis]{read_cis()}} / \code{\link[=extract_signal]{extract_signal()}} on rendered PNGs, treat
+results as approximate. See
+\code{vignette("tutorial", package = "rcicrely")} chapter 3.
+}
+
 \seealso{
 \code{\link[=rel_cluster_test]{rel_cluster_test()}}, \code{\link[=run_between]{run_between()}}
 }

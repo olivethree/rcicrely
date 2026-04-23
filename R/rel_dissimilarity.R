@@ -1,13 +1,19 @@
 #' Representational dissimilarity with bootstrap CIs
 #'
+#' @description
 #' Compute two scalar dissimilarity metrics between two conditions'
-#' group-level signals  --  Pearson correlation and Euclidean distance  -- 
+#' group-level signals (Pearson correlation and Euclidean distance),
 #' with percentile bootstrap confidence intervals.
+#'
+#' Use this when you want a single number (or two) summarising "how
+#' different are these two conditions' CIs?", with uncertainty.
+#' Pair with [rel_cluster_test()] when you also want to know
+#' **where** they differ.
 #'
 #' Bootstrap: within each condition, resample participants with
 #' replacement; recompute the group mean and the two metrics.
 #' `n_boot` replicates give percentile CIs via `quantile()`.
-#' No `boot` dependency (CLAUDE.md sec.10). BCa is future work.
+#' No `boot` dependency. BCa is future work.
 #'
 #' @param signal_matrix_a,signal_matrix_b Pixels x participants,
 #'   base-subtracted. Row counts must match.
@@ -15,9 +21,32 @@
 #' @param ci_level Confidence level. Default 0.95.
 #' @param seed Optional integer; RNG state restored on exit.
 #' @param progress Show a `cli` progress bar.
-#' @return Object of class `rcicrely_dissim`. Fields: `$correlation`,
-#'   `$euclidean`, `$boot_cor`, `$boot_dist`, `$ci_cor`, `$ci_dist`,
-#'   `$boot_se_cor`, `$boot_se_dist`, `$n_boot`, `$ci_level`.
+#' @section Reading the result:
+#' * `$correlation`, `$euclidean`, observed values on the full
+#'   sample. Pearson r is scale-tolerant for a single uniform scaling;
+#'   Euclidean distance is sensitive to any scaling.
+#' * `$boot_cor`, `$boot_dist`, full bootstrap distributions.
+#' * `$ci_cor`, `$ci_dist`, percentile CIs at `ci_level`.
+#' * `$boot_se_cor`, `$boot_se_dist`, bootstrap SEs.
+#'
+#' @section Common mistakes:
+#' * Reading `$correlation` near 1 as "the conditions look the same".
+#'   Two CIs with identical spatial pattern but different magnitudes
+#'   produce r near 1; the magnitude difference shows up in
+#'   `$euclidean`.
+#' * Treating `$euclidean` as comparable across pixel resolutions
+#'   (it scales with sqrt(n_pixels)). Use it as a within-study metric.
+#'
+#' @section Reliability metrics expect raw masks:
+#' Pearson r survives a single uniform linear scaling but breaks
+#' under per-CI `"matched"`-style scaling; Euclidean distance is
+#' sensitive to **any** scaling. If `signal_matrix_a` / `_b` came
+#' from [read_cis()] / [extract_signal()] on rendered PNGs, treat
+#' results as approximate. See
+#' `vignette("tutorial", package = "rcicrely")` chapter 3.
+#'
+#' @return Object of class `rcicrely_dissim`. Fields described in
+#'   **Reading the result** above.
 #' @seealso [rel_cluster_test()], [run_between()]
 #' @export
 rel_dissimilarity <- function(signal_matrix_a,
@@ -27,6 +56,9 @@ rel_dissimilarity <- function(signal_matrix_a,
                               seed     = NULL,
                               progress = TRUE) {
   validate_two_signal_matrices(signal_matrix_a, signal_matrix_b)
+  if (looks_scaled(signal_matrix_a) || looks_scaled(signal_matrix_b)) {
+    warn_looks_scaled("signal_matrix_a / _b")
+  }
   n_a <- ncol(signal_matrix_a)
   n_b <- ncol(signal_matrix_b)
   n_boot <- as.integer(n_boot)

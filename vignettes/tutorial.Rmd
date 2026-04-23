@@ -1,5 +1,5 @@
 ---
-title: "rcicrely tutorial: assessing reverse-correlation CI reliability"
+title: "rcicrely user guide"
 author: "Manuel Oliveira"
 date: "`r Sys.Date()`"
 output:
@@ -7,136 +7,407 @@ output:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{rcicrely tutorial: assessing reverse-correlation CI reliability}
+  %\VignetteIndexEntry{rcicrely user guide}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment  = "#>",
+  collapse  = TRUE,
+  comment   = "#>",
   fig.align = "center",
   fig.width = 7,
   fig.height = 4.5,
-  dpi      = 96
+  dpi       = 96
 )
+options(rcicrely.silence_scaling_warning = TRUE)  # quiet vignette
 ```
 
-## 1. What `rcicrely` is — and isn't
+This guide is written for two readers in parallel: the researcher who
+wants to know "which function do I call for the question I have?",
+and the methodologically-curious user who also wants to know "and why
+should I trust what it returns?". Each function gets a short
+plain-language description, the actual signature, a worked example,
+how to read the output, and the specific footguns to avoid.
 
-In reverse correlation (RC), participants' trial-level choices are
-projected onto a pool of noise patterns to reconstruct the mental
-representation they used to make those choices — a **classification
-image** (CI). You end up with one CI per participant, plus a group-level
-CI obtained by averaging.
+## 1. What `rcicrely` is - and isn't
+
+In reverse correlation (RC), participants' trial-level choices project
+onto a pool of noise patterns to reconstruct the mental representation
+they used. The output is a per-producer **classification image** (CI)
+plus a group-level CI obtained by averaging.
 
 `infoVal` (Brinkman et al., 2019) tells you whether a CI contains more
 signal than chance. It does **not** tell you whether that signal is
-stable across producers, replicable on a different subset of the
-producers, or distinguishable from another condition's CI.
+*stable across producers*, *replicable on a different subset of
+producers*, or *distinguishable from another condition's CI*.
 
-`rcicrely` fills that gap with a reliability-assessment toolkit that
-operates at the **pixel level**, directly on the CI signal. It gives
-you two families of answers:
+`rcicrely` fills that gap with a pixel-level reliability toolkit:
 
 - **Within-condition** (how consistent is a condition's CI across
-  producers?): permuted split-half with Spearman–Brown correction,
-  leave-one-out sensitivity, ICC(3,1) and ICC(3,k) via direct
-  mean-squares — [`rel_split_half()`][rcicrely::rel_split_half],
-  [`rel_loo()`][rcicrely::rel_loo], [`rel_icc()`][rcicrely::rel_icc],
-  orchestrated by [`run_within()`][rcicrely::run_within].
+  producers?): permuted split-half with Spearman-Brown,
+  leave-one-out sensitivity, ICC(3,1) and ICC(3,k).
 - **Between-condition** (is condition A's CI distinguishable from
-  condition B's?): vectorised Welch pixel t, cluster-based permutation
-  with max-statistic family-wise error control, and bootstrap
-  representational dissimilarity — [`rel_cluster_test()`][rcicrely::rel_cluster_test],
-  [`rel_dissimilarity()`][rcicrely::rel_dissimilarity], orchestrated by
-  [`run_between()`][rcicrely::run_between].
+  condition B's?): vectorised Welch t per pixel, cluster-based
+  permutation with max-statistic FWER, bootstrap representational
+  dissimilarity.
 
-Critically, `rcicrely` does not require a second-phase trait-rating
-study: the reliability metrics read from the pixel-level signal
-produced by the original producers. This sidesteps the two-phase
-design that Cone et al. (2020) flagged as problematic.
+Critically, none of this requires a phase-2 trait-rating study. The
+metrics read directly from the pixel-level signal produced by the
+original producers, sidestepping the two-phase design Cone et al.
+(2020) flagged.
+
+### `infoVal` and `rcicrely` together
+
+`rcicrely` does not compute `infoVal` itself (Brief-RC `infoVal` is
+deferred to a later release; for 2IFC, use
+`rcicr::computeInfoVal2IFC()` directly). The two are complementary:
+`infoVal` tests presence of signal; `rcicrely` tests reliability and
+discriminability of signal.
+
+If you use `rcicr::computeInfoVal2IFC()` on the output of
+`rcicr::batchGenerateCI2IFC()`, you do not need to worry about
+scaling: the function pulls the raw `$ci` element out of the CI-list
+internally (`norm(matrix(target_ci[["ci"]]), "f")` in its source).
+The scaling settings affect the rendered CI but not the infoVal
+computation.
+
+The scaling caveat applies when you compute `infoVal` outside that
+path:
+
+- **Brief-RC** has no canonical `infoVal` function. Anyone computing
+  it for Brief-RC is rolling their own, feed the raw mask
+  (`res$signal_matrix` from `ci_from_responses_briefrc()`), not
+  `res$rendered_ci` or anything PNG-derived.
+- **PNG-derived data**: you cannot pass `read_cis()` output to
+  `computeInfoVal2IFC()` directly (it expects an rcicr CI-list, not
+  a bare matrix). If you reconstruct one or hand-roll the norm
+  calculation, use the raw mask, not the PNG pixel values minus
+  base, which are `scaling(mask)`.
 
 ## 2. Installation
 
-`rcicrely` is distributed on GitHub. The canonical `rcicr` package
-(required only for the 2IFC path; Brief-RC is native here) is also
-GitHub-only in its current form:
-
 ```{r install, eval = FALSE}
 # install.packages("remotes")
-remotes::install_github("rdotsch/rcicr")     # 2IFC path
+remotes::install_github("rdotsch/rcicr")      # 2IFC path only
 remotes::install_github("olivethree/rcicrely")
 ```
 
-If you only work with Brief-RC you can skip `rcicr` — the Brief-RC CI
-implementation in `rcicrely` is fully native (Schmitz, Rougier &
-Yzerbyt, 2024).
-
-## 3. Two input modes
+If you only use Brief-RC you can skip `rcicr` - the Brief-RC CI
+implementation is fully native (Schmitz, Rougier & Yzerbyt, 2024).
 
 ```{r load}
 library(rcicrely)
 ```
 
-Every reliability metric takes a **signal matrix**: pixels ×
-participants, base-subtracted. You can get there in two ways.
+## 3. Mental model: the signal matrix
 
-### 3.1 Mode 1: pre-computed CI images
+Every reliability metric in this package takes a single object: a
+**signal matrix**, pixels by participants. Get this right and the
+rest of the package is a thin shell over it.
 
-If you already have individual CIs on disk as PNG/JPEG:
+### 3.1 Raw mask vs. rendered CI
 
-```{r mode1, eval = FALSE}
-signal <- load_signal_matrix(
-  dir             = "data/cis_condition_A/",
-  base_image_path = "data/base.jpg"
-)
-# or split the steps:
-cis    <- read_cis("data/cis_condition_A/")
-signal <- extract_signal(cis, base_image_path = "data/base.jpg")
+A CI exists in two forms.
+
+The **raw mask** is the participant's noise contribution before any
+display transformation. It is what the math is about. For Brief-RC,
+it is `(noise_pool[, chosen_ids] %*% signed_responses) / n_unique`
+(Schmitz's `genMask()`). For 2IFC, it is rcicr's `$ci` element. Values
+are typically in a narrow band around zero (~ +/- 0.05).
+
+The **rendered CI** is what gets saved to PNG. It is
+`base + scaling(mask)`, where `scaling()` may stretch the mask to the
+base image's range ("matched"), apply a constant gain, or do nothing.
+Scaling is a *display* transformation, not a statistical one.
+
+Subtracting the base from a rendered CI does **not** recover the raw
+mask:
+
+```
+PNG_pixels - base = scaling(mask)   (NOT  mask)
 ```
 
-### 3.2 Mode 2: from raw response data
+| Metric                                       | Behavior under scaling                                       |
+|---------------------------------------------:|:-------------------------------------------------------------|
+| `rel_split_half`, `rel_loo`                  | Survives uniform scaling. Breaks under per-CI "matched".     |
+| `rel_dissimilarity` (Pearson r half)         | Same.                                                        |
+| `rel_dissimilarity` (Euclidean half)         | **Distorted** by any scaling.                                |
+| `rel_icc`                                    | **Distorted** by any scaling.                                |
+| `pixel_t_test`, `rel_cluster_test`           | **Distorted** by per-CI scaling.                             |
+| `rcicr::computeInfoVal2IFC()` (canonical)    | Uses raw `$ci` internally, unaffected.                    |
+| Hand-rolled `infoVal` (Brief-RC, custom)     | **Distorted** by any scaling. Use the raw mask.              |
 
-If you have trial-level responses and want the package to compute
-CIs internally, dispatch by paradigm.
+### 3.2 Two paths to the signal matrix
 
-**2IFC** — wraps `rcicr::batchGenerateCI2IFC()`:
+```
+Mode 1: PNGs on disk           Mode 2: raw responses
+          |                              |
+   read_cis()                    ci_from_responses_2ifc() / _briefrc()
+          |                              |
+   extract_signal()                      |
+          |                              |
+   scaling(mask)                       mask                    <-- raw
+          |                              |
+          +---------> rel_*() <----------+
+```
 
-```{r mode2-2ifc, eval = FALSE}
+**Mode 2 returns the raw mask**; Mode 1 cannot, because PNGs on disk
+have always been rendered. Prefer Mode 2 when raw responses are
+available. If you must use Mode 1, the package emits a one-time
+warning per session reminding you of the caveat. To silence:
+
+```{r silence-mode1, eval = FALSE}
+# acknowledge per-call:
+signal <- load_signal_matrix("data/cis/", "data/base.jpg",
+                             acknowledge_scaling = TRUE)
+
+# or silence for the whole session:
+options(rcicrely.silence_scaling_warning = TRUE)
+```
+
+If you generated the PNGs yourself with
+`rcicr::generateCI2IFC(scaling = "none")`, the rendered output is
+effectively raw, and the warning is genuinely a false positive.
+
+### 3.3 A concrete demonstration
+
+Here is what scaling does to the same underlying mask.
+
+```{r scaling-demo, fig.height = 3.5, fig.width = 7}
+set.seed(1)
+n_pix <- 32L * 32L
+n_p   <- 20L
+mask  <- matrix(rnorm(n_pix * n_p, sd = 0.02), n_pix, n_p)
+
+# Render: stretch each column to [-0.5, 0.5] (Schmitz "matched")
+rendered <- apply(mask, 2L, function(m) {
+  rng <- diff(range(m)); if (rng == 0) m else m * (1 / rng)
+})
+
+c(
+  raw_max_range      = round(diff(range(mask)),     3L),
+  rendered_max_range = round(diff(range(rendered)), 3L)
+)
+
+# Pearson r between same-column raw and rendered: ~ 1
+# (a perfect linear stretch preserves Pearson)
+mean(vapply(seq_len(n_p),
+            function(j) cor(mask[, j], rendered[, j]),
+            numeric(1L)))
+
+# But the variance ratios that drive ICC are very different
+var(rowMeans(mask))      # variance of the group mean over pixels
+var(rowMeans(rendered))  # same metric, on the rendered version
+```
+
+Pearson r per column is exactly 1 (linear scaling is correlation-
+preserving), but the row-mean variance the ICC formula depends on is
+~25x larger on the rendered version. ICC(3,*) computed on rendered
+data is therefore not the same ICC computed on the raw mask. The
+same logic applies to Euclidean distance and to `infoVal`.
+
+## 4. Function reference: I/O
+
+### 4.1 `read_cis()`
+
+**What it does.** Reads every PNG/JPEG in a directory, converts each
+to grayscale, returns a pixels by participants numeric matrix.
+
+**When to use it.** You have one CI image per producer already saved
+on disk and you want to load them into R as a numeric matrix. Pair
+with [`extract_signal()`](#section-extract-signal) to get a
+base-subtracted signal matrix.
+
+```{r read-cis-demo}
+# Make a tiny synthetic dataset on disk to demonstrate against.
+demo_dir <- tempfile("ci_demo_"); dir.create(demo_dir)
+base_img <- matrix(0.5, 32L, 32L)
+png_path <- function(i) file.path(demo_dir, sprintf("p%02d.png", i))
+if (requireNamespace("png", quietly = TRUE)) {
+  for (i in 1:6) {
+    img <- pmin(pmax(base_img + matrix(rnorm(32 * 32, sd = 0.05), 32, 32),
+                     0), 1)
+    png::writePNG(img, png_path(i))
+  }
+}
+```
+
+```{r read-cis-call, eval = requireNamespace("png", quietly = TRUE)}
+cis <- read_cis(demo_dir, acknowledge_scaling = TRUE)
+dim(cis)
+attr(cis, "img_dims")
+```
+
+**Reading the result.** `nrow = n_pixels`, `ncol = n_files`. The
+`img_dims` attribute carries `c(nrow, ncol)` of the original image so
+plotting helpers know how to reshape.
+
+**Common mistakes.** Forgetting to subtract the base before passing
+to a `rel_*` function (use [`extract_signal()`](#section-extract-signal)
+or the convenience wrapper [`load_signal_matrix()`](#section-load-signal-matrix)).
+Mixing CIs of different sizes - aborts loudly. Trusting reliability
+numbers without reading the raw vs. rendered note (chapter 3).
+
+### 4.2 `extract_signal()` {#section-extract-signal}
+
+**What it does.** Subtracts the base image from each column of a CI
+matrix, so reliability metrics see only the participant-specific
+contribution.
+
+**When to use it.** You have the output of [`read_cis()`](#read_cis)
+and you want a base-subtracted signal matrix.
+
+```{r extract-signal-demo, eval = requireNamespace("png", quietly = TRUE)}
+base_path <- file.path(demo_dir, "_base.png")
+png::writePNG(base_img, base_path)
+signal <- extract_signal(cis, base_image_path = base_path,
+                         acknowledge_scaling = TRUE)
+dim(signal); attr(signal, "img_dims")
+```
+
+**Reading the result.** Same shape as `cis`, with the `img_dims`
+attribute preserved. Column names propagate.
+
+**Common mistakes.** Pointing at the wrong base (a generated CI PNG
+of the right size will pass the dimension check). Treating the result
+as the raw mask; it is `scaling(mask)` if PNGs were rendered with any
+scaling. See chapter 3.
+
+### 4.3 `load_signal_matrix()` {#section-load-signal-matrix}
+
+**What it does.** Convenience wrapper that calls [`read_cis()`](#read_cis)
+and [`extract_signal()`](#section-extract-signal) in one go.
+
+**When to use it.** Most of the time, when you don't need to do
+anything between reading and subtracting (e.g. masking pixels,
+swapping the base).
+
+```{r load-signal-demo, eval = requireNamespace("png", quietly = TRUE)}
+signal <- load_signal_matrix(
+  dir                 = demo_dir,
+  base_image_path     = base_path,
+  pattern             = "^p[0-9]+\\.png$",  # exclude _base.png
+  acknowledge_scaling = TRUE
+)
+dim(signal)
+```
+
+### 4.4 `read_noise_matrix()`
+
+**What it does.** Loads the pixels by trials noise pool used at
+stimulus generation. Three formats: rcicr `.Rdata` (reconstructs from
+`stimuli_params` + `p`), saved `.rds`, or whitespace-delimited text.
+
+**When to use it.** You are computing Brief-RC CIs and want to load
+the noise pool once, then reuse it across multiple
+[`ci_from_responses_briefrc()`](#section-cifr-briefrc) calls.
+
+```{r read-noise-demo, eval = FALSE}
+# from the rcicr rdata (slow - reconstructs each trial via
+# rcicr::generateNoiseImage):
+noise <- read_noise_matrix("data/rcicr_stimuli.Rdata")
+
+# from a cached rds you saved from the rcicr return value (fast):
+noise <- read_noise_matrix("data/noise_matrix.rds")
+```
+
+**Common mistakes.** Assuming the rcicr `.Rdata` contains a `stimuli`
+object (it does not - the pixels-by-trials matrix is the *return
+value* of `generateStimuli2IFC(return_as_dataframe = TRUE)`, never
+saved to the file). Cache to `.rds` once and load from there.
+Multiple stale `.rdata` files in one directory: rcicr timestamps
+filenames; pick the most recent by mtime if you have several.
+
+### 4.5 `ci_from_responses_2ifc()` {#section-cifr-2ifc}
+
+**What it does.** Wraps `rcicr::batchGenerateCI2IFC()` with all known
+gotchas pre-handled, returns a uniform result list.
+
+**When to use it.** You have 2IFC trial-level responses and want
+per-producer CIs in one call. Requires `rcicr` installed.
+
+```{r cifr-2ifc-demo, eval = FALSE}
 res <- ci_from_responses_2ifc(
   responses       = my_responses,
   rdata_path      = "data/rcicr_stimuli.Rdata",
   baseimage       = "base",
-  participant_col = "participant_id"
+  participant_col = "participant_id",
+  keep_rendered   = FALSE   # set TRUE if you want $rendered_ci for plotting
 )
 signal <- res$signal_matrix
 ```
 
-**Brief-RC 12** — native, no `rcicr` dependency:
+**Reading the result.** `$signal_matrix` is the **raw mask** (rcicr's
+`$ci` per producer) - feed this to `rel_*`. `$participants` and
+`$img_dims` are convenience metadata. `$rcicr_result` is the raw
+rcicr return value if you want anything else. `$rendered_ci`
+(present only if `keep_rendered = TRUE`) is `base + scaling(mask)`
+per producer - **visualization only**, do not feed to `rel_*`.
 
-```{r mode2-briefrc, eval = FALSE}
+**Common mistakes.** Inventing a `base_image_path` argument - the base
+is read from the rdata via `baseimage` *label*, not a path. Passing
+`$rendered_ci` to `rel_*`. Trusting `scaling = "autoscale"` to be
+"raw" - the rendered output is scaled even when the signal_matrix
+isn't.
+
+### 4.6 `ci_from_responses_briefrc()` {#section-cifr-briefrc}
+
+**What it does.** Native Brief-RC 12 implementation of Schmitz's
+`genMask()` formula. No `rcicr::*_brief` calls (those don't exist in
+canonical rcicr v1.0.1).
+
+**When to use it.** You have Brief-RC 12 trial-level responses and
+the noise pool used at stimulus generation.
+
+```{r cifr-briefrc-demo, eval = FALSE}
+res <- ci_from_responses_briefrc(
+  responses       = my_responses,    # one row per trial
+  rdata_path      = "data/rcicr_stimuli.Rdata",
+  base_image_path = "data/base.jpg",
+  method          = "briefrc12",
+  scaling         = "none"           # raw mask only - no $rendered_ci
+)
+signal <- res$signal_matrix
+```
+
+To also get the rendered CI for plotting:
+
+```{r cifr-briefrc-rendered, eval = FALSE}
 res <- ci_from_responses_briefrc(
   responses       = my_responses,
-  rdata_path      = "data/rcicr_stimuli.Rdata",  # noise pool
+  noise_matrix    = my_noise,
   base_image_path = "data/base.jpg",
-  method          = "briefrc12"
+  scaling         = "matched"        # Schmitz default for visualisation
 )
-signal <- res$signal_matrix
+# res$signal_matrix is the raw mask, feed to rel_*
+# res$rendered_ci is base + matched(mask), for PNG / plotting only
 ```
 
-### 3.3 Fake data for this vignette
+**Reading the result.** `$signal_matrix` is **always** the raw mask,
+regardless of `scaling`. `$rendered_ci` exists only when
+`scaling != "none"`. `$participants`, `$img_dims`, `$scaling` are
+metadata.
 
-To keep the vignette self-contained, we simulate a small "condition A
-vs condition B" dataset where the two conditions have different latent
-signals in different face regions. This makes the reliability metrics
-produce non-trivial outputs we can inspect.
+**Common mistakes.** Passing the "expanded" 12-rows-per-trial format -
+Brief-RC 12 is one row per trial (the chosen face), not 12. Asking
+for `method = "briefrc20"` (deferred). Using `$rendered_ci` for
+downstream stats.
+
+```{r cleanup-demo, include = FALSE}
+unlink(demo_dir, recursive = TRUE)
+```
+
+## 5. Function reference: within-condition reliability
+
+For the rest of this guide we'll work with a small synthetic dataset
+where two conditions have different latent signals.
 
 ```{r fake-data}
 set.seed(1)
-make_condition <- function(region_top, n_pix = 32L * 32L, n_p = 30L,
-                           snr = 0.3) {
+make_condition <- function(region_top, n_pix = 32L * 32L,
+                           n_p = 30L, snr = 0.3) {
   noise <- matrix(rnorm(n_pix * n_p, sd = 0.05), n_pix, n_p)
   mask <- if (region_top) {
     c(rep(1, n_pix / 2L), rep(0, n_pix / 2L))
@@ -147,74 +418,226 @@ make_condition <- function(region_top, n_pix = 32L * 32L, n_p = 30L,
   attr(out, "img_dims") <- c(32L, 32L)
   out
 }
-
 sig_A <- make_condition(region_top = TRUE,  n_p = 30L)
 sig_B <- make_condition(region_top = FALSE, n_p = 30L)
 ```
 
-## 4. Within-condition reliability
+### 5.1 `rel_split_half()` {#section-split-half}
 
-Run all three within-condition metrics at once via
-[`run_within()`][rcicrely::run_within]:
+**What it does.** Estimates how stable a condition's group CI is
+across random halves of producers. Reports the per-permutation
+correlation between halves and the Spearman-Brown projection to the
+full sample.
+
+**When to use it.** You want to answer "would I get the same group
+CI if I'd run a different half of my participants?". `r_SB` is
+usually the headline number.
+
+```{r rel-split-half}
+r_sh <- rel_split_half(sig_A, n_permutations = 500L, seed = 1L,
+                       progress = FALSE)
+print(r_sh)
+```
+
+```{r plot-split-half, fig.cap = "Permutation distribution of split-half r."}
+plot(r_sh)
+```
+
+**Reading the result.** `$r_hh` = mean per-split r. `$r_sb` =
+Spearman-Brown projected reliability of the full sample (report this
+unless asked otherwise). `$ci_95`, `$ci_95_sb` are percentile CIs.
+`$distribution` is the full per-permutation r vector.
+
+**Common mistakes.** Reporting `$r_hh` instead of `$r_sb` when the
+audience cares about the full-sample CI. Running with
+`n_permutations < 200` and trusting the CIs.
+
+### 5.2 `rel_loo()` {#section-rel-loo}
+
+**What it does.** For each producer, correlates the full-sample group
+CI with the group CI computed without that producer. Producers with
+unusually low LOO correlation are flagged.
+
+**When to use it.** Spotting producers whose CI sits far from the
+group pattern.
+
+```{r rel-loo}
+r_loo <- rel_loo(sig_A, flag_threshold = 2.5, flag_method = "sd")
+print(r_loo)
+```
+
+The default is mean +/- SD; use `flag_method = "mad"` for a
+median +/- MAD rule that doesn't get pulled around by the very
+outliers it tries to detect:
+
+```{r rel-loo-mad}
+r_loo_mad <- rel_loo(sig_A, flag_threshold = 2.5, flag_method = "mad")
+c(sd_threshold = r_loo$threshold, mad_threshold = r_loo_mad$threshold)
+```
+
+```{r plot-loo, fig.height = 5, fig.cap = "Per-producer LOO correlation."}
+plot(r_loo)
+```
+
+**Reading the result.** `$correlations` is the per-producer vector.
+`$flagged` lists ids below threshold. `$mean_r` / `$sd_r` /
+`$median_r` / `$mad_r` are the centre/spread under both rules so you
+can compare. `$flag_method`, `$flag_threshold` record what was used.
+
+**Common mistakes.** Treating `$flagged` as "drop these producers" -
+investigate first (Cone et al. 2020 caveat: a flagged producer may
+have a genuinely atypical mental representation). Cross-check with
+`rcicrdiagnostics` to rule out response-coding errors.
+
+### 5.3 `rel_icc()` {#section-rel-icc}
+
+**What it does.** Two-way mixed ICC via direct mean squares. Default
+returns ICC(3,1) and ICC(3,k). Pixels are fixed (the image grid),
+participants are random (drawn from a producer population).
+
+**When to use it.** Single-scalar reliability summary. ICC(3,k) is
+"how stable is the group-mean CI?", ICC(3,1) is "how informative is
+one producer's CI?".
+
+```{r rel-icc}
+r_icc <- rel_icc(sig_A, variants = c("3_1", "3_k"))
+print(r_icc)
+```
+
+To also report ICC(2,*) for a reviewer who expects it:
+
+```{r rel-icc-both}
+r_icc_full <- rel_icc(sig_A, variants = c("3_1", "3_k", "2_1", "2_k"))
+print(r_icc_full)
+```
+
+**Reading the result.** `$icc_3_1`, `$icc_3_k`, `$icc_2_1`,
+`$icc_2_k` (the latter two NA unless requested). `$ms_rows`,
+`$ms_cols`, `$ms_error` are the underlying ANOVA mean squares for
+transparency. `$model` is a description string the print method shows.
+
+**Common mistakes.** Asking for ICC(2,*) because a reviewer expects it.
+ICC(2,*) treats pixels as a random sample from a pixel population,
+which they aren't. The numbers are usually close to ICC(3,*) at high
+pixel counts but the model is mis-specified - report both with
+`variants = c("3_1", "3_k", "2_1", "2_k")` if asked.
+
+ICC is **strongly** scale-sensitive. Use the raw mask only.
+
+### 5.4 `run_within()` {#section-run-within}
+
+**What it does.** Calls all three within-condition metrics and bundles
+the result for joint printing/plotting.
 
 ```{r run-within}
 within_A <- run_within(
   sig_A,
-  n_permutations = 500L,   # 2000+ recommended for production
+  n_permutations = 500L,
   seed           = 1L,
   progress       = FALSE
 )
 print(within_A)
 ```
 
-### 4.1 Permuted split-half (Spearman–Brown)
+`$results$split_half`, `$results$loo`, `$results$icc` are the three
+result objects. `plot(within_A)` lays out all three on one page.
 
-For each of `n_permutations` iterations: randomly split the producers
-into two halves, average each half to get two group vectors, correlate
-them. Spearman–Brown correction
-$r_{SB} = 2 r_{hh} / (1 + r_{hh})$ projects to the full sample.
-For **odd N**, one producer is randomly dropped per permutation
-(re-drawn each iteration).
+## 6. Function reference: between-condition inference
 
-```{r plot-split-half, fig.cap = "Permutation distribution of split-half r."}
-plot(within_A$results$split_half)
+### 6.1 `pixel_t_test()` {#section-pixel-t}
+
+**What it does.** Vectorised Welch's t per pixel between two
+condition signal matrices.
+
+**When to use it.** You want the raw t-map (e.g. for custom plotting,
+threshold sensitivity analysis) without cluster-level inference.
+
+```{r pixel-t}
+t_vec <- pixel_t_test(sig_A, sig_B)
+range(t_vec); length(t_vec)
 ```
 
-### 4.2 Leave-one-out sensitivity
+Welch's t (unequal variances) is correct - 2IFC and Brief-RC
+conditions can differ in N and variance.
 
-For each producer, correlate the full-sample group CI with the group CI
-computed without them. Outliers are producers whose LOO correlation
-sits more than `flag_threshold_sd` (default 2.5) standard deviations
-below the mean — removing them noticeably changes the group CI.
+### 6.2 `rel_cluster_test()` {#section-cluster}
 
-```{r plot-loo, fig.height = 5, fig.cap = "Per-producer LOO correlation."}
-plot(within_A$results$loo)
+**What it does.** Cluster-based permutation test with max-statistic
+FWER control. Pixels above the threshold form clusters via
+4-connectivity; cluster mass = sum of t-values inside; null built by
+**stratified** label permutation; max-mass approach controls
+family-wise error.
+
+**When to use it.** "Where in the image do these two conditions
+differ?" with proper multiple-comparison control across pixels.
+
+```{r rel-cluster}
+clust <- rel_cluster_test(
+  sig_A, sig_B,
+  img_dims          = c(32L, 32L),
+  n_permutations    = 500L,
+  cluster_threshold = 2.0,
+  alpha             = 0.05,
+  seed              = 1L,
+  progress          = FALSE
+)
+print(clust)
 ```
 
-### 4.3 ICC(3,1) and ICC(3,k)
-
-Two-way mixed model: pixels are **fixed** (the `img_size × img_size`
-grid), participants are **random** (drawn from a producer
-population). ICC(3,1) is the reliability of a single producer's CI as
-an estimate of the group pattern; ICC(3,k) is the reliability of the
-group-mean CI across `k` producers — usually the headline number for
-a paper.
-
-```{r plot-icc, fig.cap = "ICC variants reported."}
-plot(within_A$results$icc)
+```{r plot-cluster, fig.cap = "Per-pixel Welch t-map; significant clusters outlined."}
+plot(clust)
 ```
 
-See [`rel_icc()`][rcicrely::rel_icc]'s help page for why we report
-ICC(3,\*) rather than ICC(2,\*) by default — pixels aren't a random
-sample from a population of pixels, so ICC(2,\*) is mis-specified even
-though it numerically approximates ICC(3,\*) at high pixel counts.
-ICC(2,\*) is available via `variants = c("2_1", "2_k")` for reviewers
-who expect it.
+**Reading the result.** `$observed_t` is the raw t-map.
+`$clusters` is a data.frame with `cluster_id`, `direction`, `mass`,
+`size`, `p_value`, `significant`. `$pos_labels` / `$neg_labels` are
+integer matrices for plotting overlays. `$null_distribution` exposes
+the per-permutation max masses.
 
-## 5. Between-condition inference
+**Common mistakes.** Reading `cluster_threshold = 2.0` as "p < 0.05"
+- it is the t-cutoff for forming candidate clusters, not the cluster
+significance threshold. Significance is the cluster's mass relative
+to the null. Trusting cluster p-values with `n_permutations < 1000`.
 
-Run both between-condition metrics at once via
-[`run_between()`][rcicrely::run_between]:
+### 6.3 `rel_dissimilarity()` {#section-dissim}
+
+**What it does.** Two scalar dissimilarity metrics between the two
+conditions' group CIs - Pearson correlation and Euclidean distance -
+each with percentile bootstrap CIs.
+
+**When to use it.** "How different are these two conditions overall?"
+with uncertainty. Pair with `rel_cluster_test()` for spatial
+information.
+
+```{r rel-dissim}
+diss <- rel_dissimilarity(
+  sig_A, sig_B,
+  n_boot   = 500L,
+  ci_level = 0.95,
+  seed     = 1L,
+  progress = FALSE
+)
+print(diss)
+```
+
+```{r plot-dissim, fig.cap = "Bootstrap distributions for Pearson r and Euclidean distance."}
+plot(diss)
+```
+
+**Reading the result.** `$correlation`, `$euclidean` are the
+observed values; `$ci_cor`, `$ci_dist` the percentile CIs;
+`$boot_cor`, `$boot_dist` the full bootstrap distributions.
+
+**Common mistakes.** Reading `$correlation` near 1 as "the conditions
+look the same" - identical spatial patterns with different magnitudes
+give r ~ 1; the magnitude difference shows up in `$euclidean`.
+`$euclidean` scales with sqrt(n_pixels) so it is a within-study
+metric, not comparable across resolutions.
+
+### 6.4 `run_between()` {#section-run-between}
+
+**What it does.** Calls both between-condition metrics and bundles
+the result.
 
 ```{r run-between}
 between_AB <- run_between(
@@ -222,132 +645,142 @@ between_AB <- run_between(
   img_dims        = c(32L, 32L),
   n_permutations  = 500L,
   n_boot          = 500L,
-  cluster_threshold = 2.0,
-  alpha           = 0.05,
   seed            = 1L,
   progress        = FALSE
 )
 print(between_AB)
 ```
 
-### 5.1 Cluster-based permutation test
+## 7. Brief-RC end-to-end
 
-Pixels where `|Welch t| > cluster_threshold` form candidate clusters
-via 4-connectivity (the more conservative choice vs. 8-connectivity).
-Each cluster's "mass" is the sum of t-values inside it (captures both
-extent and magnitude). A null distribution of max-mass is built by
-**stratified** label permutation — shuffling condition labels across
-producers while preserving `(N_A, N_B)`. An observed cluster's p-value
-is the fraction of null max-masses (matching sign) that equal or
-exceed it. Maximum-statistic approach gives FWER control.
-
-```{r plot-cluster, fig.cap = "Per-pixel Welch t-map; significant clusters outlined."}
-plot(between_AB$results$cluster_test)
-```
-
-### 5.2 Representational dissimilarity
-
-Bootstrap the Pearson correlation and Euclidean distance between the
-two conditions' group-level signals. Percentile CIs via base R
-`quantile()` — no `boot` dependency.
-
-```{r plot-dissim, fig.cap = "Bootstrap distributions for Pearson r and Euclidean distance."}
-plot(between_AB$results$dissimilarity)
-```
-
-## 6. Brief-RC workflow end-to-end
-
-The end-to-end Brief-RC path, minus the slow stimulus-generation step
-(which you'd run once per project using
-`rcicr::generateStimuli2IFC()` to build the noise pool).
+Schmitz, Rougier & Yzerbyt (2024) introduced Brief-RC 12: each trial
+shows 12 noisy faces (6 oriented, 6 inverted, drawn from a shared
+noise pool); participant picks one. The recorded format is one row
+per trial, columns `participant_id`, `trial`, `stimulus` (chosen pool
+id), `response` (`+1` if oriented, `-1` if inverted). `rcicrely`'s
+implementation is native (no rcicr `_brief` functions, which don't
+exist in canonical rcicr v1.0.1).
 
 ```{r briefrc-demo, eval = FALSE}
-# 1. Generate a shared noise pool (once).
+# 1. Generate the noise pool (once per project) - heavy step.
 rcicr::generateStimuli2IFC(
   base_face_files     = list(base = "data/base.jpg"),
   n_trials            = 600L,        # becomes the Brief-RC pool size
   img_size            = 256L,
   stimulus_path       = "data/stim",
   label               = "mystudy",
-  ncores              = 1L,          # CLAUDE.md §8.4 — macOS-safe
-  return_as_dataframe = TRUE,
+  ncores              = 1L,          # macOS-safe default
+  return_as_dataframe = TRUE,        # capture the noise matrix!
   seed                = 1L
-)
+) |> saveRDS("data/noise_matrix.rds")  # cache for fast loading
 
-# 2. Collect trial-level responses in the per-trial format
-#    (one row per trial, columns: participant_id, trial, stimulus,
-#     response in {-1, +1}). Schmitz et al. 2024, §3.1.2.
+# 2. Collect Brief-RC responses in the per-trial format.
 
-# 3. Compute individual CIs, extract signal.
+# 3. Compute individual CIs.
 res <- ci_from_responses_briefrc(
   responses       = my_brief_rc_responses,
-  rdata_path      = list.files("data/stim", pattern = "\\.rdata$",
-                               ignore.case = TRUE, full.names = TRUE)[1],
+  noise_matrix    = readRDS("data/noise_matrix.rds"),
   base_image_path = "data/base.jpg",
-  method          = "briefrc12"
+  method          = "briefrc12",
+  scaling         = "matched"   # also rendered for plotting
 )
 
-# 4. Reliability assessment — same functions as any other paradigm.
-within  <- run_within(res$signal_matrix,   seed = 1L)
+# 4. Reliability assessment.
+within  <- run_within(res$signal_matrix, seed = 1L)
 between <- run_between(res_A$signal_matrix, res_B$signal_matrix,
                        seed = 1L)
+
+# 5. Save rendered CI to PNG (visualization only - DO NOT use for stats)
+if (requireNamespace("png", quietly = TRUE)) {
+  for (j in seq_along(res$participants)) {
+    img <- matrix(res$rendered_ci[, j], res$img_dims[1], res$img_dims[2])
+    img <- pmin(pmax(img, 0), 1)
+    png::writePNG(img, sprintf("plots/p%02d.png", j))
+  }
+}
 ```
 
-**Brief-RC infoVal** is deferred to a later release — computing it
-correctly requires a reference distribution matched to each
-participant's trial count, which is non-trivial. The `rel_*`
-reliability metrics don't depend on infoVal.
+**Brief-RC `infoVal`** is deferred (no canonical implementation in
+either rcicr or rcicrely). It needs a reference distribution matched
+to each producer's trial count, not the pool size. The `rel_*`
+reliability metrics do not depend on it. If you hand-roll an
+`infoVal` for Brief-RC today, compute it on the **raw mask**
+(`res$signal_matrix`), not on `res$rendered_ci` or any saved PNG
+(those carry the scaling step and will give a wrong reference
+comparison).
 
-## 7. Interpreting results and common pitfalls
+## 8. Interpreting results and common pitfalls
 
-**Split-half r** — think of $r_{hh}$ around 0.3 as weak, 0.5 as
-moderate, 0.7+ as strong for producer-level CI consistency. Because
-Spearman–Brown projects from half-samples to the full sample, $r_{SB}$
-is the number to report when asked "how reliable is the group CI I'm
-publishing?"
+**Sample size.** `rcicrely` aborts below 4 producers per condition
+and warns below 30 (Cone et al. 2020 recommend N >= 60 for stable
+reliability assessment). At N = 10 the metrics are computable but
+their CIs are wide.
 
-**LOO flagging** — a flagged producer means their CI sits far from
-the group pattern. That doesn't imply bad data; it could be a
-genuinely atypical mental representation. Cross-check against
-[`rcicrdiagnostics`][rcicrdiagnostics-link] first to rule out
-response-coding errors.
+**Split-half.** Think of `r_hh` ~ 0.3 as weak, 0.5 as moderate, 0.7+
+as strong producer-level consistency. `r_SB` is what to report when
+asked about the full-sample CI.
 
-**Cluster test** — a significant cluster tells you *where* two
-conditions differ, not *how different they are on average*. Pair with
-`rel_dissimilarity()` for a scalar magnitude.
+**LOO flagging.** A flag is a starting point for investigation, not a
+verdict. Use `flag_method = "mad"` if the SD rule is dominated by
+the very outliers it tries to find.
 
-**Sample size** — `rcicrely` warns at N < 30 participants per
-condition. Cone et al. (2020) recommend N ≥ 60 for stable reliability
-assessment. At N = 10 the metrics are computable but the CIs on them
-will be wide.
+**ICC(3,*) vs ICC(2,*).** Numerically close at high pixel counts but
+ICC(3,*) is the correctly-specified model. Don't swap because of a
+reviewer; report both with `variants = c("3_1", "3_k", "2_1", "2_k")`
+if pressed.
 
-**ICC(3,\*) vs ICC(2,\*)** — numerically close at high pixel counts,
-but ICC(3,\*) is the correctly-specified model (pixels fixed,
-producers random). Don't swap to ICC(2,\*) because a reviewer is used
-to seeing it — use `variants = c("3_1", "3_k", "2_1", "2_k")` to
-report both.
+**Cluster threshold != p-value.** `cluster_threshold = 2.0` is the
+t-cutoff for forming clusters. Significance is decided by mass
+relative to the null. The default is roughly two-tailed p < 0.05 at
+large df, but at small N it under-rejects - inspect the t histogram.
 
-## 8. References
+**Raw vs. rendered CIs.** This package's reliability math is correct
+**given** a raw signal matrix. Mode 1 (PNGs on disk) loads
+`scaling(mask)` instead of `mask`; results will differ from what raw
+responses would produce. The size of the difference depends on the
+scaling that was applied at PNG-write time. Mode 2 is the safe path.
 
-- Brinkman, L., Dotsch, R., Zondergeld, J., Aarts, H. (2019).
-  Visualising mental representations: a primer on noise-based reverse
-  correlation in social psychology. *European Review of Social
-  Psychology*, 28(1), 333–361.
-- Cone, J., Flaharty, K., & Ferguson, M. J. (2020). Believability of
-  evidence matters for correcting social impressions. *PNAS*.
+**`infoVal` correctness.** `rcicr::computeInfoVal2IFC()` extracts
+the raw `$ci` from its input CI-list internally, so the canonical
+2IFC path is safe regardless of `scaling`. The pitfall is in
+hand-rolled `infoVal` implementations, for Brief-RC, or for any
+custom code that consumes a bare matrix, which must be fed the
+raw mask. Feeding rendered/scaled values silently distorts the
+reference comparison and produces wrong significance verdicts.
+
+## 9. References
+
+- Brinkman, L., Todorov, A., & Dotsch, R. (2017). Visualising mental
+  representations: A primer on noise-based reverse correlation in
+  social psychology. *European Review of Social Psychology*, 28(1),
+  333-361. <https://doi.org/10.1080/10463283.2017.1381469>
+- Brinkman, L., Goffin, S., van de Schoot, R., van Haren, N. E. M.,
+  Dotsch, R., & Aarts, H. (2019). Quantifying the informational
+  value of classification images. *Behavior Research Methods*,
+  51(5), 2059-2073. <https://doi.org/10.3758/s13428-019-01232-2>
+- Cone, J., Flaharty, K., & Ferguson, M. J. (2019). Believability of
+  evidence matters for correcting social impressions. *Proceedings
+  of the National Academy of Sciences*, 116(20), 9802-9807.
+  <https://doi.org/10.1073/pnas.1903222116>
 - Dotsch, R. (2023). *rcicr*: Reverse-Correlation Image-Classification
   Toolbox. R package v1.0.1.
+  <https://github.com/rdotsch/rcicr>
 - Maris, E., & Oostenveld, R. (2007). Nonparametric statistical
-  testing of EEG- and MEG-data. *Journal of Neuroscience Methods*.
+  testing of EEG- and MEG-data. *Journal of Neuroscience Methods*,
+  164(1), 177-190. <https://doi.org/10.1016/j.jneumeth.2007.03.024>
 - McGraw, K. O., & Wong, S. P. (1996). Forming inferences about some
-  intraclass correlation coefficients. *Psychological Methods*.
+  intraclass correlation coefficients. *Psychological Methods*,
+  1(1), 30-46. <https://doi.org/10.1037/1082-989X.1.1.30>
 - Nichols, T. E., & Holmes, A. P. (2002). Nonparametric permutation
-  tests for functional neuroimaging: a primer with examples.
-  *Human Brain Mapping*.
+  tests for functional neuroimaging: A primer with examples.
+  *Human Brain Mapping*, 15(1), 1-25.
+  <https://doi.org/10.1002/hbm.1058>
 - Schmitz, M., Rougier, M., & Yzerbyt, V. (2024). Introducing the
-  brief reverse correlation: an improved tool to assess visual
-  representations. *Behavior Research Methods*.
+  brief reverse correlation: An improved tool to assess visual
+  representations. *European Journal of Social Psychology*.
+  <https://doi.org/10.1002/ejsp.3100>
 - Shrout, P. E., & Fleiss, J. L. (1979). Intraclass correlations:
-  uses in assessing rater reliability. *Psychological Bulletin*.
+  Uses in assessing rater reliability. *Psychological Bulletin*,
+  86(2), 420-428. <https://doi.org/10.1037/0033-2909.86.2.420>
 
 [rcicrdiagnostics-link]: https://github.com/olivethree/rcicrdiagnostics

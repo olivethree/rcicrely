@@ -1,71 +1,168 @@
-#' Load the noise matrix from an rcicr `.Rdata` file or a text file
+#' Load the noise matrix from an rcicr `.Rdata`, an `.rds`, or a text file
 #'
-#' rcicr's [rcicr::generateStimuli2IFC()] writes a timestamped `.Rdata`
-#' containing a `stimuli` object (pixels x n_trials data frame / matrix
-#' of noise patterns). For Brief-RC workflows this same pool of noise
-#' patterns is the input to the native mask computation. This loader
-#' accepts either:
+#' @description
+#' Produces the pixels x n_trials numeric matrix of individual noise
+#' patterns that [ci_from_responses_briefrc()] needs. Use this when
+#' you want to load (or reconstruct) the noise pool once and pass it
+#' to multiple Brief-RC CI computations without re-loading.
 #'
-#' - an `.Rdata` file as produced by rcicr  --  `stimuli` is extracted and
-#'   coerced to a numeric matrix;
-#' - a whitespace- or comma-delimited text file  --  read with
-#'   [data.table::fread()], then coerced.
+#' Three input formats are supported:
 #'
-#' rcicr writes its file with a lowercase `.Rdata` extension on some
-#' filesystems and `.RData` on others. The loader matches both by
-#' examining the first magic bytes (gzip / RData markers) rather than
-#' trusting the extension (CLAUDE.md sec.8.8).
+#' 1. **rcicr `.Rdata`** (the output of
+#'    [rcicr::generateStimuli2IFC()]). The rdata does not store the
+#'    noise matrix directly; it stores `stimuli_params` (per-trial
+#'    parameter rows) and `p` (the sinusoid / gabor basis). This loader
+#'    reconstructs each trial's noise pattern via
+#'    [rcicr::generateNoiseImage()] and stacks them. Requires `rcicr`
+#'    to be installed.
+#' 2. **R `.rds`** previously saved from
+#'    `rcicr::generateStimuli2IFC(return_as_dataframe = TRUE)`. No
+#'    reconstruction needed.
+#' 3. **Plain text** (whitespace- or comma-delimited) matrix, one
+#'    column per trial.
+#'
+#' The loader dispatches on file magic bytes (not extension; rcicr
+#' writes lowercase `.Rdata` on some filesystems, which trips
+#' case-sensitive matching).
+#'
+#' @section Reading the result:
+#' Numeric pixels x n_trials matrix. Each column is one trial's noise
+#' pattern (a sinusoidal or gabor combination of the basis `p`).
+#' Pool ids referenced by Brief-RC `responses$stimulus` are column
+#' indices into this matrix.
+#'
+#' @section Common mistakes:
+#' * Pointing at the rcicr `.Rdata` and assuming it contains a
+#'   `stimuli` object, it doesn't. The loader reconstructs by
+#'   calling [rcicr::generateNoiseImage()] per row, which is correct
+#'   but slow (~4s per 120 trials at 64x64).
+#' * Caching the captured return of
+#'   `rcicr::generateStimuli2IFC(return_as_dataframe = TRUE)` to
+#'   `.rds` once and reusing it is much faster than reconstructing
+#'   from the rdata each run.
+#' * Multiple stale `.rdata` accumulating in a directory because
+#'   rcicr timestamps its filenames; pick the most recent by mtime if
+#'   you have several.
 #'
 #' @param path Path to the file.
-#' @param stimuli_object Name of the object inside the `.Rdata` that
-#'   holds the noise patterns. Defaults to `"stimuli"`, the rcicr
-#'   v1.0.1 convention.
+#' @param baseimage For rcicr `.Rdata` inputs: which base label to
+#'   reconstruct noise for. Defaults to the first key in `base_faces`
+#'   if there is exactly one.
+#' @param stimuli_object For `.Rdata` files that contain a pre-saved
+#'   `stimuli` object (rare, rcicr does not save one by default),
+#'   the name to look up. Defaults to `"stimuli"`.
 #' @return A numeric pixels x n_trials matrix.
+#' @seealso [ci_from_responses_briefrc()]
 #' @export
 #' @examples
 #' \dontrun{
-#' nm <- read_noise_matrix("data/rcicr_bogus_20250101_1200.Rdata")
+#' # From an rcicr rdata:
+#' nm <- read_noise_matrix("data/rcicr_stimuli.Rdata")
+#'
+#' # From a cached rds you saved earlier:
+#' nm <- read_noise_matrix("data/noise_matrix.rds")
 #' }
-read_noise_matrix <- function(path, stimuli_object = "stimuli") {
+read_noise_matrix <- function(path, baseimage = NULL,
+                              stimuli_object = "stimuli") {
   if (!file.exists(path)) {
     cli::cli_abort("File not found: {.path {path}}")
   }
-  # sniff the first few bytes; .Rdata / .RData start with gzip magic
-  # (0x1f 0x8b) for compressed, or "RDX2" / "RDX3" for uncompressed.
+
+  # sniff the first few bytes; .Rdata / .rds start with gzip magic
+  # (0x1f 0x8b) for compressed, or RDX/RDA for uncompressed.
   con <- file(path, open = "rb")
-  on.exit(close(con), add = TRUE)
   magic <- readBin(con, "raw", n = 4L)
   close(con)
-  on.exit()
 
   is_gzip <- length(magic) >= 2L &&
     magic[1] == as.raw(0x1f) && magic[2] == as.raw(0x8b)
   is_rdx <- length(magic) >= 4L &&
     rawToChar(magic[1:4]) %in% c("RDX2", "RDX3", "RDA2", "RDA3")
-  is_rdata <- is_gzip || is_rdx
+  is_binary <- is_gzip || is_rdx
 
-  if (is_rdata) {
-    env <- new.env(parent = emptyenv())
-    load(path, envir = env)
-    if (!stimuli_object %in% ls(env)) {
-      cli::cli_abort(c(
-        "Object {.var {stimuli_object}} not found in {.path {path}}.",
-        "i" = "Objects present: {.var {ls(env)}}."
-      ))
-    }
-    nm <- as.matrix(env[[stimuli_object]])
-    if (!is.numeric(nm)) {
+  if (is_binary) {
+    # try rds first
+    rds_obj <- tryCatch(readRDS(path), error = function(e) NULL)
+    if (!is.null(rds_obj)) {
+      nm <- as.matrix(rds_obj)
+      dimnames(nm) <- NULL
       storage.mode(nm) <- "double"
+      return(nm)
     }
-    return(nm)
+    # fall through: RData
+    env <- new.env(parent = emptyenv())
+    tryCatch(load(path, envir = env),
+             error = function(e) {
+               cli::cli_abort(c(
+                 "Could not read {.path {path}} as .rds or .Rdata.",
+                 "i" = "Magic bytes suggest a binary R file, but neither \\
+                        {.fn readRDS} nor {.fn load} could parse it."
+               ))
+             })
+    objs <- ls(env)
+
+    # Path 1: user pre-saved a `stimuli` object
+    if (stimuli_object %in% objs) {
+      nm <- as.matrix(env[[stimuli_object]])
+      dimnames(nm) <- NULL
+      storage.mode(nm) <- "double"
+      return(nm)
+    }
+
+    # Path 2: rcicr rdata - reconstruct from stimuli_params + p
+    if (all(c("stimuli_params", "p", "img_size") %in% objs)) {
+      if (!requireNamespace("rcicr", quietly = TRUE)) {
+        cli::cli_abort(c(
+          "Reconstructing the noise matrix from an rcicr rdata \\
+           requires the {.pkg rcicr} package.",
+          "i" = "Install: \\
+                 {.run remotes::install_github(\"rdotsch/rcicr\")}"
+        ))
+      }
+      labels <- names(env$stimuli_params)
+      if (is.null(baseimage)) {
+        if (length(labels) != 1L) {
+          cli::cli_abort(c(
+            "Multiple base labels in rdata; pick one via \\
+             {.arg baseimage}.",
+            "i" = "Available: {.val {labels}}"
+          ))
+        }
+        baseimage <- labels[1L]
+      }
+      if (!baseimage %in% labels) {
+        cli::cli_abort(c(
+          "{.arg baseimage} = {.val {baseimage}} not in rdata.",
+          "i" = "Available: {.val {labels}}"
+        ))
+      }
+      params <- env$stimuli_params[[baseimage]]
+      p_basis <- env$p
+      img_size <- env$img_size
+      n_trials <- nrow(params)
+      n_pix <- as.integer(img_size) * as.integer(img_size)
+      nm <- matrix(NA_real_, nrow = n_pix, ncol = n_trials)
+      for (i in seq_len(n_trials)) {
+        nm[, i] <- as.vector(rcicr::generateNoiseImage(
+          params[i, ], p_basis
+        ))
+      }
+      return(nm)
+    }
+
+    cli::cli_abort(c(
+      "Unrecognised objects in {.path {path}}.",
+      "i" = "Expected either {.var stimuli} (pre-saved matrix) or \\
+             {.var stimuli_params} + {.var p} + {.var img_size} \\
+             (rcicr rdata).",
+      "*" = "Found: {.val {objs}}"
+    ))
   }
 
-  # fall through: text file
+  # text file fallback
   tbl <- data.table::fread(path, header = FALSE)
   nm <- as.matrix(tbl)
-  dimnames(nm) <- NULL   # fread assigns V1, V2, ... ; drop for cleanliness
-  if (!is.numeric(nm)) {
-    storage.mode(nm) <- "double"
-  }
+  dimnames(nm) <- NULL
+  storage.mode(nm) <- "double"
   nm
 }

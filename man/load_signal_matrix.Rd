@@ -4,7 +4,12 @@
 \alias{load_signal_matrix}
 \title{Read a directory of CI images and extract the base-subtracted signal}
 \usage{
-load_signal_matrix(dir, base_image_path, pattern = "\\\\.(png|jpe?g)$")
+load_signal_matrix(
+  dir,
+  base_image_path,
+  pattern = "\\\\.(png|jpe?g)$",
+  acknowledge_scaling = FALSE
+)
 }
 \arguments{
 \item{dir}{Directory of CI images (as for \code{\link[=read_cis]{read_cis()}}).}
@@ -13,15 +18,59 @@ load_signal_matrix(dir, base_image_path, pattern = "\\\\.(png|jpe?g)$")
 stimulus-generation time.}
 
 \item{pattern}{Regex for file selection (see \code{\link[=read_cis]{read_cis()}}).}
+
+\item{acknowledge_scaling}{Set to \code{TRUE} to silence the
+once-per-session warning. See \code{\link[=read_cis]{read_cis()}}.}
 }
 \value{
 A numeric pixels x participants matrix, base-subtracted.
 }
 \description{
 Convenience wrapper composing \code{\link[=read_cis]{read_cis()}} and \code{\link[=extract_signal]{extract_signal()}}.
-Returns the \strong{signal matrix} (pixels x participants, base-subtracted)
-that every \verb{rel_*()} function takes.
+Returns a pixels x participants signal matrix in one call. Use this
+when you don't need to intervene between reading and extracting
+(e.g. masking pixels, swapping the base).
 }
+\section{Reading the result}{
+
+Pixels x participants numeric matrix, base-subtracted. Carries an
+\code{img_dims} attribute. Column names are the filename without the
+extension.
+}
+
+\section{Common mistakes}{
+
+\itemize{
+\item Pointing \code{base_image_path} at the wrong file (e.g. a generated CI
+PNG instead of the base face used at stimulus-generation time).
+The dimensions check will catch a wholly wrong image but not a
+wrong-base-of-the-right-size.
+\item Treating the result as raw mask. See \strong{Note} below.
+}
+}
+
+\section{Raw vs. rendered CIs}{
+
+PNG pixel values are necessarily what was rendered to disk:
+\code{base + scaling(mask)}. Subtracting the base in \code{\link[=extract_signal]{extract_signal()}}
+therefore yields \code{scaling(mask)}, not the raw mask. Variance-based
+reliability metrics (\code{\link[=rel_icc]{rel_icc()}}, Euclidean half of
+\code{\link[=rel_dissimilarity]{rel_dissimilarity()}}, \code{\link[=pixel_t_test]{pixel_t_test()}}, \code{\link[=rel_cluster_test]{rel_cluster_test()}}) are
+sensitive to the scaling transform; only correlation-based metrics
+(\code{\link[=rel_split_half]{rel_split_half()}}, \code{\link[=rel_loo]{rel_loo()}}, correlation half of
+\code{\link[=rel_dissimilarity]{rel_dissimilarity()}}) survive a single uniform linear scaling
+unmodified, and even those break under per-CI \code{"matched"}-style
+scaling. The canonical 2IFC \code{infoVal} path
+(\code{rcicr::computeInfoVal2IFC()}) extracts the raw \verb{$ci} internally
+from the rcicr CI-list and is \strong{not} affected; hand-rolled
+\code{infoVal} implementations (Brief-RC, custom code) \strong{are}, and
+should be fed the raw mask. Prefer \code{\link[=ci_from_responses_2ifc]{ci_from_responses_2ifc()}} /
+\code{\link[=ci_from_responses_briefrc]{ci_from_responses_briefrc()}} when raw responses are available;
+both return the raw mask. See
+\code{vignette("tutorial", package = "rcicrely")} chapter 3 for the
+full discussion.
+}
+
 \examples{
 \dontrun{
 signal <- load_signal_matrix(

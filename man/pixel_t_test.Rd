@@ -15,14 +15,27 @@ Numeric vector of length \code{nrow(signal_matrix_a)}.
 }
 \description{
 Computes Welch's t (unequal variances, Student's is \strong{not}
-appropriate  --  conditions can differ in both N and variance) per
+appropriate, conditions can differ in both N and variance) per
 pixel between two condition signal matrices. Fully vectorised: no
 per-row \code{apply()}. Returns a length-\code{n_pixels} numeric vector.
+
+Use this when you want the raw t-map (e.g. for custom plotting or
+threshold sensitivity analysis) without the cluster-level
+inference machinery of \code{\link[=rel_cluster_test]{rel_cluster_test()}}.
 }
-\details{
-Used internally by \code{\link[=rel_cluster_test]{rel_cluster_test()}}; exposed as a standalone
-primitive because the raw t-map is often worth inspecting directly.
+\section{Reading the result}{
+
+Numeric vector, one t-value per pixel. Pixels with zero variance
+in both conditions get \code{0} rather than \code{NaN} so cluster utilities
+don't have to special-case them.
 }
+
+\section{Reliability metrics expect raw masks}{
+
+Welch t is variance-based and sensitive to scaling. See
+\code{vignette("tutorial", package = "rcicrely")} chapter 3.
+}
+
 \seealso{
 \code{\link[=rel_cluster_test]{rel_cluster_test()}}
 }

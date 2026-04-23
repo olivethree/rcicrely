@@ -1,12 +1,23 @@
 #' Vectorised pixel-wise Welch t-test
 #'
+#' @description
 #' Computes Welch's t (unequal variances, Student's is **not**
-#' appropriate  --  conditions can differ in both N and variance) per
+#' appropriate, conditions can differ in both N and variance) per
 #' pixel between two condition signal matrices. Fully vectorised: no
 #' per-row `apply()`. Returns a length-`n_pixels` numeric vector.
 #'
-#' Used internally by [rel_cluster_test()]; exposed as a standalone
-#' primitive because the raw t-map is often worth inspecting directly.
+#' Use this when you want the raw t-map (e.g. for custom plotting or
+#' threshold sensitivity analysis) without the cluster-level
+#' inference machinery of [rel_cluster_test()].
+#'
+#' @section Reading the result:
+#' Numeric vector, one t-value per pixel. Pixels with zero variance
+#' in both conditions get `0` rather than `NaN` so cluster utilities
+#' don't have to special-case them.
+#'
+#' @section Reliability metrics expect raw masks:
+#' Welch t is variance-based and sensitive to scaling. See
+#' `vignette("tutorial", package = "rcicrely")` chapter 3.
 #'
 #' @param signal_matrix_a,signal_matrix_b Pixels x participants,
 #'   base-subtracted. Row counts must match.
