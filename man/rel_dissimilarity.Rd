@@ -2,7 +2,7 @@
 % Please edit documentation in R/rel_dissimilarity.R
 \name{rel_dissimilarity}
 \alias{rel_dissimilarity}
-\title{Representational dissimilarity with bootstrap CIs}
+\title{Between-condition dissimilarity with bootstrap confidence intervals}
 \usage{
 rel_dissimilarity(
   signal_matrix_a,
@@ -30,54 +30,97 @@ Object of class \code{rcicrely_dissim}. Fields described in
 \strong{Reading the result} above.
 }
 \description{
-Compute two scalar dissimilarity metrics between two conditions'
-group-level signals (Pearson correlation and Euclidean distance),
-with percentile bootstrap confidence intervals.
+Quantifies overall dissimilarity between two conditions' group-level
+classification images. The primary statistic is \strong{Euclidean
+distance} between the two group-mean CIs, reported both raw and
+normalised by \code{sqrt(n_pixels)} for cross-resolution comparability.
+Percentile bootstrap 95\% confidence intervals are computed by
+resampling participants with replacement within each condition.
 
-Use this when you want a single number (or two) summarising "how
-different are these two conditions' CIs?", with uncertainty.
-Pair with \code{\link[=rel_cluster_test]{rel_cluster_test()}} when you also want to know
-\strong{where} they differ.
-
-Bootstrap: within each condition, resample participants with
-replacement; recompute the group mean and the two metrics.
-\code{n_boot} replicates give percentile CIs via \code{quantile()}.
-No \code{boot} dependency. BCa is future work.
+Pair with \code{\link[=rel_cluster_test]{rel_cluster_test()}} when you also want to know \strong{where}
+the two conditions differ.
 }
+\details{
+For the observed statistics and each bootstrap replicate \code{i}:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{mean_a      = rowMeans(signal_matrix_a)
+mean_b      = rowMeans(signal_matrix_b)
+observed_dist            = sqrt(sum((mean_a - mean_b)^2))
+observed_dist_normalised = observed_dist / sqrt(n_pixels)
+}\if{html}{\out{</div>}}
+
+Percentile CI via base R \code{quantile()}; no \code{boot} dependency. BCa
+intervals are on the roadmap for a future release.
+}
+\section{Why Euclidean and not Pearson correlation as the primary}{
+
+An earlier release emphasised Pearson correlation between the two
+group-mean CIs as a co-primary metric. The current release retains
+those fields \strong{for backwards compatibility only}; they are
+scheduled for removal in v0.3 and \strong{should not be reported as
+primary} in new work. The reason is a positive baseline: two
+base-subtracted CIs share systematic image-domain spatial
+structure (face shape, oval signal support, low-frequency
+Gaussian-noise smoothness) that pushes their correlation above
+zero even when the underlying mental representations are
+unrelated. Absolute correlation values therefore do not cleanly
+mean "these conditions are similar"; they conflate real
+similarity with shared image-domain structure.
+
+Euclidean distance does not share this failure mode. It is an
+honest magnitude summary of how far the two group-mean CIs sit
+from each other in pixel-signal units. For cross-study comparisons,
+use \verb{$euclidean_normalised} (divided by \code{sqrt(n_pixels)} so the
+metric is resolution-invariant).
+}
+
 \section{Reading the result}{
 
 \itemize{
-\item \verb{$correlation}, \verb{$euclidean}, observed values on the full
-sample. Pearson r is scale-tolerant for a single uniform scaling;
-Euclidean distance is sensitive to any scaling.
-\item \verb{$boot_cor}, \verb{$boot_dist}, full bootstrap distributions.
-\item \verb{$ci_cor}, \verb{$ci_dist}, percentile CIs at \code{ci_level}.
-\item \verb{$boot_se_cor}, \verb{$boot_se_dist}, bootstrap SEs.
+\item \verb{$euclidean}, observed Euclidean distance between group means
+on the full sample (primary statistic).
+\item \verb{$euclidean_normalised}, \verb{$euclidean / sqrt(n_pixels)}. Use this
+for cross-resolution comparisons.
+\item \verb{$boot_dist}, \verb{$ci_dist}, \verb{$boot_se_dist}, bootstrap distribution,
+percentile CI, and SE of the Euclidean distance.
+\item \verb{$correlation}, \verb{$boot_cor}, \verb{$ci_cor}, \verb{$boot_se_cor}: Pearson
+correlation of the group means and its bootstrap summary.
+\strong{Deprecated.} Retained for backwards compatibility with v0.1.x
+code and scheduled for removal in v0.3. Treat these as
+within-study descriptive statistics only; see \strong{Why Euclidean
+and not Pearson correlation}.
+\item \verb{$n_boot}, \verb{$ci_level}, metadata.
 }
 }
 
 \section{Common mistakes}{
 
 \itemize{
-\item Reading \verb{$correlation} near 1 as "the conditions look the same".
-Two CIs with identical spatial pattern but different magnitudes
-produce r near 1; the magnitude difference shows up in
-\verb{$euclidean}.
-\item Treating \verb{$euclidean} as comparable across pixel resolutions
-(it scales with sqrt(n_pixels)). Use it as a within-study metric.
+\item Reporting \verb{$correlation} near 1 as "the conditions look the
+same". Two CIs with identical spatial pattern but different
+magnitudes produce a correlation near 1; magnitude differences
+only show up in \verb{$euclidean}.
+\item Comparing \verb{$euclidean} across studies with different image
+resolutions. Use \verb{$euclidean_normalised} for that.
+\item Reading \verb{$correlation} as a standalone "similarity score".
+The baseline is above zero for independent CIs (see above).
 }
 }
 
 \section{Reliability metrics expect raw masks}{
 
-Pearson r survives a single uniform linear scaling but breaks
-under per-CI \code{"matched"}-style scaling; Euclidean distance is
-sensitive to \strong{any} scaling. If \code{signal_matrix_a} / \verb{_b} came
-from \code{\link[=read_cis]{read_cis()}} / \code{\link[=extract_signal]{extract_signal()}} on rendered PNGs, treat
-results as approximate. See
+Euclidean distance is sensitive to \strong{any} scaling; Pearson r
+survives a single uniform scaling but breaks under per-CI
+\code{"matched"}-style scaling. If \code{signal_matrix_a} / \verb{_b} came from
+\code{\link[=read_cis]{read_cis()}} / \code{\link[=extract_signal]{extract_signal()}} on rendered PNGs, treat results
+as approximate. See
 \code{vignette("tutorial", package = "rcicrely")} chapter 3.
 }
 
+\references{
+Efron, B., & Tibshirani, R. J. (1994). \emph{An introduction to the
+bootstrap}. Chapman & Hall / CRC.
+}
 \seealso{
 \code{\link[=rel_cluster_test]{rel_cluster_test()}}, \code{\link[=run_between]{run_between()}}
 }

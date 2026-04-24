@@ -14,9 +14,9 @@
 #' `$method = "between"`.
 #'
 #' @section Reliability metrics expect raw masks:
-#' Both downstream metrics are scale-sensitive in different ways
-#' (cluster test entirely; dissimilarity's Pearson r partly,
-#' Euclidean entirely). See
+#' Both downstream metrics are scale-sensitive: the cluster test
+#' uses variance-based Welch t, and Euclidean distance in
+#' `rel_dissimilarity()` is sensitive to any scaling. See
 #' `vignette("tutorial", package = "rcicrely")` chapter 3.
 #'
 #' @param signal_matrix_a,signal_matrix_b Pixels x participants,

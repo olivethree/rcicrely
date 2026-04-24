@@ -19,13 +19,15 @@ new_rcicrely_split_half <- function(r_hh, r_sb, ci_95, ci_95_sb,
   )
 }
 
-new_rcicrely_loo <- function(correlations, mean_r, sd_r,
+new_rcicrely_loo <- function(correlations, z_scores,
+                             mean_r, sd_r,
                              median_r, mad_r,
                              threshold, flagged, summary_df,
                              flag_method, flag_threshold) {
   structure(
     list(
       correlations   = correlations,
+      z_scores       = z_scores,
       mean_r         = mean_r,
       sd_r           = sd_r,
       median_r       = median_r,
@@ -87,22 +89,26 @@ new_rcicrely_cluster_test <- function(observed_t, clusters,
 }
 
 new_rcicrely_dissim <- function(correlation, euclidean,
+                                euclidean_normalised,
                                 boot_cor, boot_dist,
                                 ci_cor, ci_dist,
                                 boot_se_cor, boot_se_dist,
-                                n_boot, ci_level) {
+                                n_boot, ci_level,
+                                n_pixels) {
   structure(
     list(
-      correlation   = correlation,
-      euclidean     = euclidean,
-      boot_cor      = boot_cor,
-      boot_dist     = boot_dist,
-      ci_cor        = ci_cor,
-      ci_dist       = ci_dist,
-      boot_se_cor   = boot_se_cor,
-      boot_se_dist  = boot_se_dist,
-      n_boot        = n_boot,
-      ci_level      = ci_level
+      correlation          = correlation,
+      euclidean            = euclidean,
+      euclidean_normalised = euclidean_normalised,
+      boot_cor             = boot_cor,
+      boot_dist            = boot_dist,
+      ci_cor               = ci_cor,
+      ci_dist              = ci_dist,
+      boot_se_cor          = boot_se_cor,
+      boot_se_dist         = boot_se_dist,
+      n_boot               = n_boot,
+      ci_level             = ci_level,
+      n_pixels             = n_pixels
     ),
     class = c("rcicrely_dissim", "rcicrely_result")
   )

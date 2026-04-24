@@ -1,29 +1,45 @@
-#' Leave-one-out sensitivity
+#' Leave-one-out influence screening
 #'
 #' @description
-#' For each producer, correlates the full-sample group CI with the
-#' group CI computed without that producer. A producer whose LOO
-#' correlation falls more than `flag_threshold` units below the
-#' centre (mean or median, depending on `flag_method`) is flagged as
-#' an influential outlier, their removal changes the group CI
-#' noticeably more than the others.
-#'
-#' Use this to spot producers whose individual CI sits far from the
-#' group pattern. A flag does not imply a bad producer; it could
-#' equally indicate a genuinely atypical mental representation. Cross-
-#' check against `rcicrdiagnostics` first to rule out response-coding
-#' errors.
+#' Screens for influential producers by asking: "if this producer is
+#' removed from the sample, how much does the group classification
+#' image change?" Producers whose removal moves the group pattern
+#' disproportionately are flagged for inspection. This is an
+#' **influence / outlier screening** tool, not a reliability
+#' statistic — see below.
 #'
 #' @details
-#' Two outlier rules are available:
+#' For each producer `i`, compute the Pearson correlation between the
+#' full-sample group CI and the group CI recomputed without that
+#' producer:
+#' ```
+#' full        <- rowMeans(signal_matrix)
+#' r_loo[i]    <- cor(full, rowMeans(signal_matrix[, -i]))
+#' ```
 #'
-#' * `"sd"` (default): flag producers with `r_loo < mean(r) -
-#'   flag_threshold * sd(r)`. Standard convention; sensitive to the
-#'   very outliers it is trying to detect.
-#' * `"mad"`: flag producers with `r_loo < median(r) -
-#'   flag_threshold * mad(r)`. Robust to the few atypical producers
-#'   that often show up in RC datasets and to skewed correlation
-#'   distributions.
+#' Because the full-sample mean and the leave-one-out mean share
+#' `(N - 1) / N` of their data, `r_loo` values are near 1 by
+#' construction even on noisy data, typically `[0.95, 0.999]` at
+#' `N = 30`. **The absolute level of `r_loo` is not informative.**
+#' What is informative is the *relative ordering*: producers whose
+#' `r_loo` sits clearly below the pack are candidates for inspection.
+#' For this reason the function also returns a **z-scored** version of
+#' `r_loo` in `$z_scores`, using the same centre / spread estimators
+#' as the flagging rule. `$z_scores` is the recommended quantity to
+#' plot or report.
+#'
+#' Two flagging rules:
+#'
+#' * `"sd"` (default): flag producers with
+#'   `r_loo < mean(r) - flag_threshold * sd(r)`, equivalently
+#'   `z_scores < -flag_threshold`. Standard convention; sensitive to
+#'   the very outliers it is trying to detect, so the flagging
+#'   threshold can be pulled into the outliers' region.
+#' * `"mad"`: flag producers with
+#'   `r_loo < median(r) - flag_threshold * mad(r)`, equivalently
+#'   `z_scores < -flag_threshold` with a robust centre/spread. Robust
+#'   to the few atypical producers that typically show up in RC
+#'   datasets and to skewed correlation distributions.
 #'
 #' The default `flag_threshold = 2.5` is calibrated so that a
 #' 30-producer dataset flags roughly 0.3 producers by chance under
@@ -31,22 +47,43 @@
 #' `"mad"` it is roughly comparable thanks to MAD's 1.4826 consistency
 #' factor.
 #'
+#' @section What this function is, and is not:
+#' `rel_loo()` is an **influence-screening diagnostic**. It answers
+#' "which producers disproportionately shape the group CI?", not "how
+#' reliable is the group CI?". For reliability, use
+#' [rel_split_half()] or [rel_icc()]. A flag does not mean the
+#' producer is "bad"; it means the producer's individual CI sits far
+#' enough from the group pattern that the data deserve a second look
+#' (response coding, fatigue, task misunderstanding, or a genuinely
+#' atypical mental representation).
+#'
 #' @section Reading the result:
-#' * `$correlations`, named numeric vector, per-producer correlation
-#'   between the full-sample mean and the leave-one-out mean.
-#'   Higher = the producer's CI looks like the rest.
+#' * `$z_scores`, named numeric vector, per-producer standardised
+#'   influence. This is the recommended quantity to plot, report, or
+#'   threshold. Values near 0 = typical producer; values below
+#'   `-flag_threshold` = flagged.
+#' * `$correlations`, named numeric vector, raw per-producer
+#'   `r_loo` values. Included for transparency; see the note above
+#'   about why the raw level is not informative.
 #' * `$mean_r`, `$sd_r`, `$median_r`, `$mad_r`, centre / spread of
-#'   the correlation distribution.
-#' * `$threshold`, the cutoff value computed under the chosen
+#'   the correlation distribution under each rule.
+#' * `$threshold`, the raw cutoff value on `r_loo` under the chosen
 #'   `flag_method`.
 #' * `$flagged`, character vector of producer ids below threshold.
-#' * `$summary_df`, one row per producer, with `correlation` and
-#'   `flag`.
+#' * `$summary_df`, one row per producer with `correlation`,
+#'   `z_score`, and `flag`, sorted by `z_score`.
 #' * `$flag_method`, `$flag_threshold`, what was used.
 #'
 #' @section Common mistakes:
+#' * Reading `r_loo` as a reliability. An `r_loo` of .98 does not
+#'   mean the CI is 98% reliable; it means a single producer's
+#'   removal changed the group mean by 2%, which is the expected
+#'   scale at `N = 30`. Report reliability via [rel_split_half()] or
+#'   [rel_icc()].
 #' * Treating `$flagged` as "drop these producers". Investigate first
-#'   (response coding, fatigue, atypical strategy).
+#'   (response coding, fatigue, atypical strategy). Cross-check with
+#'   the `rcicrdiagnostics` companion package to rule out
+#'   response-coding errors.
 #' * Lowering `flag_threshold` below 2 to flag more producers. That
 #'   trades real signal for noise; use `flag_method = "mad"` instead
 #'   if the SD rule is dominated by the outliers it would otherwise
@@ -68,7 +105,9 @@
 #'   Kept for backwards compatibility with v0.1.0.
 #' @return Object of class `rcicrely_loo`. Fields described in
 #'   **Reading the result** above.
-#' @seealso [rel_split_half()], [rel_icc()], [run_within()]
+#' @seealso [rel_loo_z()] for a tidy z-score accessor;
+#'   [rel_split_half()], [rel_icc()] for reliability metrics proper;
+#'   [run_within()].
 #' @export
 rel_loo <- function(signal_matrix,
                     flag_threshold    = 2.5,
@@ -104,6 +143,15 @@ rel_loo <- function(signal_matrix,
   median_r <- stats::median(cors)
   mad_r    <- stats::mad(cors)
 
+  # z-scores use the same centre/spread as the chosen flagging rule,
+  # so the cutoff is always `z < -flag_threshold`.
+  z_scores <- if (flag_method == "sd") {
+    if (sd_r > 0) (cors - mean_r) / sd_r else rep(0, n)
+  } else {
+    if (mad_r > 0) (cors - median_r) / mad_r else rep(0, n)
+  }
+  names(z_scores) <- names(cors)
+
   threshold <- if (flag_method == "sd") {
     mean_r - flag_threshold * sd_r
   } else {
@@ -114,12 +162,16 @@ rel_loo <- function(signal_matrix,
   summary_df <- data.frame(
     participant_id = names(cors),
     correlation    = unname(cors),
+    z_score        = unname(z_scores),
     flag           = cors < threshold,
     stringsAsFactors = FALSE
   )
+  summary_df <- summary_df[order(summary_df$z_score), , drop = FALSE]
+  rownames(summary_df) <- NULL
 
   new_rcicrely_loo(
     correlations   = cors,
+    z_scores       = z_scores,
     mean_r         = mean_r,
     sd_r           = sd_r,
     median_r       = median_r,
@@ -130,4 +182,42 @@ rel_loo <- function(signal_matrix,
     flag_method    = flag_method,
     flag_threshold = flag_threshold
   )
+}
+
+
+#' Z-scored leave-one-out influence (accessor)
+#'
+#' @description
+#' Convenience accessor that returns a data frame of producer ids and
+#' their z-scored LOO influence, ordered from most-influential
+#' (lowest, most negative `z_score`) to least. Accepts either a
+#' signal matrix (runs [rel_loo()] under the hood) or an existing
+#' `rcicrely_loo` result object (cheap, no recomputation).
+#'
+#' Use this when you want the ordered ranking of producer influence
+#' without the full `rcicrely_loo` list — e.g., for joining against
+#' producer-level metadata, passing to `dplyr`/`ggplot2`, or a
+#' tidy Supplementary table.
+#'
+#' @param x Either a `pixels x participants` signal matrix or an
+#'   object of class `rcicrely_loo` (as returned by [rel_loo()]).
+#' @param ... Passed to [rel_loo()] when `x` is a signal matrix
+#'   (e.g. `flag_threshold`, `flag_method`). Ignored when `x` is
+#'   already a result object.
+#' @return A data frame with columns `participant_id`, `correlation`,
+#'   `z_score`, `flag`, sorted by `z_score` ascending.
+#' @seealso [rel_loo()]
+#' @export
+rel_loo_z <- function(x, ...) {
+  if (inherits(x, "rcicrely_loo")) {
+    return(x$summary_df)
+  }
+  if (is.matrix(x) && is.numeric(x)) {
+    return(rel_loo(x, ...)$summary_df)
+  }
+  cli::cli_abort(c(
+    "{.arg x} must be a numeric signal matrix or an \\
+     {.cls rcicrely_loo} object.",
+    "i" = "Got {.cls {class(x)}}."
+  ))
 }

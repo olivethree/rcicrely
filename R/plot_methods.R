@@ -53,31 +53,42 @@ plot.rcicrely_split_half <- function(x, ...,
 
 #' @export
 print.rcicrely_loo <- function(x, ...) {
-  cat("<rcicrely leave-one-out sensitivity>\n")
+  cat("<rcicrely leave-one-out influence screening>\n")
   cat(sprintf("  N producers:        %d\n", length(x$correlations)))
-  cat(sprintf("  mean LOO r:         %.3f\n", x$mean_r))
-  cat(sprintf("  SD:                 %.3f\n", x$sd_r))
-  if (!is.null(x$median_r)) {
-    cat(sprintf("  median LOO r:       %.3f\n", x$median_r))
-    cat(sprintf("  MAD:                %.3f\n", x$mad_r))
+  cat(sprintf("  flag rule:          %s (threshold = %.2f)\n",
+              x$flag_method, x$flag_threshold))
+
+  # Lead with the informative quantity: z-scored ordering.
+  cat("\n  z-scored influence (most influential first):\n")
+  ordered <- order(x$z_scores)
+  n_show  <- min(length(ordered), 5L)
+  for (i in ordered[seq_len(n_show)]) {
+    pid  <- names(x$z_scores)[i]
+    flag <- if (pid %in% x$flagged) "  *FLAG*" else ""
+    cat(sprintf(
+      "    %-20s  z = %+6.2f  (r_loo = %.4f)%s\n",
+      pid, x$z_scores[i], x$correlations[i], flag
+    ))
   }
-  method  <- if (is.null(x$flag_method))    "sd"        else x$flag_method
-  thresh  <- if (is.null(x$flag_threshold)) NA_real_    else x$flag_threshold
-  centre  <- if (method == "sd")  "mean"   else "median"
-  spread  <- if (method == "sd")  "SD"     else "MAD"
-  cat(sprintf(
-    "  flag rule:          r < %s - %.2f * %s   (=> r < %.3f)\n",
-    centre, thresh, spread, x$threshold
-  ))
+  if (length(ordered) > n_show) {
+    cat(sprintf("    ... (%d more)\n", length(ordered) - n_show))
+  }
+
   if (length(x$flagged) == 0L) {
-    cat("  flagged producers:  none\n")
+    cat("\n  flagged producers:  none\n")
   } else {
     cat(sprintf(
-      "  flagged producers:  %s  (%d)\n",
+      "\n  flagged producers:  %s  (%d)\n",
       paste(x$flagged, collapse = ", "),
       length(x$flagged)
     ))
   }
+
+  cat("\n  Note: r_loo values are near 1 by construction because the\n")
+  cat("  full-sample and leave-one-out means share (N-1)/N of their\n")
+  cat("  data. Use z_scores (relative ordering), not r_loo levels,\n")
+  cat("  to interpret influence. This is a diagnostic, not a\n")
+  cat("  reliability statistic.\n")
   invisible(x)
 }
 
@@ -85,33 +96,38 @@ print.rcicrely_loo <- function(x, ...) {
 #' @export
 summary.rcicrely_loo <- function(object, ...) {
   print(object, ...)
-  cat("\n  Per-participant LOO correlation (sorted):\n")
-  srt <- sort(object$correlations)
-  for (nm in names(srt)) {
-    flag <- if (nm %in% object$flagged) "  *FLAG*" else ""
-    cat(sprintf("    %-20s %.4f%s\n", nm, srt[nm], flag))
+  cat("\n  Full per-participant table (sorted by z_score):\n")
+  for (i in seq_len(nrow(object$summary_df))) {
+    row  <- object$summary_df[i, ]
+    flag <- if (row$flag) "  *FLAG*" else ""
+    cat(sprintf(
+      "    %-20s  z = %+6.2f  (r_loo = %.4f)%s\n",
+      row$participant_id, row$z_score, row$correlation, flag
+    ))
   }
   invisible(object)
 }
 
 #' @export
-plot.rcicrely_loo <- function(x, ..., main = "Leave-one-out sensitivity") {
+plot.rcicrely_loo <- function(x, ..., main = "Leave-one-out influence (z-scored)") {
   op <- graphics::par(no.readonly = TRUE)
   on.exit(graphics::par(op), add = TRUE)
-  srt <- sort(x$correlations)
+  srt <- sort(x$z_scores)
   graphics::par(mar = c(8, 4, 4, 2) + 0.1)
   cols <- ifelse(names(srt) %in% x$flagged, "red", "grey40")
   graphics::barplot(
     srt, las = 2, col = cols, border = NA,
-    main = main, ylab = "Correlation with full-sample group CI",
-    ylim = c(min(srt, x$threshold) - 0.01, 1)
+    main = main, ylab = "z-scored LOO influence",
+    ylim = c(min(srt, -x$flag_threshold) - 0.2,
+             max(srt, 0.5) + 0.2)
   )
-  graphics::abline(h = x$mean_r,    col = "blue", lty = 2)
-  graphics::abline(h = x$threshold, col = "red",  lty = 2)
+  graphics::abline(h = 0,                     col = "blue", lty = 2)
+  graphics::abline(h = -x$flag_threshold,     col = "red",  lty = 2)
   graphics::legend(
-    "bottomright", bty = "n",
-    legend = c(sprintf("mean = %.3f", x$mean_r),
-               sprintf("threshold = %.3f", x$threshold)),
+    "topright", bty = "n",
+    legend = c("centre (z = 0)",
+               sprintf("flag threshold (z = -%.2f)",
+                       x$flag_threshold)),
     text.col = c("blue", "red")
   )
   invisible(x)
@@ -125,14 +141,37 @@ print.rcicrely_icc <- function(x, ...) {
   cat(sprintf("  model:        %s\n", x$model))
   cat(sprintf("  N targets:    %d pixels\n",       x$n_targets))
   cat(sprintf("  N raters:     %d participants\n", x$n_raters))
-  cat("\n")
   pad <- function(label, value) {
     sprintf("  %-14s %.4f\n", label, value)
   }
-  if ("3_1" %in% x$variants) cat(pad("ICC(3,1):",  x$icc_3_1))
-  if ("3_k" %in% x$variants) cat(pad("ICC(3,k):",  x$icc_3_k))
-  if ("2_1" %in% x$variants) cat(pad("ICC(2,1):",  x$icc_2_1))
-  if ("2_k" %in% x$variants) cat(pad("ICC(2,k):",  x$icc_2_k))
+  # Lead with ICC(3,1): single-producer reliability, resolution-comparable.
+  if ("3_1" %in% x$variants) {
+    cat("\n  Primary: ICC(3,1) (single-producer reliability)\n")
+    cat(pad("ICC(3,1):", x$icc_3_1))
+  }
+  if ("3_k" %in% x$variants) {
+    cat("\n  Secondary: ICC(3,k) (group-mean reliability)\n")
+    cat(pad("ICC(3,k):", x$icc_3_k))
+    if (isTRUE(x$n_targets > 50000L)) {
+      cat("  Note: ICC(3,k) approaches 1 at large pixel counts (resolution\n")
+      cat("  asymptote). For cross-resolution comparisons, report ICC(3,1).\n")
+    }
+  }
+  shown_2 <- FALSE
+  if ("2_1" %in% x$variants) {
+    if (!shown_2) {
+      cat("\n  Two-way-random variants (for reviewer comparability only):\n")
+      shown_2 <- TRUE
+    }
+    cat(pad("ICC(2,1):", x$icc_2_1))
+  }
+  if ("2_k" %in% x$variants) {
+    if (!shown_2) {
+      cat("\n  Two-way-random variants (for reviewer comparability only):\n")
+      shown_2 <- TRUE
+    }
+    cat(pad("ICC(2,k):", x$icc_2_k))
+  }
   invisible(x)
 }
 
@@ -237,16 +276,29 @@ plot.rcicrely_cluster_test <- function(x, ...,
 #' @export
 print.rcicrely_dissim <- function(x, ...) {
   cat("<rcicrely representational dissimilarity>\n")
-  cat(sprintf("  n_boot:     %d\n", x$n_boot))
-  cat(sprintf("  CI level:   %.0f%%\n", x$ci_level * 100))
+  cat(sprintf("  n_boot:               %d\n", x$n_boot))
+  cat(sprintf("  CI level:             %.0f%%\n", x$ci_level * 100))
+  cat(sprintf("  n_pixels:             %d\n",
+              if (is.null(x$n_pixels)) NA_integer_ else x$n_pixels))
+  cat("\n  Primary: Euclidean distance between group-mean CIs\n")
   cat(sprintf(
-    "  Pearson r   = %.3f   [%.3f, %.3f]   SE = %.3f\n",
-    x$correlation, x$ci_cor[1], x$ci_cor[2], x$boot_se_cor
-  ))
-  cat(sprintf(
-    "  Euclidean   = %.3f   [%.3f, %.3f]   SE = %.3f\n",
+    "    Euclidean             = %.3f   [%.3f, %.3f]   SE = %.3f\n",
     x$euclidean, x$ci_dist[1], x$ci_dist[2], x$boot_se_dist
   ))
+  if (!is.null(x$euclidean_normalised)) {
+    cat(sprintf(
+      "    Euclidean / sqrt(n)   = %.4f   (resolution-normalised)\n",
+      x$euclidean_normalised
+    ))
+  }
+  cat("\n  [Deprecated — will be removed in v0.3]\n")
+  cat(sprintf(
+    "    Pearson r             = %.3f   [%.3f, %.3f]   SE = %.3f\n",
+    x$correlation, x$ci_cor[1], x$ci_cor[2], x$boot_se_cor
+  ))
+  cat("    Note: correlation between two base-subtracted CIs has a\n")
+  cat("    positive baseline from shared image-domain structure and is\n")
+  cat("    not a clean similarity score. Prefer Euclidean distance.\n")
   invisible(x)
 }
 

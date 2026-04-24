@@ -2,7 +2,7 @@
 % Please edit documentation in R/rel_loo.R
 \name{rel_loo}
 \alias{rel_loo}
-\title{Leave-one-out sensitivity}
+\title{Leave-one-out influence screening}
 \usage{
 rel_loo(
   signal_matrix,
@@ -30,27 +30,45 @@ Object of class \code{rcicrely_loo}. Fields described in
 \strong{Reading the result} above.
 }
 \description{
-For each producer, correlates the full-sample group CI with the
-group CI computed without that producer. A producer whose LOO
-correlation falls more than \code{flag_threshold} units below the
-centre (mean or median, depending on \code{flag_method}) is flagged as
-an influential outlier, their removal changes the group CI
-noticeably more than the others.
-
-Use this to spot producers whose individual CI sits far from the
-group pattern. A flag does not imply a bad producer; it could
-equally indicate a genuinely atypical mental representation. Cross-
-check against \code{rcicrdiagnostics} first to rule out response-coding
-errors.
+Screens for influential producers by asking: "if this producer is
+removed from the sample, how much does the group classification
+image change?" Producers whose removal moves the group pattern
+disproportionately are flagged for inspection. This is an
+\strong{influence / outlier screening} tool, not a reliability
+statistic — see below.
 }
 \details{
-Two outlier rules are available:
+For each producer \code{i}, compute the Pearson correlation between the
+full-sample group CI and the group CI recomputed without that
+producer:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{full        <- rowMeans(signal_matrix)
+r_loo[i]    <- cor(full, rowMeans(signal_matrix[, -i]))
+}\if{html}{\out{</div>}}
+
+Because the full-sample mean and the leave-one-out mean share
+\code{(N - 1) / N} of their data, \code{r_loo} values are near 1 by
+construction even on noisy data, typically \verb{[0.95, 0.999]} at
+\code{N = 30}. \strong{The absolute level of \code{r_loo} is not informative.}
+What is informative is the \emph{relative ordering}: producers whose
+\code{r_loo} sits clearly below the pack are candidates for inspection.
+For this reason the function also returns a \strong{z-scored} version of
+\code{r_loo} in \verb{$z_scores}, using the same centre / spread estimators
+as the flagging rule. \verb{$z_scores} is the recommended quantity to
+plot or report.
+
+Two flagging rules:
 \itemize{
-\item \code{"sd"} (default): flag producers with \code{r_loo < mean(r) - flag_threshold * sd(r)}. Standard convention; sensitive to the
-very outliers it is trying to detect.
-\item \code{"mad"}: flag producers with \code{r_loo < median(r) - flag_threshold * mad(r)}. Robust to the few atypical producers
-that often show up in RC datasets and to skewed correlation
-distributions.
+\item \code{"sd"} (default): flag producers with
+\code{r_loo < mean(r) - flag_threshold * sd(r)}, equivalently
+\code{z_scores < -flag_threshold}. Standard convention; sensitive to
+the very outliers it is trying to detect, so the flagging
+threshold can be pulled into the outliers' region.
+\item \code{"mad"}: flag producers with
+\code{r_loo < median(r) - flag_threshold * mad(r)}, equivalently
+\code{z_scores < -flag_threshold} with a robust centre/spread. Robust
+to the few atypical producers that typically show up in RC
+datasets and to skewed correlation distributions.
 }
 
 The default \code{flag_threshold = 2.5} is calibrated so that a
@@ -59,19 +77,35 @@ The default \code{flag_threshold = 2.5} is calibrated so that a
 \code{"mad"} it is roughly comparable thanks to MAD's 1.4826 consistency
 factor.
 }
+\section{What this function is, and is not}{
+
+\code{rel_loo()} is an \strong{influence-screening diagnostic}. It answers
+"which producers disproportionately shape the group CI?", not "how
+reliable is the group CI?". For reliability, use
+\code{\link[=rel_split_half]{rel_split_half()}} or \code{\link[=rel_icc]{rel_icc()}}. A flag does not mean the
+producer is "bad"; it means the producer's individual CI sits far
+enough from the group pattern that the data deserve a second look
+(response coding, fatigue, task misunderstanding, or a genuinely
+atypical mental representation).
+}
+
 \section{Reading the result}{
 
 \itemize{
-\item \verb{$correlations}, named numeric vector, per-producer correlation
-between the full-sample mean and the leave-one-out mean.
-Higher = the producer's CI looks like the rest.
+\item \verb{$z_scores}, named numeric vector, per-producer standardised
+influence. This is the recommended quantity to plot, report, or
+threshold. Values near 0 = typical producer; values below
+\code{-flag_threshold} = flagged.
+\item \verb{$correlations}, named numeric vector, raw per-producer
+\code{r_loo} values. Included for transparency; see the note above
+about why the raw level is not informative.
 \item \verb{$mean_r}, \verb{$sd_r}, \verb{$median_r}, \verb{$mad_r}, centre / spread of
-the correlation distribution.
-\item \verb{$threshold}, the cutoff value computed under the chosen
+the correlation distribution under each rule.
+\item \verb{$threshold}, the raw cutoff value on \code{r_loo} under the chosen
 \code{flag_method}.
 \item \verb{$flagged}, character vector of producer ids below threshold.
-\item \verb{$summary_df}, one row per producer, with \code{correlation} and
-\code{flag}.
+\item \verb{$summary_df}, one row per producer with \code{correlation},
+\code{z_score}, and \code{flag}, sorted by \code{z_score}.
 \item \verb{$flag_method}, \verb{$flag_threshold}, what was used.
 }
 }
@@ -79,8 +113,15 @@ the correlation distribution.
 \section{Common mistakes}{
 
 \itemize{
+\item Reading \code{r_loo} as a reliability. An \code{r_loo} of .98 does not
+mean the CI is 98\% reliable; it means a single producer's
+removal changed the group mean by 2\%, which is the expected
+scale at \code{N = 30}. Report reliability via \code{\link[=rel_split_half]{rel_split_half()}} or
+\code{\link[=rel_icc]{rel_icc()}}.
 \item Treating \verb{$flagged} as "drop these producers". Investigate first
-(response coding, fatigue, atypical strategy).
+(response coding, fatigue, atypical strategy). Cross-check with
+the \code{rcicrdiagnostics} companion package to rule out
+response-coding errors.
 \item Lowering \code{flag_threshold} below 2 to flag more producers. That
 trades real signal for noise; use \code{flag_method = "mad"} instead
 if the SD rule is dominated by the outliers it would otherwise
@@ -96,5 +137,7 @@ Operates on the raw mask; results may be distorted if
 }
 
 \seealso{
-\code{\link[=rel_split_half]{rel_split_half()}}, \code{\link[=rel_icc]{rel_icc()}}, \code{\link[=run_within]{run_within()}}
+\code{\link[=rel_loo_z]{rel_loo_z()}} for a tidy z-score accessor;
+\code{\link[=rel_split_half]{rel_split_half()}}, \code{\link[=rel_icc]{rel_icc()}} for reliability metrics proper;
+\code{\link[=run_within]{run_within()}}.
 }

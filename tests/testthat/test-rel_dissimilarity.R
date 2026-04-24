@@ -37,3 +37,13 @@ test_that("rel_dissimilarity is reproducible under seed", {
   expect_identical(a$boot_cor,  b$boot_cor)
   expect_identical(a$boot_dist, b$boot_dist)
 })
+
+test_that("euclidean_normalised equals euclidean / sqrt(n_pixels)", {
+  pair <- make_sig_pair(256L, 10L, seed = 4L)
+  d <- suppressWarnings(
+    rel_dissimilarity(pair$a, pair$b, n_boot = 100L, seed = 4L,
+                      progress = FALSE)
+  )
+  expect_equal(d$euclidean_normalised, d$euclidean / sqrt(256))
+  expect_equal(d$n_pixels, 256L)
+})

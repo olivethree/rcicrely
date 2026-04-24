@@ -61,9 +61,9 @@ object each, fields as in the standalone functions.
 
 \section{Reliability metrics expect raw masks}{
 
-Both downstream metrics are scale-sensitive in different ways
-(cluster test entirely; dissimilarity's Pearson r partly,
-Euclidean entirely). See
+Both downstream metrics are scale-sensitive: the cluster test
+uses variance-based Welch t, and Euclidean distance in
+\code{rel_dissimilarity()} is sensitive to any scaling. See
 \code{vignette("tutorial", package = "rcicrely")} chapter 3.
 }
 
