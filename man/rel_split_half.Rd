@@ -89,7 +89,7 @@ value of classification images. \emph{Behavior Research Methods},
 
 Shrout, P. E., & Fleiss, J. L. (1979). Intraclass correlations:
 uses in assessing rater reliability. \emph{Psychological Bulletin},
-86(2), 420-428.
+86(2), 420-428. \doi{10.1037/0033-2909.86.2.420}
 }
 \seealso{
 \code{\link[=rel_loo]{rel_loo()}}, \code{\link[=rel_icc]{rel_icc()}}, \code{\link[=run_within]{run_within()}}

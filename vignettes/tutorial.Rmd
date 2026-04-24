@@ -55,8 +55,8 @@ producers*, or *distinguishable from another condition's CI*.
 
 Critically, none of this requires a phase-2 trait-rating study. The
 metrics read directly from the pixel-level signal produced by the
-original producers, sidestepping the two-phase design Cone et al.
-(2021) flagged.
+original producers, sidestepping the two-phase design Cone,
+Brown-Iannuzzi, Lei, and Dotsch (2021) showed inflates Type I error.
 
 ### `infoVal` and `rcicrely` together
 
@@ -452,14 +452,19 @@ unless asked otherwise). `$ci_95`, `$ci_95_sb` are percentile CIs.
 audience cares about the full-sample CI. Running with
 `n_permutations < 200` and trusting the CIs.
 
-### 5.2 `rel_loo()` {#section-rel-loo}
+### 5.2 `rel_loo()` - influence screening (not a reliability metric) {#section-rel-loo}
 
-**What it does.** For each producer, correlates the full-sample group
-CI with the group CI computed without that producer. Producers with
-unusually low LOO correlation are flagged.
+**What it does.** For each producer, correlates the full-sample
+group CI with the group CI computed without that producer, and
+returns a **z-scored** version of those correlations. Producers
+whose z-score sits clearly below zero have a disproportionate
+influence on the group pattern and are flagged for inspection.
 
-**When to use it.** Spotting producers whose CI sits far from the
-group pattern.
+**When to use it.** To screen for producers whose individual CI is
+far from the group pattern - often a sign of response miscoding,
+fatigue, or a genuinely atypical mental representation. This is a
+diagnostic; it is *not* a reliability statistic (see the note at the
+end of this section).
 
 ```{r rel-loo}
 r_loo <- rel_loo(sig_A, flag_threshold = 2.5, flag_method = "sd")
@@ -475,18 +480,38 @@ r_loo_mad <- rel_loo(sig_A, flag_threshold = 2.5, flag_method = "mad")
 c(sd_threshold = r_loo$threshold, mad_threshold = r_loo_mad$threshold)
 ```
 
-```{r plot-loo, fig.height = 5, fig.cap = "Per-producer LOO correlation."}
+```{r plot-loo, fig.height = 5, fig.cap = "z-scored LOO influence per producer."}
 plot(r_loo)
 ```
 
-**Reading the result.** `$correlations` is the per-producer vector.
-`$flagged` lists ids below threshold. `$mean_r` / `$sd_r` /
-`$median_r` / `$mad_r` are the centre/spread under both rules so you
-can compare. `$flag_method`, `$flag_threshold` record what was used.
+For a tidy ordered table of producers by influence, use
+`rel_loo_z()`:
+
+```{r rel-loo-z, eval = FALSE}
+head(rel_loo_z(r_loo))
+#   participant_id  correlation  z_score  flag
+# 1     outlier01        0.9714    -3.12  TRUE
+# 2           p07        0.9942    -0.84  FALSE
+# ...
+```
+
+**Reading the result.** `$z_scores` is the informative quantity -
+plot / report it directly. `$correlations` is retained for
+transparency (values near 1 by construction because the full-sample
+mean and the leave-one-out mean share `(N - 1) / N` of their data).
+`$flagged` lists ids below threshold. `$summary_df` is a tidy table
+sorted by `z_score`.
+
+**Why you should not read `$correlations` as reliability.** `r_loo`
+values are almost always in `[0.95, 0.999]` at N = 30, even on very
+noisy CIs, because the two vectors being correlated overlap in
+`(N - 1) / N` of their data. A naive reader can misinterpret
+"LOO r = 0.98" as "the CIs are 98% reliable"; this is wrong. Report
+reliability via `rel_split_half()` or `rel_icc()` (§5.1, §5.3).
 
 **Common mistakes.** Treating `$flagged` as "drop these producers" -
-investigate first (Cone et al. 2021 caveat: a flagged producer may
-have a genuinely atypical mental representation). Cross-check with
+investigate first. A flagged producer may have a genuinely atypical
+mental representation rather than bad data. Cross-check with
 `rcicrdiagnostics` to rule out response-coding errors.
 
 ### 5.3 `rel_icc()` {#section-rel-icc}
@@ -539,8 +564,11 @@ within_A <- run_within(
 print(within_A)
 ```
 
-`$results$split_half`, `$results$loo`, `$results$icc` are the three
-result objects. `plot(within_A)` lays out all three on one page.
+`$results$split_half` and `$results$icc` are the two reliability
+result objects. `plot(within_A)` lays them out side by side.
+Leave-one-out influence screening is run separately with
+`rel_loo()` — it is an influence diagnostic, not a reliability
+statistic (see §5.2).
 
 ## 6. Function reference: between-condition inference
 
@@ -712,9 +740,9 @@ comparison).
 ## 8. Interpreting results and common pitfalls
 
 **Sample size.** `rcicrely` aborts below 4 producers per condition
-and warns below 30 (see Cone et al. 2021; who recommend N >= 60 for stable
-reliability assessment). At N = 10 the metrics are computable but
-their CIs are wide.
+and warns below 30; a sample of N >= 60 producers is recommended for
+stable reliability assessment. At N = 10 the metrics are computable
+but their CIs are wide.
 
 **Split-half.** Think of `r_hh` ~ 0.3 as weak, 0.5 as moderate, 0.7+
 as strong producer-level consistency. `r_SB` is what to report when

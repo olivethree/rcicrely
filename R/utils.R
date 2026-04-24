@@ -33,7 +33,7 @@ ensure_attached <- function(pkgs) {
 #'
 #' Every `rel_*` function takes a signal matrix. This centralises the
 #' common validation: numeric matrix, at least 4 participants (minimum
-#' meaningful for split-half), warn at < 30 per Cone et al. (2020).
+#' meaningful for split-half), warn at < 30.
 #'
 #' @param x Candidate signal matrix.
 #' @param name Argument name, for diagnostic messages.
@@ -60,8 +60,8 @@ validate_signal_matrix <- function(x,
   if (ncol(x) < 30L) {
     cli::cli_warn(c(
       "{.arg {name}} has fewer than 30 participants ({ncol(x)}).",
-      "i" = "Reliability estimates will be noisy; Cone et al. (2020) \\
-             recommend N >= 60 for stable assessment."
+      "i" = "Reliability estimates will be noisy; a sample size of \\
+             N >= 60 is recommended for stable assessment."
     ))
   }
   invisible(x)
@@ -171,14 +171,45 @@ progress_done <- function(id) {
 ## test suite can reset via `reset_session_warnings()`.
 
 .rcicrely_session_state <- new.env(parent = emptyenv())
-.rcicrely_session_state$mode1_warning_emitted     <- FALSE
+.rcicrely_session_state$mode1_warning_emitted        <- FALSE
 .rcicrely_session_state$looks_scaled_warning_emitted <- FALSE
+.rcicrely_session_state$icc_resolution_warning_emitted <- FALSE
 
 #' @keywords internal
 #' @noRd
 reset_session_warnings <- function() {
-  .rcicrely_session_state$mode1_warning_emitted     <- FALSE
-  .rcicrely_session_state$looks_scaled_warning_emitted <- FALSE
+  .rcicrely_session_state$mode1_warning_emitted          <- FALSE
+  .rcicrely_session_state$looks_scaled_warning_emitted   <- FALSE
+  .rcicrely_session_state$icc_resolution_warning_emitted <- FALSE
+  invisible()
+}
+
+#' Emit the once-per-session ICC(3,k) resolution-asymptote warning
+#'
+#' Called by `rel_icc()` when the image has more than 50,000 pixels.
+#' Flags that ICC(3,k) approaches 1 at large image sizes and is not
+#' resolution-comparable.
+#'
+#' @keywords internal
+#' @noRd
+warn_icc_large_image <- function(n_targets) {
+  if (isTRUE(getOption("rcicrely.silence_icc_warning", FALSE))) {
+    return(invisible())
+  }
+  if (isTRUE(.rcicrely_session_state$icc_resolution_warning_emitted)) {
+    return(invisible())
+  }
+  cli::cli_warn(c(
+    "ICC(3,k) tends toward 1 at large image sizes ({n_targets} pixels).",
+    "i" = "This is a property of ICC(*,k), not a reliability statement: \\
+           the error mean square scales as 1/((n-1)(k-1)) while the \\
+           row mean square scales as 1/(n-1), so ICC(3,k) asymptotes \\
+           to 1 as n grows.",
+    "*" = "Report {.strong ICC(3,1)} as the primary, resolution-comparable \\
+           statistic when comparing across image sizes.",
+    "i" = "Silence: {.code options(rcicrely.silence_icc_warning = TRUE)}."
+  ))
+  .rcicrely_session_state$icc_resolution_warning_emitted <- TRUE
   invisible()
 }
 

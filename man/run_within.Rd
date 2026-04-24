@@ -7,9 +7,6 @@
 run_within(
   signal_matrix,
   n_permutations = 2000L,
-  flag_threshold = 2.5,
-  flag_method = c("sd", "mad"),
-  flag_threshold_sd = NULL,
   icc_variants = c("3_1", "3_k"),
   seed = NULL,
   progress = TRUE
@@ -20,12 +17,6 @@ run_within(
 
 \item{n_permutations}{Passed to \code{\link[=rel_split_half]{rel_split_half()}}. Default 2000.}
 
-\item{flag_threshold}{Passed to \code{\link[=rel_loo]{rel_loo()}}. Default 2.5.}
-
-\item{flag_method}{Passed to \code{\link[=rel_loo]{rel_loo()}}. Default \code{"sd"}.}
-
-\item{flag_threshold_sd}{Deprecated alias for \code{flag_threshold}.}
-
 \item{icc_variants}{Passed to \code{\link[=rel_icc]{rel_icc()}}.}
 
 \item{seed}{Optional integer; used for the split-half permutations.}
@@ -34,32 +25,51 @@ run_within(
 }
 \value{
 Object of class \code{rcicrely_report} with \verb{$results} =
-named list of three \verb{rcicrely_*} objects (\code{split_half}, \code{loo},
-\code{icc}) and \verb{$method = "within"}.
+named list of two \verb{rcicrely_*} objects (\code{split_half}, \code{icc})
+and \verb{$method = "within"}.
 }
 \description{
-Convenience orchestrator that runs \code{\link[=rel_split_half]{rel_split_half()}}, \code{\link[=rel_loo]{rel_loo()}},
-and \code{\link[=rel_icc]{rel_icc()}} on a single condition's signal matrix and wraps
-the three results in an \code{rcicrely_report} for joint printing /
-plotting.
+Convenience orchestrator that runs the reliability metrics proper
+(split-half with Spearman-Brown correction and ICC) on a single
+condition's signal matrix and wraps the two results in an
+\code{rcicrely_report} for joint printing and plotting.
 
 Use this when you want the full within-condition reliability
 report in one call. Pass each metric individually if you need to
 tune arguments per metric.
 }
+\section{What is included (and what is not)}{
+
+\code{run_within()} returns the two metrics that quantify the
+reliability of the group-level classification image proper:
+\strong{split-half} (a permutation-based estimate of group-CI stability
+with Spearman-Brown projection to the full sample) and \strong{ICC(3,*)}
+(the psychometric variance decomposition). These are
+non-redundant — split-half is resolution-stable and
+assumption-light; ICC decomposes variance and reports both
+single-producer and average-measures reliability.
+
+Leave-one-out influence screening lives in \code{\link[=rel_loo]{rel_loo()}} and is
+\strong{not} bundled here. Its output is an influence diagnostic, not a
+reliability statistic, and mixing it into the reliability report
+invites mis-reading \code{r_loo} values (which are near 1 by
+construction) as reliability.
+}
+
 \section{Reading the result}{
 
-\verb{$results$split_half}, \verb{$results$loo}, \verb{$results$icc}, one
-result object each, with the same fields as the standalone
-functions. \verb{$method = "within"}.
+\verb{$results$split_half}, \verb{$results$icc}, one result object each,
+with the same fields as the standalone functions.
+\verb{$method = "within"}.
 }
 
 \section{Reliability metrics expect raw masks}{
 
-All three downstream metrics expect the raw mask. See
+Both downstream metrics expect the raw mask. See
 \code{vignette("tutorial", package = "rcicrely")} chapter 3.
 }
 
 \seealso{
-\code{\link[=rel_split_half]{rel_split_half()}}, \code{\link[=rel_loo]{rel_loo()}}, \code{\link[=rel_icc]{rel_icc()}}, \code{\link[=run_between]{run_between()}}
+\code{\link[=rel_split_half]{rel_split_half()}}, \code{\link[=rel_icc]{rel_icc()}}, \code{\link[=rel_loo]{rel_loo()}} for the
+influence diagnostic, \code{\link[=run_between]{run_between()}}.
 }

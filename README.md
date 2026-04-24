@@ -113,7 +113,8 @@ reliability (phase-2 naive raters scoring CIs on dimensions like
 "trustworthy" or "competent"). `rcicrely`'s ICC is a structurally
 different object: it operates on the pixel-level signal produced by
 the original producers, so no phase-2 rating study is involved. This
-sidesteps the two-phase design Cone et al. (2020) flagged.
+sidesteps the two-phase design Cone, Brown-Iannuzzi, Lei, & Dotsch
+(2021) showed inflates Type I error.
 
 The package reports **ICC(3,1)** and **ICC(3,k)** by positive
 argument, not convention: pixels are a fixed `img_size × img_size`
