@@ -69,20 +69,36 @@ new_rcicrely_cluster_test <- function(observed_t, clusters,
                                       cluster_threshold, alpha,
                                       n_permutations,
                                       n_participants_a,
-                                      n_participants_b) {
+                                      n_participants_b,
+                                      method = "threshold",
+                                      paired = FALSE,
+                                      tfce_map = NULL,
+                                      tfce_pmap = NULL,
+                                      tfce_significant_mask = NULL,
+                                      tfce_H = NA_real_,
+                                      tfce_E = NA_real_,
+                                      tfce_n_steps = NA_integer_) {
   structure(
     list(
-      observed_t         = observed_t,
-      clusters           = clusters,
-      null_distribution  = null_distribution,
-      img_dims           = img_dims,
-      pos_labels         = pos_labels,
-      neg_labels         = neg_labels,
-      cluster_threshold  = cluster_threshold,
-      alpha              = alpha,
-      n_permutations     = n_permutations,
-      n_participants_a   = n_participants_a,
-      n_participants_b   = n_participants_b
+      observed_t             = observed_t,
+      method                 = method,
+      paired                 = paired,
+      clusters               = clusters,
+      null_distribution      = null_distribution,
+      img_dims               = img_dims,
+      pos_labels             = pos_labels,
+      neg_labels             = neg_labels,
+      cluster_threshold      = cluster_threshold,
+      alpha                  = alpha,
+      n_permutations         = n_permutations,
+      n_participants_a       = n_participants_a,
+      n_participants_b       = n_participants_b,
+      tfce_map               = tfce_map,
+      tfce_pmap              = tfce_pmap,
+      tfce_significant_mask  = tfce_significant_mask,
+      tfce_H                 = tfce_H,
+      tfce_E                 = tfce_E,
+      tfce_n_steps           = tfce_n_steps
     ),
     class = c("rcicrely_cluster_test", "rcicrely_result")
   )
@@ -111,6 +127,26 @@ new_rcicrely_dissim <- function(correlation, euclidean,
       n_pixels             = n_pixels
     ),
     class = c("rcicrely_dissim", "rcicrely_result")
+  )
+}
+
+new_rcicrely_infoval <- function(infoval, norms, reference,
+                                 ref_median, ref_mad, trial_counts,
+                                 mask, iter, n_pool, seed) {
+  structure(
+    list(
+      infoval      = infoval,
+      norms        = norms,
+      reference    = reference,
+      ref_median   = ref_median,
+      ref_mad      = ref_mad,
+      trial_counts = trial_counts,
+      mask         = mask,
+      iter         = iter,
+      n_pool       = n_pool,
+      seed         = seed
+    ),
+    class = c("rcicrely_infoval", "rcicrely_result")
   )
 }
 

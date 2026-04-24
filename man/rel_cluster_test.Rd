@@ -2,14 +2,19 @@
 % Please edit documentation in R/rel_cluster_test.R
 \name{rel_cluster_test}
 \alias{rel_cluster_test}
-\title{Cluster-based permutation test with max-statistic FWER control}
+\title{Cluster-based permutation test with family-wise error control}
 \usage{
 rel_cluster_test(
   signal_matrix_a,
   signal_matrix_b,
   img_dims = NULL,
+  method = c("threshold", "tfce"),
+  paired = FALSE,
   n_permutations = 2000L,
   cluster_threshold = 2,
+  tfce_H = 2,
+  tfce_E = 0.5,
+  tfce_n_steps = 100L,
   alpha = 0.05,
   seed = NULL,
   progress = TRUE
@@ -22,13 +27,34 @@ base-subtracted.}
 \item{img_dims}{Integer \code{c(nrow, ncol)}. Can be inferred if the
 signal matrices carry an \code{img_dims} attribute.}
 
-\item{n_permutations}{Number of label permutations. 2000 default.}
+\item{method}{One of \code{"threshold"} (default) or \code{"tfce"}. The
+threshold-based method requires \code{cluster_threshold}; TFCE does
+not.}
+
+\item{paired}{Logical. \code{FALSE} (default) for a between-subjects
+design: Welch t per pixel and stratified label permutation for
+the null. \code{TRUE} for a within-subjects design: paired t per
+pixel on \code{A - B} and random sign-flip of matched pairs for the
+null. When \code{paired = TRUE}, the two matrices must have the
+same number of columns and, if named, identical column names.}
+
+\item{n_permutations}{Number of stratified label permutations
+(between-subjects) or sign-flip permutations (paired). Default
+2000.}
 
 \item{cluster_threshold}{Absolute t-value threshold for forming
-clusters. Default 2.0 (~ two-tailed p < 0.05 at large df).}
+clusters under \code{method = "threshold"}. Default 2.0. Ignored
+under \code{method = "tfce"}.}
 
-\item{alpha}{Significance level for flagging clusters. Default
-0.05.}
+\item{tfce_H, tfce_E}{TFCE height and extent exponents. Defaults
+match Smith & Nichols (2009): \code{H = 2.0}, \code{E = 0.5}. Ignored
+under \code{method = "threshold"}.}
+
+\item{tfce_n_steps}{Number of thresholds in the TFCE integration
+grid. Default 100. Finer grids cost more per permutation.
+Ignored under \code{method = "threshold"}.}
+
+\item{alpha}{Significance level. Default 0.05.}
 
 \item{seed}{Optional integer; RNG state restored on exit.}
 
@@ -36,71 +62,93 @@ clusters. Default 2.0 (~ two-tailed p < 0.05 at large df).}
 }
 \value{
 Object of class \code{rcicrely_cluster_test}. Fields described
-in \strong{Reading the result} above.
+in \strong{Reading the result}.
 }
 \description{
 Pixel-level discriminability test between two condition signal
-matrices. Use this to identify \strong{where} in the image two
-conditions' CIs differ, with family-wise error control across
-pixels. Pair with \code{\link[=rel_dissimilarity]{rel_dissimilarity()}} for an overall magnitude. Implements the Maris & Oostenveld (2007) approach with
-Nichols & Holmes (2002) max-statistic family-wise error control:
+matrices. Returns either (a) the classical threshold-based cluster
+test (Maris & Oostenveld, 2007) with cluster mass as the statistic,
+or (b) threshold-free cluster enhancement (TFCE; Smith & Nichols,
+2009), which integrates across thresholds and removes the arbitrary
+cluster-forming cutoff. Both paths use the same stratified
+permutation scheme and the maximum-statistic approach to family-
+wise error control (Nichols & Holmes, 2002).
+
+Pair with \code{\link[=rel_dissimilarity]{rel_dissimilarity()}} when you also want an overall
+magnitude summary.
+}
+\details{
+Common scaffold (both methods):
 \enumerate{
-\item Compute observed pixel-wise Welch t.
-\item Threshold at \verb{|t| > cluster_threshold} (separately for positive
-and negative tails); label connected components with
-\strong{4-connectivity}.
-\item For each observed cluster, cluster mass = sum of t-values in the
-cluster (not pixel count).
-\item Build the null distribution via \code{n_permutations} \strong{stratified}
-label permutations (each preserves \verb{(N_A, N_B)}). For each, find
-clusters and record max positive mass and max negative mass.
-\item Observed cluster's p-value = fraction of null max-masses
-(matching sign) that equal or exceed the observed mass in
-absolute value.
+\item Compute observed pixel-wise Welch t (see \code{\link[=pixel_t_test]{pixel_t_test()}}).
+\item Build the null via \code{n_permutations} \strong{stratified} label
+permutations, each preserving \verb{(N_A, N_B)} exactly.
+\item Max-statistic over the null controls FWER in the strong sense.
 }
 
-Stratification (sec.7.5): unstratified permutation lets the two group
-sizes drift, which changes Welch degrees of freedom under the null
-and biases the max-mass distribution. We preserve \verb{(N_A, N_B)}
-exactly.
+Method-specific step:
+\itemize{
+\item \code{method = "threshold"} (default): threshold at
+\verb{|t| > cluster_threshold}, label connected components with
+4-connectivity, cluster mass = sum of t-values within the
+cluster. Per observed cluster, p-value = fraction of null
+max-masses (matching sign) that equal or exceed the observed
+mass in absolute value.
+\item \code{method = "tfce"}: enhance the observed t-map into a TFCE map
+(integral over thresholds of \verb{size^E * h^H dh}, pos and neg
+tails enhanced separately and recombined with sign preserved;
+H = 2.0, E = 0.5 default). Compute the same enhancement for each
+permuted t-map and record \verb{max(|TFCE|)}. Per-pixel p-value =
+fraction of null max-TFCE values that equal or exceed the
+observed \verb{|TFCE|} at that pixel. No free threshold parameter.
 }
-\section{Reading the result}{
+}
+\section{Reading the result (threshold method)}{
 
 \itemize{
-\item \verb{$observed_t}, per-pixel Welch t vector for the observed
-condition labelling.
+\item \verb{$observed_t}, per-pixel Welch t vector.
 \item \verb{$clusters}, data.frame with \code{cluster_id}, \code{direction}
-(\code{"pos"}/\code{"neg"}), \code{mass}, \code{size}, \code{p_value}, \code{significant}. One
-row per supra-threshold cluster, sorted by direction then mass.
-\item \verb{$null_distribution}, list with \verb{$pos} and \verb{$neg} vectors of
-per-permutation max masses, useful for plotting the null.
-\item \verb{$pos_labels}, \verb{$neg_labels}, integer matrices the same shape
-as the image, where each non-zero value labels a cluster. Drives
-the contour overlay in the result's \code{plot()} method.
+(\code{"pos"}/\code{"neg"}), \code{mass}, \code{size}, \code{p_value}, \code{significant}.
+\item \verb{$null_distribution$pos}, \verb{$neg}, per-permutation max masses.
+\item \verb{$pos_labels}, \verb{$neg_labels}, integer matrices for plotting.
 \item \verb{$cluster_threshold}, \verb{$alpha}, \verb{$n_permutations},
-\verb{$n_participants_a}, \verb{$n_participants_b}, metadata.
+\verb{$n_participants_a}, \verb{$n_participants_b}, \verb{$method = "threshold"}.
+}
+}
+
+\section{Reading the result (TFCE method)}{
+
+\itemize{
+\item \verb{$observed_t}, per-pixel Welch t vector (before enhancement).
+\item \verb{$tfce_map}, per-pixel signed TFCE values.
+\item \verb{$tfce_pmap}, per-pixel p-values against the max-TFCE null.
+\item \verb{$tfce_significant_mask}, logical vector flagging pixels with
+\code{p < alpha}.
+\item \verb{$null_distribution$max_abs_tfce}, per-permutation max|TFCE|.
+\item \verb{$tfce_H}, \verb{$tfce_E}, \verb{$tfce_n_steps}, \verb{$alpha},
+\verb{$n_permutations}, \verb{$n_participants_a}, \verb{$n_participants_b},
+\verb{$method = "tfce"}.
 }
 }
 
 \section{Common mistakes}{
 
 \itemize{
-\item Reading \code{cluster_threshold} (default 2.0) as a p-value cutoff. It
-is the t-value above which pixels join a cluster; significance
-is decided afterwards by comparing cluster mass to the null.
-\item Trusting cluster significance with \code{n_permutations < 1000}
-(tail probabilities are noisy at low iter counts).
+\item Reading \code{cluster_threshold} as a p-value cutoff. It is the
+t-value above which pixels join a cluster; significance is
+decided afterwards by comparing cluster mass to the null.
+\item Trusting cluster significance with \code{n_permutations < 1000}.
 \item Permuting \strong{pixels} instead of condition labels (the function
-does the right thing internally; this is just a warning if you
+does the right thing internally; this is a warning if you
 reimplement it yourself).
 }
 }
 
 \section{Reliability metrics expect raw masks}{
 
-Welch t and cluster mass are variance-based and sensitive to any
-scaling. If \code{signal_matrix_a} / \verb{_b} came from rendered PNGs,
-results are distorted. See
+Welch t and cluster mass / TFCE are variance-based and sensitive
+to any scaling. If \code{signal_matrix_a} / \verb{_b} came from rendered
+PNGs, results are distorted. See
 \code{vignette("tutorial", package = "rcicrely")} chapter 3.
 }
 
@@ -112,6 +160,11 @@ testing of EEG- and MEG-data. \emph{Journal of Neuroscience Methods},
 Nichols, T. E., & Holmes, A. P. (2002). Nonparametric permutation
 tests for functional neuroimaging: a primer with examples.
 \emph{Human Brain Mapping}, 15(1), 1-25. \doi{10.1002/hbm.1058}
+
+Smith, S. M., & Nichols, T. E. (2009). Threshold-free cluster
+enhancement: addressing problems of smoothing, threshold
+dependence and localisation in cluster inference. \emph{NeuroImage},
+44(1), 83-98. \doi{10.1016/j.neuroimage.2008.03.061}
 }
 \seealso{
 \code{\link[=rel_dissimilarity]{rel_dissimilarity()}}, \code{\link[=run_between]{run_between()}}

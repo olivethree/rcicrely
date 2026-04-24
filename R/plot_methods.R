@@ -209,6 +209,27 @@ plot.rcicrely_icc <- function(x, ..., main = "ICC") {
 
 #' @export
 print.rcicrely_cluster_test <- function(x, ...) {
+  method <- if (is.null(x$method)) "threshold" else x$method
+  if (method == "tfce") {
+    cat("<rcicrely cluster-based permutation test (TFCE)>\n")
+    cat(sprintf(
+      "  N_A = %d, N_B = %d\n",
+      x$n_participants_a, x$n_participants_b
+    ))
+    cat(sprintf("  image dims:        %d x %d\n",
+                x$img_dims[1], x$img_dims[2]))
+    cat(sprintf("  TFCE parameters:   H = %.2f, E = %.2f, n_steps = %d\n",
+                x$tfce_H, x$tfce_E, x$tfce_n_steps))
+    cat(sprintf("  n_permutations:    %d\n",  x$n_permutations))
+    cat(sprintf("  alpha:             %.2f\n", x$alpha))
+    n_sig <- sum(x$tfce_significant_mask)
+    cat(sprintf("  pixels below alpha: %d / %d\n",
+                n_sig, length(x$tfce_pmap)))
+    if (n_sig > 0L) {
+      cat(sprintf("  min p-value:       %.4f\n", min(x$tfce_pmap)))
+    }
+    return(invisible(x))
+  }
   cat("<rcicrely cluster-based permutation test>\n")
   cat(sprintf(
     "  N_A = %d, N_B = %d\n",
@@ -237,11 +258,37 @@ summary.rcicrely_cluster_test <- function(object, ...) {
 
 #' @export
 plot.rcicrely_cluster_test <- function(x, ...,
-                                       main = "Cluster t-map") {
+                                       main = NULL) {
   op <- graphics::par(no.readonly = TRUE)
   on.exit(graphics::par(op), add = TRUE)
+  method <- if (is.null(x$method)) "threshold" else x$method
+
+  if (method == "tfce") {
+    if (is.null(main)) main <- "TFCE map (signed)"
+    tfce_mat <- matrix(x$tfce_map, x$img_dims[1L], x$img_dims[2L])
+    rng <- max(abs(x$tfce_map), na.rm = TRUE)
+    if (!is.finite(rng) || rng == 0) rng <- 1
+    graphics::image(
+      t(tfce_mat[nrow(tfce_mat):1L, ]),
+      col  = grDevices::hcl.colors(256L, "RdBu", rev = TRUE),
+      zlim = c(-rng, rng),
+      main = main, axes = FALSE, useRaster = TRUE
+    )
+    # Outline pixels below alpha in black.
+    sig_mat <- matrix(x$tfce_significant_mask,
+                      x$img_dims[1L], x$img_dims[2L])
+    if (any(sig_mat)) {
+      graphics::contour(
+        t(sig_mat[nrow(sig_mat):1L, ]),
+        levels = 0.5, add = TRUE, drawlabels = FALSE,
+        col = "black", lwd = 2
+      )
+    }
+    return(invisible(x))
+  }
+
+  if (is.null(main)) main <- "Cluster t-map"
   tmap <- matrix(x$observed_t, x$img_dims[1L], x$img_dims[2L])
-  # symmetric colour scale
   rng <- max(abs(x$observed_t), na.rm = TRUE)
   graphics::image(
     t(tmap[nrow(tmap):1L, ]),
@@ -250,7 +297,6 @@ plot.rcicrely_cluster_test <- function(x, ...,
     main = main, axes = FALSE,
     useRaster = TRUE
   )
-  # overlay significant clusters as contours
   sig_pos_ids <- x$clusters$cluster_id[
     x$clusters$direction == "pos" & x$clusters$significant
   ]
@@ -291,7 +337,7 @@ print.rcicrely_dissim <- function(x, ...) {
       x$euclidean_normalised
     ))
   }
-  cat("\n  [Deprecated — will be removed in v0.3]\n")
+  cat("\n  [Deprecated - will be removed in v0.3]\n")
   cat(sprintf(
     "    Pearson r             = %.3f   [%.3f, %.3f]   SE = %.3f\n",
     x$correlation, x$ci_cor[1], x$ci_cor[2], x$boot_se_cor
@@ -363,5 +409,68 @@ plot.rcicrely_report <- function(x, ...) {
   for (nm in names(x$results)) {
     plot(x$results[[nm]], main = nm)
   }
+  invisible(x)
+}
+
+# ---- rcicrely_infoval ------------------------------------------------------
+
+#' @export
+print.rcicrely_infoval <- function(x, ...) {
+  cat("<rcicrely informational value>\n")
+  cat(sprintf("  producers:          %d\n", length(x$infoval)))
+  cat(sprintf("  unique trial counts: %s\n",
+              paste(sort(unique(x$trial_counts)), collapse = ", ")))
+  cat(sprintf("  noise-matrix pool:  %d\n", x$n_pool))
+  cat(sprintf("  iter (per n_trials): %d\n", x$iter))
+  cat(sprintf("  mask:               %s\n",
+              if (is.null(x$mask)) "none"
+              else sprintf("logical vector, %d pixels inside",
+                           sum(x$mask))))
+  n_sig <- sum(x$infoval > 1.96)
+  cat(sprintf("  producers above z = 1.96: %d / %d\n",
+              n_sig, length(x$infoval)))
+  cat("\n  per-producer z (top 5 and bottom 5):\n")
+  ord <- order(-x$infoval)
+  show_ix <- if (length(ord) > 10L) c(ord[1:5], ord[(length(ord) - 4L):length(ord)])
+             else ord
+  for (i in show_ix) {
+    cat(sprintf("    %-20s  z = %+6.2f  (norm = %.4f, n_trials = %d)\n",
+                names(x$infoval)[i], x$infoval[i],
+                x$norms[i], x$trial_counts[i]))
+  }
+  invisible(x)
+}
+
+#' @export
+summary.rcicrely_infoval <- function(object, ...) {
+  print(object, ...)
+  cat("\n  reference median / MAD by trial count:\n")
+  for (nm in names(object$ref_median)) {
+    cat(sprintf("    n_trials = %s:   median = %.4f, MAD = %.4f\n",
+                nm, object$ref_median[nm], object$ref_mad[nm]))
+  }
+  invisible(object)
+}
+
+#' @export
+plot.rcicrely_infoval <- function(x, ..., main = "Informational value (z)") {
+  op <- graphics::par(no.readonly = TRUE)
+  on.exit(graphics::par(op), add = TRUE)
+  srt <- sort(x$infoval)
+  graphics::par(mar = c(8, 4, 4, 2) + 0.1)
+  cols <- ifelse(srt > 1.96, "steelblue", "grey40")
+  graphics::barplot(
+    srt, las = 2, col = cols, border = NA,
+    main = main, ylab = "infoval (z-score)",
+    ylim = c(min(srt, -1) - 0.5, max(srt, 3) + 0.5)
+  )
+  graphics::abline(h = 0,    col = "blue", lty = 2)
+  graphics::abline(h = 1.96, col = "red",  lty = 2)
+  graphics::legend(
+    "topleft", bty = "n",
+    legend = c("reference median (z = 0)",
+               "z = 1.96 (one-tailed ~ p < .025)"),
+    text.col = c("blue", "red")
+  )
   invisible(x)
 }
