@@ -2,38 +2,51 @@
 % Please edit documentation in R/pixel_t_test.R
 \name{pixel_t_test}
 \alias{pixel_t_test}
-\title{Vectorised pixel-wise Welch t-test}
+\title{Vectorised pixel-wise t-test (independent or paired)}
 \usage{
-pixel_t_test(signal_matrix_a, signal_matrix_b)
+pixel_t_test(signal_matrix_a, signal_matrix_b, paired = FALSE)
 }
 \arguments{
 \item{signal_matrix_a, signal_matrix_b}{Pixels x participants,
-base-subtracted. Row counts must match.}
+base-subtracted. Row counts must match. When \code{paired = TRUE}
+the column counts must also match, and column names must
+correspond to the same producer across matrices.}
+
+\item{paired}{Logical. \code{FALSE} (default) uses independent
+Welch t; \code{TRUE} uses paired t.}
 }
 \value{
 Numeric vector of length \code{nrow(signal_matrix_a)}.
 }
 \description{
-Computes Welch's t (unequal variances, Student's is \strong{not}
-appropriate, conditions can differ in both N and variance) per
-pixel between two condition signal matrices. Fully vectorised: no
-per-row \code{apply()}. Returns a length-\code{n_pixels} numeric vector.
+At every pixel, tests whether condition A's mean signal differs
+from condition B's. Two modes:
+\itemize{
+\item \code{paired = FALSE} (default): independent-samples Welch t per
+pixel. Correct when producers in A and B are different people
+(between-subjects design).
+\item \code{paired = TRUE}: paired t per pixel on the per-producer
+difference \code{A - B}. Correct when the same producers contributed
+to both conditions (within-subjects design). Paired t is
+strictly more powerful than Welch t whenever producer-level
+variance is present.
+}
 
-Use this when you want the raw t-map (e.g. for custom plotting or
-threshold sensitivity analysis) without the cluster-level
-inference machinery of \code{\link[=rel_cluster_test]{rel_cluster_test()}}.
+Returns a numeric vector of t-values, length \code{n_pixels}. Used as
+an intermediate by \code{\link[=rel_cluster_test]{rel_cluster_test()}}; not intended as a
+standalone inferential test.
 }
 \section{Reading the result}{
 
 Numeric vector, one t-value per pixel. Pixels with zero variance
-in both conditions get \code{0} rather than \code{NaN} so cluster utilities
-don't have to special-case them.
+get \code{0} rather than \code{NaN} so cluster utilities don't have to
+special-case them.
 }
 
 \section{Reliability metrics expect raw masks}{
 
-Welch t is variance-based and sensitive to scaling. See
-\code{vignette("tutorial", package = "rcicrely")} chapter 3.
+Welch t and paired t are variance-based and sensitive to scaling.
+See \code{vignette("tutorial", package = "rcicrely")} chapter 3.
 }
 
 \seealso{

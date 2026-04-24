@@ -7,6 +7,7 @@
 rel_dissimilarity(
   signal_matrix_a,
   signal_matrix_b,
+  paired = FALSE,
   n_boot = 2000L,
   ci_level = 0.95,
   seed = NULL,
@@ -16,6 +17,13 @@ rel_dissimilarity(
 \arguments{
 \item{signal_matrix_a, signal_matrix_b}{Pixels x participants,
 base-subtracted. Row counts must match.}
+
+\item{paired}{Logical. \code{FALSE} (default) for a between-subjects
+design: participants are resampled within A and B independently.
+\code{TRUE} for a within-subjects design: A and B share a single
+resample index per replicate so the paired covariance structure
+is preserved. Requires \code{ncol(a) == ncol(b)} and, if named,
+identical column names.}
 
 \item{n_boot}{Bootstrap replicates. Default 2000.}
 

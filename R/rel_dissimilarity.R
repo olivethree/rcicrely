@@ -46,6 +46,12 @@
 #'
 #' @param signal_matrix_a,signal_matrix_b Pixels x participants,
 #'   base-subtracted. Row counts must match.
+#' @param paired Logical. `FALSE` (default) for a between-subjects
+#'   design: participants are resampled within A and B independently.
+#'   `TRUE` for a within-subjects design: A and B share a single
+#'   resample index per replicate so the paired covariance structure
+#'   is preserved. Requires `ncol(a) == ncol(b)` and, if named,
+#'   identical column names.
 #' @param n_boot Bootstrap replicates. Default 2000.
 #' @param ci_level Confidence level. Default 0.95.
 #' @param seed Optional integer; RNG state restored on exit.
@@ -92,11 +98,15 @@
 #' @export
 rel_dissimilarity <- function(signal_matrix_a,
                               signal_matrix_b,
+                              paired   = FALSE,
                               n_boot   = 2000L,
                               ci_level = 0.95,
                               seed     = NULL,
                               progress = TRUE) {
   validate_two_signal_matrices(signal_matrix_a, signal_matrix_b)
+  if (isTRUE(paired)) {
+    validate_paired_matrices(signal_matrix_a, signal_matrix_b)
+  }
   if (looks_scaled(signal_matrix_a) || looks_scaled(signal_matrix_b)) {
     warn_looks_scaled("signal_matrix_a / _b")
   }
@@ -121,8 +131,16 @@ rel_dissimilarity <- function(signal_matrix_a,
 
   with_seed(seed, {
     for (i in seq_len(n_boot)) {
-      idx_a <- sample.int(n_a, n_a, replace = TRUE)
-      idx_b <- sample.int(n_b, n_b, replace = TRUE)
+      if (isTRUE(paired)) {
+        # Shared resample index preserves producer-level covariance
+        # between A and B.
+        idx   <- sample.int(n_a, n_a, replace = TRUE)
+        idx_a <- idx
+        idx_b <- idx
+      } else {
+        idx_a <- sample.int(n_a, n_a, replace = TRUE)
+        idx_b <- sample.int(n_b, n_b, replace = TRUE)
+      }
       m_a <- rowMeans(signal_matrix_a[, idx_a, drop = FALSE])
       m_b <- rowMeans(signal_matrix_b[, idx_b, drop = FALSE])
       boot_cor[i]  <- stats::cor(m_a, m_b)
