@@ -62,3 +62,33 @@ test_that("img_dims validation catches pixel-count mismatch", {
     "inconsistent"
   )
 })
+
+test_that("rel_cluster_test finds injected signal at realistic scale", {
+  skip_on_cran()
+  pair <- make_realistic_pair(n_side = 64L, n_p = 30L, snr = 0.4, seed = 41L)
+  r <- suppressWarnings(
+    rel_cluster_test(
+      pair$a, pair$b,
+      img_dims          = pair$img_dims,
+      n_permutations    = 200L,
+      cluster_threshold = 2.0,
+      alpha             = 0.05,
+      seed              = 41L,
+      progress          = FALSE
+    )
+  )
+  expect_true(any(r$clusters$significant))
+
+  # Each significant cluster should overlap one of the two injected
+  # signal regions (disjoint quadrants in make_realistic_pair).
+  sig_union <- pair$signal_mask_a | pair$signal_mask_b
+  sig_clusters <- r$clusters[r$clusters$significant, , drop = FALSE]
+  for (i in seq_len(nrow(sig_clusters))) {
+    cid  <- sig_clusters$cluster_id[i]
+    labs <- if (sig_clusters$direction[i] == "pos")
+      r$pos_labels else r$neg_labels
+    cluster_pixels <- as.vector(labs == cid)
+    overlap <- sum(cluster_pixels & sig_union) / sum(cluster_pixels)
+    expect_gt(overlap, 0.3)  # majority of cluster sits in a signal region
+  }
+})
