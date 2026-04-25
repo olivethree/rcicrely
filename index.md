@@ -142,7 +142,7 @@ If `rcicrely` helps your research, please cite it:
 
     Oliveira, M. (2026). rcicrely: Toolkit for reliability analysis of
     classification images from reverse correlation studies in social
-    psychology. R package v0.2.0. Zenodo.
+    psychology. R package v0.2.2. Zenodo.
     https://doi.org/10.5281/zenodo.19772888
 
 Or run `citation("rcicrely")` in R for a BibTeX entry.

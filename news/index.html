@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">rcicrely</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,7 +34,16 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.2.2" id="rcicrely-022-unreleased">rcicrely 0.2.2 (unreleased)<a class="anchor" aria-label="anchor" href="#rcicrely-022-unreleased"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.2.2" id="rcicrely-022">rcicrely 0.2.2<a class="anchor" aria-label="anchor" href="#rcicrely-022"></a></h2>
+<div class="section level3">
+<h3 id="bug-fix-cli-progress-bar-lookup-in-rel_-permutation-loops-0-2-2">Bug fix: <code>cli</code> progress bar lookup in <code>rel_*()</code> permutation loops<a class="anchor" aria-label="anchor" href="#bug-fix-cli-progress-bar-lookup-in-rel_-permutation-loops-0-2-2"></a></h3>
+<p><code><a href="../reference/rel_split_half.html">rel_split_half()</a></code> (and any other <code>rel_*()</code> that ticks a progress bar from inside a <code>with_seed({ ... })</code> block) could abort mid-loop with <code>Error in cli::cli_progress_update(id = id): Cannot find progress bar 'cli-XXXXX-NN'</code>. The bar was created in the <code>rel_*()</code> frame but <code>progress_tick()</code> resolved to a different parent frame (the captured <code>with_seed</code> expression), so <code>cli</code>’s frame-keyed bar lookup missed.</p>
+<p>Progress bars are now pinned to a dedicated package-private env (<code>.rcicrely_progress_env</code>, <code>parent = baseenv()</code>) shared by <code>progress_start()</code>, <code>progress_tick()</code>, and <code>progress_done()</code>. The env outlives any single function frame and is the same object for all three helpers, so the lookup is stable under <code>with_seed()</code>, nested calls, knitr chunks, and non-interactive <code>R -e</code>. The env’s <code><a href="https://rdrr.io/r/base/environment.html" class="external-link">baseenv()</a></code> parent lets <code>cli</code>’s <code>glue</code>-based template formatting resolve <code>::</code> and other base R names (an earlier fix that pinned bars to the existing <code>.rcicrely_session_state</code> env failed because that env has <code>parent = emptyenv()</code> for warning-state isolation).</p>
+</div>
+<div class="section level3">
+<h3 id="improvement-read_noise_matrix-accepts-gzipped-text-0-2-2">Improvement: <code>read_noise_matrix()</code> accepts gzipped text<a class="anchor" aria-label="anchor" href="#improvement-read_noise_matrix-accepts-gzipped-text-0-2-2"></a></h3>
+<p><code>read_noise_matrix("noise_matrix.txt.gz")</code> now works. Previously, files with gzip magic bytes (<code>0x1f 0x8b</code>) were treated as <code>.rds</code> or <code>.RData</code> only; gzipped whitespace-delimited matrices aborted with a misleading “could not parse as binary R file” error. The function now falls through to <code><a href="https://rdrr.io/pkg/data.table/man/fread.html" class="external-link">data.table::fread()</a></code> (which handles gzip transparently) when neither <code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS()</a></code> nor <code><a href="https://rdrr.io/r/base/load.html" class="external-link">load()</a></code> succeeds on a gzip-magic, non-RDX file. Useful when the noise matrix is large at full double precision (~700 MB for 65536 x 600); gzip typically halves the on-disk size with no API change required.</p>
+</div>
 <div class="section level3">
 <h3 id="documentation-infoval-framing-for-brief-rc-0-2-2">Documentation: <code>infoval()</code> framing for Brief-RC<a class="anchor" aria-label="anchor" href="#documentation-infoval-framing-for-brief-rc-0-2-2"></a></h3>
 <p>Clarifies how to read the per-producer infoVal z-score and what trial-count matching does (and does not) say about Brief-RC.</p>

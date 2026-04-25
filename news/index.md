@@ -1,6 +1,43 @@
 # Changelog
 
-## rcicrely 0.2.2 (unreleased)
+## rcicrely 0.2.2
+
+### Bug fix: `cli` progress bar lookup in `rel_*()` permutation loops
+
+[`rel_split_half()`](https://olivethree.github.io/rcicrely/reference/rel_split_half.md)
+(and any other `rel_*()` that ticks a progress bar from inside a
+`with_seed({ ... })` block) could abort mid-loop with
+`Error in cli::cli_progress_update(id = id): Cannot find progress bar 'cli-XXXXX-NN'`.
+The bar was created in the `rel_*()` frame but `progress_tick()`
+resolved to a different parent frame (the captured `with_seed`
+expression), so `cli`’s frame-keyed bar lookup missed.
+
+Progress bars are now pinned to a dedicated package-private env
+(`.rcicrely_progress_env`, `parent = baseenv()`) shared by
+`progress_start()`, `progress_tick()`, and `progress_done()`. The env
+outlives any single function frame and is the same object for all three
+helpers, so the lookup is stable under `with_seed()`, nested calls,
+knitr chunks, and non-interactive `R -e`. The env’s
+[`baseenv()`](https://rdrr.io/r/base/environment.html) parent lets
+`cli`’s `glue`-based template formatting resolve `::` and other base R
+names (an earlier fix that pinned bars to the existing
+`.rcicrely_session_state` env failed because that env has
+`parent = emptyenv()` for warning-state isolation).
+
+### Improvement: `read_noise_matrix()` accepts gzipped text
+
+`read_noise_matrix("noise_matrix.txt.gz")` now works. Previously, files
+with gzip magic bytes (`0x1f 0x8b`) were treated as `.rds` or `.RData`
+only; gzipped whitespace-delimited matrices aborted with a misleading
+“could not parse as binary R file” error. The function now falls through
+to
+[`data.table::fread()`](https://rdrr.io/pkg/data.table/man/fread.html)
+(which handles gzip transparently) when neither
+[`readRDS()`](https://rdrr.io/r/base/readRDS.html) nor
+[`load()`](https://rdrr.io/r/base/load.html) succeeds on a gzip-magic,
+non-RDX file. Useful when the noise matrix is large at full double
+precision (~700 MB for 65536 x 600); gzip typically halves the on-disk
+size with no API change required.
 
 ### Documentation: `infoval()` framing for Brief-RC
 
