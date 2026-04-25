@@ -60,31 +60,28 @@ Brown-Iannuzzi, Lei, and Dotsch (2021) showed inflates Type I error.
 
 ### `infoVal` and `rcicrely` together
 
-`rcicrely` does not compute `infoVal` itself (Brief-RC `infoVal` is
-deferred to a later release; for 2IFC, use
-`rcicr::computeInfoVal2IFC()` directly). The two are complementary:
-`infoVal` tests presence of signal; `rcicrely` tests reliability and
-discriminability of signal.
+Since v0.2 `rcicrely` ships its own `infoval()` (see §6.5) that
+handles **both 2IFC and Brief-RC** with a single function. The
+reference distribution is keyed on each producer's actual trial
+count rather than the full pool size — the calibration matters most
+for Brief-RC, where producers see only a subset of the pool, but the
+function works equivalently for 2IFC. The two checks remain
+complementary: `infoval()` tests presence of signal; `rel_*()` tests
+reliability and discriminability of signal.
 
-If you use `rcicr::computeInfoVal2IFC()` on the output of
-`rcicr::batchGenerateCI2IFC()`, you do not need to worry about
-scaling: the function pulls the raw `$ci` element out of the CI-list
-internally (`norm(matrix(target_ci[["ci"]]), "f")` in its source).
-The scaling settings affect the rendered CI but not the infoVal
-computation.
+`rcicr::computeInfoVal2IFC()` is still useful as an external cross-
+check for 2IFC data. It pulls the raw `$ci` element from the rcicr
+CI-list internally (`norm(matrix(target_ci[["ci"]]), "f")`), so the
+scaling settings used at CI generation do not affect its output.
 
 The scaling caveat applies when you compute `infoVal` outside that
 path:
 
-- **Brief-RC** has no canonical `infoVal` function. Anyone computing
-  it for Brief-RC is rolling their own, feed the raw mask
-  (`res$signal_matrix` from `ci_from_responses_briefrc()`), not
-  `res$rendered_ci` or anything PNG-derived.
-- **PNG-derived data**: you cannot pass `read_cis()` output to
-  `computeInfoVal2IFC()` directly (it expects an rcicr CI-list, not
-  a bare matrix). If you reconstruct one or hand-roll the norm
-  calculation, use the raw mask, not the PNG pixel values minus
-  base, which are `scaling(mask)`.
+- **rcicrely's `infoval()`** expects raw masks. Pass
+  `res$signal_matrix` from `ci_from_responses_*()` (Mode 2). Do not
+  pass `res$rendered_ci` or anything PNG-derived.
+- **Hand-rolled infoVal**: same rule. Use the raw mask, not the
+  rendered PNG.
 
 ## 2. Installation
 
@@ -679,6 +676,158 @@ between_AB <- run_between(
 print(between_AB)
 ```
 
+### 6.5 `infoval()` - producer-level signal vs. chance {#section-infoval}
+
+**What it does.** For each producer, compares the Frobenius norm of
+their raw mask to a reference distribution simulated from random
+sign-weighted aggregations of the same noise pool, at that
+producer's trial count. Returns a per-producer z-score against the
+reference's median / MAD, plus the full reference distribution and
+metadata. A single function handles both 2IFC and Brief-RC; the
+difference lives entirely in what you pass as `noise_matrix`.
+
+**When to use it.** As a complement to the `rel_*()` reliability
+checks. `infoval()` answers *does each producer's mask carry more
+signal than chance?*; `rel_*()` answers *how reliable / how
+distinguishable is the group-level pattern?*. They report different
+things and a study should usually carry both.
+
+```{r infoval-example, eval = FALSE}
+# Brief-RC route: infoval() takes the raw signal_matrix from
+# ci_from_responses_briefrc() and the noise_matrix used to generate
+# the trials.
+res <- ci_from_responses_briefrc(responses, rdata_path = "rcic.Rdata",
+                                 base_image_path = "base.jpg")
+trial_counts <- with(responses,
+                     setNames(table(participant_id),
+                              names(table(participant_id))))
+iv <- infoval(res$signal_matrix, noise_matrix,
+              trial_counts = trial_counts,
+              iter = 10000L, cache_path = "infoval_cache.rds",
+              seed = 1L)
+print(iv)
+```
+
+**Reading the result.** `$infoval` is a per-producer z-score vector;
+`z > 1.96` is roughly one-tailed *p* < .025 against the chance
+reference. `$norms` is the raw observed Frobenius norm per producer.
+`$reference` holds the simulated reference norm vectors keyed by
+trial count. `$ref_median` and `$ref_mad` are the centre / spread
+used for z computation.
+
+#### Troubleshooting low or negative `infoval` z-scores
+
+If you compute `infoval()` and find that *most* or *all* per-producer
+z-scores sit well below 1.96 — sometimes negative — even though spot
+checks suggest producers are doing the task seriously, that is a
+common pattern, not a sign the data is bad. Five reasons in order
+of how often they apply:
+
+1. **Frobenius norm is a global energy statistic.** It sums squared
+   pixel deviations across the *entire* image. Real internal
+   representations are usually spatially sparse (eyes, mouth, jaw —
+   maybe 10-30% of pixels), so the 70-90% of "background" pixels
+   contribute noise of similar magnitude to the chance reference and
+   dilute the signal-bearing region. A producer with strong,
+   visually-obvious signal in the eyes can have a Frobenius norm
+   only marginally above the random reference.
+
+2. **The reference is strict because it lives in the same subspace.**
+   Both the observed mask and the reference are projections onto the
+   same low-dimensional sinusoidal noise basis. The reference
+   distribution has plenty of overall energy by construction, so the
+   only way to clear z = 1.96 is to align signs with a *specific
+   subset* of patterns more than chance.
+
+3. **Per-trial signal is small.** Each 2IFC choice contributes a
+   tiny signal increment relative to the per-trial noise amplitude.
+   With 300 trials the SNR gain is √300 ≈ 17×, but if per-trial
+   signal is ~5% of per-trial noise, post-aggregation effective SNR
+   is barely visible to a global energy measure.
+
+4. **Without a face mask, infoVal counts background.**
+   `face_mask()` ships an oval mask that approximates the Schmitz
+   2024 face region. Applying it (`infoval(..., mask =
+   face_mask(c(256, 256)))`) concentrates the norm on signal-bearing
+   pixels and typically lifts z-scores noticeably.
+
+5. **Group-level CIs have much higher z than individual CIs.**
+   Averaging 20 producers' masks reduces noise by √20 ≈ 4.5×, so
+   the group-mean CI's effective trial count is `300 × 20 = 6000`
+   for a 20-producer condition. The infoVal of the group-mean CI
+   (with `trial_counts = setNames(300L * n_producers, "group")`)
+   is usually 5-10× the per-producer median. **This is what
+   Brinkman et al. (2019) reported.** Per-producer infoVal is
+   noisier and lower; this is structural, not a defect.
+
+##### Diagnostic recipe
+
+```{r infoval-diagnostic, eval = FALSE}
+sm     <- res$signal_matrix
+tc     <- setNames(rep(300L, ncol(sm)), colnames(sm))
+
+# 1. Compare the observed and reference norm distributions
+iv  <- infoval(sm, noise_matrix, tc, iter = 1000L,
+               cache_path = "iv.rds", seed = 1L)
+ref <- iv$reference[[as.character(tc[1])]]
+cat(sprintf("observed median = %.4f, reference median = %.4f, %% above = %+.1f%%\n",
+            median(iv$norms), median(ref),
+            100 * (median(iv$norms) - median(ref)) / median(ref)))
+
+# 2. Apply the face mask
+fm  <- face_mask(c(256L, 256L))
+iv_masked <- infoval(sm, noise_matrix, tc, mask = fm,
+                     iter = 1000L, cache_path = "iv_masked.rds",
+                     seed = 1L)
+median(iv_masked$infoval)        # typically higher than iv
+
+# 3. Group-mean CI (the headline number to report)
+group   <- matrix(rowMeans(sm), ncol = 1, dimnames = list(NULL, "group"))
+tc_grp  <- setNames(300L * ncol(sm), "group")
+iv_grp  <- infoval(group, noise_matrix, tc_grp, iter = 1000L,
+                   seed = 1L)
+iv_grp$infoval                   # usually large (e.g. > 5)
+
+# 4. Sanity check with a simulated random responder
+set.seed(0)
+random_resp <- sample(c(-1, 1), 300L, replace = TRUE)
+random_mask <- (noise_matrix %*% random_resp) / 300
+iv_rand <- infoval(matrix(random_mask, ncol = 1,
+                          dimnames = list(NULL, "rand")),
+                   noise_matrix,
+                   setNames(300L, "rand"),
+                   iter = 1000L, seed = 1L)
+iv_rand$infoval                  # should be ~ 0 within MAD noise
+```
+
+**Negative z values** mean the observed mask has *less* total
+Frobenius energy than the chance reference. This is not "negative
+signal" — it is consistent with a producer whose responses align
+with a structured low-rank template, since aligning consistently
+with one template can reduce the effective dimensionality of the
+mask and shrink its overall norm. A negative z is therefore
+informative: a clearly negative z (say, < −2) on a producer who
+otherwise shows good behaviour usually points to one of:
+
+- The producer responded coherently but to a *different* feature
+  than the trait you intended (idiosyncratic representation).
+- The reference distribution is mis-calibrated for your design (see
+  the v0.2.1 calibration note in the `?infoval` help page —
+  early v0.2.0 versions sampled stim ids with replacement and
+  inflated reference norms, biasing per-producer z below zero on
+  cooperative producers).
+- Per-producer trial count is too low to beat chance for any
+  meaningful statistic, even with real signal — fall back to the
+  group-mean infoVal as the publishable number.
+
+**Reporting recommendation.** Report **(i)** the group-mean
+infoVal z and **(ii)** the proportion of producers whose
+*individual* z clears 1.96 (with the face mask). Do not report only
+the median per-producer z and treat values < 1.96 as evidence of
+"no signal" — that conflates the per-producer noisiness of the
+metric with the group-level question of whether the CI carries
+information.
+
 ## 7. Brief-RC end-to-end
 
 Schmitz, Rougier & Yzerbyt (2024) introduced Brief-RC 12: each trial
@@ -728,14 +877,12 @@ if (requireNamespace("png", quietly = TRUE)) {
 }
 ```
 
-**Brief-RC `infoVal`** is deferred (no canonical implementation in
-either rcicr or rcicrely). It needs a reference distribution matched
-to each producer's trial count, not the pool size. The `rel_*`
-reliability metrics do not depend on it. If you hand-roll an
-`infoVal` for Brief-RC today, compute it on the **raw mask**
-(`res$signal_matrix`), not on `res$rendered_ci` or any saved PNG
-(those carry the scaling step and will give a wrong reference
-comparison).
+**Brief-RC `infoVal`** ships in v0.2 as `infoval()` (see §6.5). The
+reference distribution is matched to each producer's trial count
+(not the pool size), which closes a calibration gap that biases
+canonical 2IFC infoVal downward when applied to Brief-RC data. Pass
+the **raw mask** (`res$signal_matrix`) — not `res$rendered_ci` or a
+PNG.
 
 ## 8. Interpreting results and common pitfalls
 
