@@ -205,6 +205,36 @@ preserving), but the row-mean variance the ICC formula depends on is
 data is therefore not the same ICC computed on the raw mask. The
 same logic applies to Euclidean distance and to `infoVal`.
 
+### 3.4 A recurring real-world example
+
+The synthetic demos in the function-reference sections below are
+deliberately small so the vignette knits in seconds. To see what
+each function looks like on a published RC dataset, the sections
+that follow each include a short **Real example** callout drawn
+from one source:
+
+> Oliveira, M., Garcia-Marques, T., Dotsch, R., & Garcia-Marques,
+> L. (2019). Dominance and competence face to face: Dissociations
+> obtained with a reverse correlation approach. *European Journal
+> of Social Psychology*. <https://doi.org/10.1002/ejsp.2569>
+
+In Study 1, 200 participants completed a 2IFC reverse-correlation
+task with **300 trials each** on a 256x256 male base face,
+across 10 trait conditions in a between-subjects design (20
+producers per trait). Trait labels: `Dominant`, `Submissive`,
+`Trust`, `Untrust`, `Friendly`, `Unfriendly`, `Intelligent`,
+`Unintelligent`, `Competent`, `Incompetent`. The full data,
+parameter file, and analysis scripts are openly available on OSF:
+<https://doi.org/10.17605/osf.io/hr5pd>.
+
+The "Real example" callouts below show the exact call you would
+make against this data, plus the output captured from a complete
+replication run. The replication itself (including reconstructing
+the noise matrix from the legacy `rcicr` 0.3.0 parameter file) is
+in `study1_replication.Rmd` in the project's `temp/` directory; the
+vignette chunks below are marked `eval = FALSE` because the data
+is not bundled with the package, but every output shown is real.
+
 ## 4. Function reference: I/O
 
 ### 4.1 `read_cis()`
@@ -449,6 +479,23 @@ unless asked otherwise). `$ci_95`, `$ci_95_sb` are percentile CIs.
 audience cares about the full-sample CI. Running with
 `n_permutations < 200` and trusting the CIs.
 
+**Real example (Oliveira et al., 2019, Study 1).** Per-trait
+group-CI reliability for the Trust and Dominant conditions (20
+producers each, 300 trials, 256x256 image):
+
+```{r split-half-oliveira-2019, eval = FALSE}
+# sm_trust, sm_dominant: pixels x 20 producer signal matrices
+# (built from the response data; see study1_replication.Rmd)
+rel_split_half(sm_trust,    n_permutations = 500L, seed = 1L)
+#> Trust:    r_hh = 0.405, r_sb = 0.577, 95% CI on r_sb = [0.539, 0.616]
+rel_split_half(sm_dominant, n_permutations = 500L, seed = 1L)
+#> Dominant: r_hh = 0.262, r_sb = 0.415, 95% CI on r_sb = [0.380, 0.450]
+```
+
+The Trust CI replicates with a clearly higher group-level
+reliability than the Dominant CI, consistent with the inter-rater
+agreement ordering reported in Table 1 of Oliveira et al. (2019).
+
 ### 5.2 `rel_loo()` - influence screening (not a reliability metric) {#section-rel-loo}
 
 **What it does.** For each producer, correlates the full-sample
@@ -511,6 +558,25 @@ investigate first. A flagged producer may have a genuinely atypical
 mental representation rather than bad data. Cross-check with
 `rcicrdiagnostics` to rule out response-coding errors.
 
+**Real example (Oliveira et al., 2019, Study 1, Trust condition).**
+Median raw `r_loo` is .992 (MAD = .001) — illustrating the
+near-1 absolute value structurally. Zero producers cleared the
+default MAD-based flag threshold, but the z-scored ordering is
+still informative for inspection priority:
+
+```{r loo-oliveira-2019, eval = FALSE}
+loo <- rel_loo(sm_trust, flag_method = "mad")
+head(rel_loo_z(loo), 3)
+#>   participant_id  correlation  z_score  flag
+#> 1          18043       0.9905    -1.68  FALSE
+#> 2          18051       0.9911    -0.99  FALSE
+#> 3          18131       0.9913    -0.79  FALSE
+```
+
+The producers at the top of the z-ordering are the ones whose
+removal moves the group CI most relative to the rest — even when
+none clear the flag threshold, this is the inspection order.
+
 ### 5.3 `rel_icc()` {#section-rel-icc}
 
 **What it does.** Two-way mixed ICC via direct mean squares. Default
@@ -545,6 +611,23 @@ pixel counts but the model is mis-specified - report both with
 `variants = c("3_1", "3_k", "2_1", "2_k")` if asked.
 
 ICC is **strongly** scale-sensitive. Use the raw mask only.
+
+**Real example (Oliveira et al., 2019, Study 1).** Two-way mixed
+ICC on 65,536-pixel raw masks, 20 producers per condition:
+
+```{r icc-oliveira-2019, eval = FALSE}
+rel_icc(sm_trust)
+#> ICC(3,1) = 0.1008,  ICC(3,k) = 0.6917
+rel_icc(sm_dominant)
+#> ICC(3,1) = 0.0489,  ICC(3,k) = 0.5068
+```
+
+ICC(3,1) — the resolution-comparable single-producer reliability —
+is clearly higher for Trust than for Dominant, matching the
+reliability ordering reported in the original paper. ICC(3,k) is
+high in absolute terms but the resolution asymptote is a known
+property of ICC(*,k) at large pixel counts; report ICC(3,1) as the
+primary cross-study comparable number.
 
 ### 5.4 `run_within()` {#section-run-within}
 
@@ -624,6 +707,26 @@ the per-permutation max masses.
 significance threshold. Significance is the cluster's mass relative
 to the null. Trusting cluster p-values with `n_permutations < 1000`.
 
+**Real example (Oliveira et al., 2019, Study 1).** A central claim
+of the original paper was that the Trust and Friendly CIs overlap
+strongly while the Dominant and Competent CIs do not. Both threshold
+and TFCE versions of the cluster test, run on the per-producer
+signal matrices for the relevant pairs, support this in
+spatially-localized terms (FWER-controlled). The full output is in
+`temp/study1_replication.Rmd`; the runnable form is:
+
+```{r cluster-oliveira-2019, eval = FALSE}
+rel_cluster_test(sm_dominant, sm_competent,
+                 img_dims = c(256L, 256L),
+                 method   = "tfce",
+                 n_permutations = 500L,
+                 tfce_n_steps   = 50L,
+                 seed = 1L)
+```
+
+Pair this with `rel_dissimilarity()` (next section) for the
+overall-magnitude part of the same claim.
+
 ### 6.3 `rel_dissimilarity()` {#section-dissim}
 
 **What it does.** Two scalar dissimilarity metrics between the two
@@ -658,6 +761,25 @@ look the same" - identical spatial patterns with different magnitudes
 give r ~ 1; the magnitude difference shows up in `$euclidean`.
 `$euclidean` scales with sqrt(n_pixels) so it is a within-study
 metric, not comparable across resolutions.
+
+**Real example (Oliveira et al., 2019, Study 1).** Euclidean
+distances between group-mean CIs on 256x256 raw masks, 500
+bootstrap replicates each:
+
+```{r dissim-oliveira-2019, eval = FALSE}
+rel_dissimilarity(sm_trust,    sm_friendly, n_boot = 500L, seed = 1L)
+#> Euclidean = 16.81, 95% CI [19.26, 24.86], normalised = 0.0657
+rel_dissimilarity(sm_dominant, sm_competent, n_boot = 500L, seed = 2L)
+#> Euclidean = 21.08, 95% CI [21.53, 30.75], normalised = 0.0823
+```
+
+The Dominant-vs-Competent contrast yields a substantially larger
+Euclidean distance than Trust-vs-Friendly, the same direction as
+the published group-CI Pearson correlations (.69 for Trust x
+Friendly, -.22 for Dominant x Competent in Table 2 of the paper).
+The two metrics report the same pattern from different angles —
+Pearson is the within-shape question, Euclidean is the
+how-far-apart question.
 
 ### 6.4 `run_between()` {#section-run-between}
 
@@ -828,6 +950,52 @@ the median per-producer z and treat values < 1.96 as evidence of
 metric with the group-level question of whether the CI carries
 information.
 
+**Real example (Oliveira et al., 2019, Study 1, Trust condition).**
+The same diagnostic recipe above, run on real published data. The
+20 individual producers were each shown 300 trials (so the
+trial-count-matched reference is simulated at 300):
+
+```{r infoval-oliveira-2019, eval = FALSE}
+# Per-producer infoVal
+tc <- setNames(rep(300L, 20L), colnames(sm_trust))
+iv <- infoval(sm_trust, noise_matrix, tc, iter = 1000L, seed = 1L)
+#> per-producer: median z = 0.35, range [-1.69, 2.30], n above 1.96 = 2/20
+
+# Group-mean CI infoVal (effective n_trials = 300 x 20 = 6000)
+group  <- matrix(rowMeans(sm_trust), ncol = 1,
+                 dimnames = list(NULL, "TRUST_group"))
+iv_grp <- infoval(group, noise_matrix,
+                  setNames(6000L, "TRUST_group"),
+                  iter = 1000L, seed = 1L)
+#> group-mean CI z = 11.39
+
+# Face-mask lift on per-producer z
+iv_masked <- infoval(sm_trust, noise_matrix, tc,
+                     mask = face_mask(c(256L, 256L)),
+                     iter = 1000L, seed = 1L)
+#> masked median = 0.50  (vs unmasked median = 0.35; lift = +0.15)
+```
+
+This is exactly the pattern described in the troubleshooting list
+above: per-producer z is centred around 0.35 with only 2 of 20
+producers individually above the 1.96 threshold — and yet the
+group-mean CI z is 11.39, *unmistakable* signal. The published
+Trust/Friendly correlation of .69 (Table 2 of the paper) and the
+observable trait dissociations in the group CIs (Figure 1 of the
+paper) are both consistent with the group-level z, not with reading
+the per-producer median as a "weak signal" verdict. Reporting
+recommendation in practice: "the group-mean classification image
+showed strong informational value (z = 11.39, n_eff = 6000); 2 of
+20 producers individually exceeded z = 1.96."
+
+> **Calibration note.** This output reflects the v0.2.1 fix in
+> `simulate_reference_norms()` (sample stim ids without replacement
+> when `n_trials <= n_pool`). v0.2.0 over-inflated the reference
+> norm and gave `median z = -1.54` for the same data — a bug
+> uncovered while replicating Oliveira et al. (2019), Study 1. If
+> you computed infoVal under v0.2.0 and got systematically negative
+> z-scores, re-run after upgrading.
+
 ## 7. Brief-RC end-to-end
 
 Schmitz, Rougier & Yzerbyt (2024) introduced Brief-RC 12: each trial
@@ -947,6 +1115,11 @@ reference comparison and produces wrong significance verdicts.
   tests for functional neuroimaging: A primer with examples.
   *Human Brain Mapping*, 15(1), 1-25.
   <https://doi.org/10.1002/hbm.1058>
+- Oliveira, M., Garcia-Marques, T., Dotsch, R., & Garcia-Marques, L.
+  (2019). Dominance and competence face to face: Dissociations
+  obtained with a reverse correlation approach. *European Journal
+  of Social Psychology*. <https://doi.org/10.1002/ejsp.2569>.
+  Open data and analysis scripts: <https://doi.org/10.17605/osf.io/hr5pd>.
 - Schmitz, M., Rougier, M., & Yzerbyt, V. (2024). Introducing the
   brief reverse correlation: An improved tool to assess visual
   representations. *European Journal of Social Psychology*.
