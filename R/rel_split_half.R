@@ -24,6 +24,12 @@
 #'   below 0.01.
 #' @param seed Optional integer; if set, results are reproducible.
 #'   The caller's global RNG state is restored on exit.
+#' @param mask Optional logical vector of length
+#'   `nrow(signal_matrix)` restricting computation to a region of
+#'   the image (e.g., from [face_mask()] or [load_face_mask()]).
+#'   When supplied, the matrix is row-subsetted before any
+#'   permutation. See `vignette("tutorial")` §6.6 for the
+#'   apply-symmetrically rule.
 #' @param progress Show a `cli` progress bar.
 #' @section Reading the result:
 #' * `$r_hh`, mean per-permutation Pearson r between the two halves.
@@ -65,9 +71,11 @@
 #' }
 rel_split_half <- function(signal_matrix,
                            n_permutations = 2000L,
+                           mask           = NULL,
                            seed           = NULL,
                            progress       = TRUE) {
   validate_signal_matrix(signal_matrix)
+  signal_matrix <- apply_mask_to_signal(signal_matrix, mask)
   if (looks_scaled(signal_matrix)) warn_looks_scaled("signal_matrix")
   n_participants <- ncol(signal_matrix)
   half_size <- n_participants %/% 2L

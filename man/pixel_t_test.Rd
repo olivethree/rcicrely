@@ -4,7 +4,7 @@
 \alias{pixel_t_test}
 \title{Vectorised pixel-wise t-test (independent or paired)}
 \usage{
-pixel_t_test(signal_matrix_a, signal_matrix_b, paired = FALSE)
+pixel_t_test(signal_matrix_a, signal_matrix_b, paired = FALSE, mask = NULL)
 }
 \arguments{
 \item{signal_matrix_a, signal_matrix_b}{Pixels x participants,
@@ -14,9 +14,17 @@ correspond to the same producer across matrices.}
 
 \item{paired}{Logical. \code{FALSE} (default) uses independent
 Welch t; \code{TRUE} uses paired t.}
+
+\item{mask}{Optional logical vector of length
+\code{nrow(signal_matrix_a)} restricting the per-pixel t computation
+to a region. \strong{Both} matrices are subsetted with the same
+mask before computing t — see \code{vignette("tutorial")} §6.6 for
+the apply-symmetrically rule. The returned vector is then of
+length \code{sum(mask)}, not \code{nrow(signal_matrix_a)}.}
 }
 \value{
-Numeric vector of length \code{nrow(signal_matrix_a)}.
+Numeric vector of length \code{nrow(signal_matrix_a)} (or
+\code{sum(mask)} if \code{mask} is supplied).
 }
 \description{
 At every pixel, tests whether condition A's mean signal differs

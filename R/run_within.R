@@ -38,6 +38,9 @@
 #' @param signal_matrix Pixels x participants, base-subtracted.
 #' @param n_permutations Passed to [rel_split_half()]. Default 2000.
 #' @param icc_variants Passed to [rel_icc()].
+#' @param mask Optional logical vector of length `nrow(signal_matrix)`
+#'   restricting all metrics to a region (e.g., from [face_mask()]).
+#'   Threaded through to both `rel_split_half()` and `rel_icc()`.
 #' @param seed Optional integer; used for the split-half permutations.
 #' @param progress Show `cli` progress bars.
 #' @return Object of class `rcicrely_report` with `$results` =
@@ -49,6 +52,7 @@
 run_within <- function(signal_matrix,
                        n_permutations    = 2000L,
                        icc_variants      = c("3_1", "3_k"),
+                       mask              = NULL,
                        seed              = NULL,
                        progress          = TRUE) {
   validate_signal_matrix(signal_matrix)
@@ -58,12 +62,14 @@ run_within <- function(signal_matrix,
     split_half = rel_split_half(
       signal_matrix,
       n_permutations = n_permutations,
+      mask           = mask,
       seed           = seed,
       progress       = progress
     ),
     icc = rel_icc(
       signal_matrix,
-      variants = icc_variants
+      variants = icc_variants,
+      mask     = mask
     )
   )
   new_rcicrely_report(results, method = "within", img_dims = img_dims)

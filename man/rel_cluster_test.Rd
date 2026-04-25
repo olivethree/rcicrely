@@ -16,6 +16,7 @@ rel_cluster_test(
   tfce_E = 0.5,
   tfce_n_steps = 100L,
   alpha = 0.05,
+  mask = NULL,
   seed = NULL,
   progress = TRUE
 )
@@ -55,6 +56,17 @@ grid. Default 100. Finer grids cost more per permutation.
 Ignored under \code{method = "threshold"}.}
 
 \item{alpha}{Significance level. Default 0.05.}
+
+\item{mask}{Optional logical vector of length \code{n_pixels}
+restricting cluster / TFCE inference to a region (e.g., from
+\code{\link[=face_mask]{face_mask()}} or \code{\link[=load_face_mask]{load_face_mask()}}). Implementation uses the
+\strong{zero-out pattern}, not row-subsetting: pixels where
+\code{!mask} have their per-pixel t set to 0 (in both observed and
+permutation t-maps) before cluster identification. This way
+the 2D image structure is preserved for 4-connectivity logic,
+but masked-out pixels can never join a cluster
+(\verb{|t| = 0 < cluster_threshold}) and contribute 0 to TFCE.
+Apply the same mask in any companion analyses for consistency.}
 
 \item{seed}{Optional integer; RNG state restored on exit.}
 

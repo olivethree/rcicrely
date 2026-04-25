@@ -29,6 +29,11 @@
 #' @param cluster_threshold Passed to [rel_cluster_test()]. Default 2.0.
 #' @param alpha Passed to [rel_cluster_test()]. Default 0.05.
 #' @param ci_level Passed to [rel_dissimilarity()]. Default 0.95.
+#' @param mask Optional logical vector of length
+#'   `nrow(signal_matrix_a)`. Threaded through to both
+#'   `rel_cluster_test()` (zero-out pattern, preserving 2D structure)
+#'   and `rel_dissimilarity()` (drop pattern, both matrices subsetted
+#'   identically). See `vignette("tutorial")` §6.6.
 #' @param seed Optional integer.
 #' @param progress Show `cli` progress bars.
 #' @return Object of class `rcicrely_report` with `$results` =
@@ -44,6 +49,7 @@ run_between <- function(signal_matrix_a,
                         cluster_threshold = 2.0,
                         alpha             = 0.05,
                         ci_level          = 0.95,
+                        mask              = NULL,
                         seed              = NULL,
                         progress          = TRUE) {
   validate_two_signal_matrices(signal_matrix_a, signal_matrix_b)
@@ -58,6 +64,7 @@ run_between <- function(signal_matrix_a,
       n_permutations    = n_permutations,
       cluster_threshold = cluster_threshold,
       alpha             = alpha,
+      mask              = mask,
       seed              = seed,
       progress          = progress
     ),
@@ -65,6 +72,7 @@ run_between <- function(signal_matrix_a,
       signal_matrix_a, signal_matrix_b,
       n_boot   = n_boot,
       ci_level = ci_level,
+      mask     = mask,
       seed     = seed,
       progress = progress
     )

@@ -10,6 +10,7 @@ rel_dissimilarity(
   paired = FALSE,
   n_boot = 2000L,
   ci_level = 0.95,
+  mask = NULL,
   seed = NULL,
   progress = TRUE
 )
@@ -28,6 +29,13 @@ identical column names.}
 \item{n_boot}{Bootstrap replicates. Default 2000.}
 
 \item{ci_level}{Confidence level. Default 0.95.}
+
+\item{mask}{Optional logical vector of length
+\code{nrow(signal_matrix_a)} restricting the Euclidean / correlation
+computation to a region. Both matrices are subsetted with the
+same mask. The reported \code{n_pixels} and
+\code{euclidean_normalised} (= \code{euclidean / sqrt(n_pixels)}) reflect
+the masked count.}
 
 \item{seed}{Optional integer; RNG state restored on exit.}
 

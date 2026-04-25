@@ -31,6 +31,11 @@
 #'
 #' @param signal_matrix Pixels x participants (targets x raters),
 #'   base-subtracted.
+#' @param mask Optional logical vector of length
+#'   `nrow(signal_matrix)` restricting computation to a region
+#'   (e.g., from [face_mask()] or [load_face_mask()]). ICC is
+#'   variance-based; the masked statistic reflects only the
+#'   selected pixels.
 #' @param variants Character vector of which ICC variants to return.
 #'   Subset of `c("3_1", "3_k", "2_1", "2_k")`. Defaults to
 #'   `c("3_1", "3_k")`.
@@ -80,8 +85,10 @@
 #' \doi{10.1177/1948550620938616}
 #' @export
 rel_icc <- function(signal_matrix,
-                    variants = c("3_1", "3_k")) {
+                    variants = c("3_1", "3_k"),
+                    mask     = NULL) {
   validate_signal_matrix(signal_matrix)
+  signal_matrix <- apply_mask_to_signal(signal_matrix, mask)
   if (looks_scaled(signal_matrix)) warn_looks_scaled("signal_matrix")
   variants <- match.arg(variants,
                         choices = c("3_1", "3_k", "2_1", "2_k"),

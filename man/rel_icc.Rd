@@ -4,7 +4,7 @@
 \alias{rel_icc}
 \title{Intraclass correlation coefficients via direct mean squares}
 \usage{
-rel_icc(signal_matrix, variants = c("3_1", "3_k"))
+rel_icc(signal_matrix, variants = c("3_1", "3_k"), mask = NULL)
 }
 \arguments{
 \item{signal_matrix}{Pixels x participants (targets x raters),
@@ -13,6 +13,12 @@ base-subtracted.}
 \item{variants}{Character vector of which ICC variants to return.
 Subset of \code{c("3_1", "3_k", "2_1", "2_k")}. Defaults to
 \code{c("3_1", "3_k")}.}
+
+\item{mask}{Optional logical vector of length
+\code{nrow(signal_matrix)} restricting computation to a region
+(e.g., from \code{\link[=face_mask]{face_mask()}} or \code{\link[=load_face_mask]{load_face_mask()}}). ICC is
+variance-based; the masked statistic reflects only the
+selected pixels.}
 }
 \value{
 Object of class \code{rcicrely_icc}. Fields described in

@@ -23,7 +23,14 @@
 #'   correspond to the same producer across matrices.
 #' @param paired Logical. `FALSE` (default) uses independent
 #'   Welch t; `TRUE` uses paired t.
-#' @return Numeric vector of length `nrow(signal_matrix_a)`.
+#' @param mask Optional logical vector of length
+#'   `nrow(signal_matrix_a)` restricting the per-pixel t computation
+#'   to a region. **Both** matrices are subsetted with the same
+#'   mask before computing t — see `vignette("tutorial")` §6.6 for
+#'   the apply-symmetrically rule. The returned vector is then of
+#'   length `sum(mask)`, not `nrow(signal_matrix_a)`.
+#' @return Numeric vector of length `nrow(signal_matrix_a)` (or
+#'   `sum(mask)` if `mask` is supplied).
 #' @section Reading the result:
 #' Numeric vector, one t-value per pixel. Pixels with zero variance
 #' get `0` rather than `NaN` so cluster utilities don't have to
@@ -36,8 +43,13 @@
 #' @seealso [rel_cluster_test()]
 #' @export
 pixel_t_test <- function(signal_matrix_a, signal_matrix_b,
-                         paired = FALSE) {
+                         paired = FALSE,
+                         mask   = NULL) {
   validate_two_signal_matrices(signal_matrix_a, signal_matrix_b)
+  signal_matrix_a <- apply_mask_to_signal(signal_matrix_a, mask,
+                                           name = "signal_matrix_a")
+  signal_matrix_b <- apply_mask_to_signal(signal_matrix_b, mask,
+                                           name = "signal_matrix_b")
 
   if (isTRUE(paired)) {
     validate_paired_matrices(signal_matrix_a, signal_matrix_b)

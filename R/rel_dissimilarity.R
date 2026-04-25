@@ -54,6 +54,12 @@
 #'   identical column names.
 #' @param n_boot Bootstrap replicates. Default 2000.
 #' @param ci_level Confidence level. Default 0.95.
+#' @param mask Optional logical vector of length
+#'   `nrow(signal_matrix_a)` restricting the Euclidean / correlation
+#'   computation to a region. Both matrices are subsetted with the
+#'   same mask. The reported `n_pixels` and
+#'   `euclidean_normalised` (= `euclidean / sqrt(n_pixels)`) reflect
+#'   the masked count.
 #' @param seed Optional integer; RNG state restored on exit.
 #' @param progress Show a `cli` progress bar.
 #' @section Reading the result:
@@ -101,12 +107,17 @@ rel_dissimilarity <- function(signal_matrix_a,
                               paired   = FALSE,
                               n_boot   = 2000L,
                               ci_level = 0.95,
+                              mask     = NULL,
                               seed     = NULL,
                               progress = TRUE) {
   validate_two_signal_matrices(signal_matrix_a, signal_matrix_b)
   if (isTRUE(paired)) {
     validate_paired_matrices(signal_matrix_a, signal_matrix_b)
   }
+  signal_matrix_a <- apply_mask_to_signal(signal_matrix_a, mask,
+                                           name = "signal_matrix_a")
+  signal_matrix_b <- apply_mask_to_signal(signal_matrix_b, mask,
+                                           name = "signal_matrix_b")
   if (looks_scaled(signal_matrix_a) || looks_scaled(signal_matrix_b)) {
     warn_looks_scaled("signal_matrix_a / _b")
   }

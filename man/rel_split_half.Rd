@@ -7,6 +7,7 @@
 rel_split_half(
   signal_matrix,
   n_permutations = 2000L,
+  mask = NULL,
   seed = NULL,
   progress = TRUE
 )
@@ -17,6 +18,13 @@ rel_split_half(
 \item{n_permutations}{Integer number of random splits. Default
 2000, cheap and keeps Monte Carlo error on tail probabilities
 below 0.01.}
+
+\item{mask}{Optional logical vector of length
+\code{nrow(signal_matrix)} restricting computation to a region of
+the image (e.g., from \code{\link[=face_mask]{face_mask()}} or \code{\link[=load_face_mask]{load_face_mask()}}).
+When supplied, the matrix is row-subsetted before any
+permutation. See \code{vignette("tutorial")} §6.6 for the
+apply-symmetrically rule.}
 
 \item{seed}{Optional integer; if set, results are reproducible.
 The caller's global RNG state is restored on exit.}

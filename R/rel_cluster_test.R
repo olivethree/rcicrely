@@ -63,6 +63,16 @@
 #'   grid. Default 100. Finer grids cost more per permutation.
 #'   Ignored under `method = "threshold"`.
 #' @param alpha Significance level. Default 0.05.
+#' @param mask Optional logical vector of length `n_pixels`
+#'   restricting cluster / TFCE inference to a region (e.g., from
+#'   [face_mask()] or [load_face_mask()]). Implementation uses the
+#'   **zero-out pattern**, not row-subsetting: pixels where
+#'   `!mask` have their per-pixel t set to 0 (in both observed and
+#'   permutation t-maps) before cluster identification. This way
+#'   the 2D image structure is preserved for 4-connectivity logic,
+#'   but masked-out pixels can never join a cluster
+#'   (`|t| = 0 < cluster_threshold`) and contribute 0 to TFCE.
+#'   Apply the same mask in any companion analyses for consistency.
 #' @param seed Optional integer; RNG state restored on exit.
 #' @param progress Show a `cli` progress bar.
 #'
@@ -129,6 +139,7 @@ rel_cluster_test <- function(signal_matrix_a,
                              tfce_E            = 0.5,
                              tfce_n_steps      = 100L,
                              alpha             = 0.05,
+                             mask              = NULL,
                              seed              = NULL,
                              progress          = TRUE) {
   method <- match.arg(method)
@@ -153,9 +164,30 @@ rel_cluster_test <- function(signal_matrix_a,
     )
   }
 
+  # `mask` for cluster_test uses a zero-out (rather than drop) pattern:
+  # we keep the full 2D image so 4-connectivity / TFCE work, but zero
+  # out per-pixel t-values where !mask. Masked-out pixels then never
+  # join a cluster (|t|=0 < threshold) and never contribute to TFCE
+  # (0^H = 0 in the integrand).
+  if (!is.null(mask)) {
+    if (!is.logical(mask) || length(mask) != n_pix) {
+      cli::cli_abort(c(
+        "{.arg mask} must be a logical vector of length {.code nrow}.",
+        "*" = "{.arg mask}: {length(mask)}",
+        "*" = "{.code nrow(signal_matrix_a)}: {n_pix}"
+      ))
+    }
+    if (sum(mask) < 4L) {
+      cli::cli_abort(
+        "{.arg mask} selects too few pixels ({sum(mask)})."
+      )
+    }
+  }
+
   # ---- observed stats --------------------------------------------------
   observed_t <- pixel_t_test(signal_matrix_a, signal_matrix_b,
                              paired = paired)
+  if (!is.null(mask)) observed_t[!mask] <- 0
 
   if (method == "threshold") {
     obs <- find_clusters(observed_t, img_dims, cluster_threshold)
@@ -218,6 +250,7 @@ rel_cluster_test <- function(signal_matrix_a,
     with_seed(seed, {
       for (i in seq_len(n_permutations)) {
         t_perm <- perm_tmap()
+        if (!is.null(mask)) t_perm[!mask] <- 0
         cl <- find_clusters(t_perm, img_dims, cluster_threshold)
         null_pos[i] <- if (length(cl$pos_masses) > 0L)
           max(cl$pos_masses) else 0
@@ -231,6 +264,7 @@ rel_cluster_test <- function(signal_matrix_a,
     with_seed(seed, {
       for (i in seq_len(n_permutations)) {
         t_perm <- perm_tmap()
+        if (!is.null(mask)) t_perm[!mask] <- 0
         tfce_perm <- tfce_enhance(t_perm, img_dims,
                                   H = tfce_H, E = tfce_E,
                                   n_steps = tfce_n_steps)

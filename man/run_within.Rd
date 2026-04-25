@@ -8,6 +8,7 @@ run_within(
   signal_matrix,
   n_permutations = 2000L,
   icc_variants = c("3_1", "3_k"),
+  mask = NULL,
   seed = NULL,
   progress = TRUE
 )
@@ -18,6 +19,10 @@ run_within(
 \item{n_permutations}{Passed to \code{\link[=rel_split_half]{rel_split_half()}}. Default 2000.}
 
 \item{icc_variants}{Passed to \code{\link[=rel_icc]{rel_icc()}}.}
+
+\item{mask}{Optional logical vector of length \code{nrow(signal_matrix)}
+restricting all metrics to a region (e.g., from \code{\link[=face_mask]{face_mask()}}).
+Threaded through to both \code{rel_split_half()} and \code{rel_icc()}.}
 
 \item{seed}{Optional integer; used for the split-half permutations.}
 

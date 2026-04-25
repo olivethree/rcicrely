@@ -103,6 +103,9 @@
 #'   **Details** for which to choose.
 #' @param flag_threshold_sd Deprecated alias for `flag_threshold`.
 #'   Kept for backwards compatibility with v0.1.0.
+#' @param mask Optional logical vector of length
+#'   `nrow(signal_matrix)` restricting computation to a region (e.g.,
+#'   from [face_mask()] or [load_face_mask()]).
 #' @return Object of class `rcicrely_loo`. Fields described in
 #'   **Reading the result** above.
 #' @seealso [rel_loo_z()] for a tidy z-score accessor;
@@ -112,8 +115,10 @@
 rel_loo <- function(signal_matrix,
                     flag_threshold    = 2.5,
                     flag_method       = c("sd", "mad"),
-                    flag_threshold_sd = NULL) {
+                    flag_threshold_sd = NULL,
+                    mask              = NULL) {
   validate_signal_matrix(signal_matrix)
+  signal_matrix <- apply_mask_to_signal(signal_matrix, mask)
   if (looks_scaled(signal_matrix)) warn_looks_scaled("signal_matrix")
   flag_method <- match.arg(flag_method)
   if (!is.null(flag_threshold_sd)) {

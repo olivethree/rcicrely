@@ -13,6 +13,7 @@ run_between(
   cluster_threshold = 2,
   alpha = 0.05,
   ci_level = 0.95,
+  mask = NULL,
   seed = NULL,
   progress = TRUE
 )
@@ -34,6 +35,12 @@ the \code{img_dims} attribute on \code{signal_matrix_a}, or from
 \item{alpha}{Passed to \code{\link[=rel_cluster_test]{rel_cluster_test()}}. Default 0.05.}
 
 \item{ci_level}{Passed to \code{\link[=rel_dissimilarity]{rel_dissimilarity()}}. Default 0.95.}
+
+\item{mask}{Optional logical vector of length
+\code{nrow(signal_matrix_a)}. Threaded through to both
+\code{rel_cluster_test()} (zero-out pattern, preserving 2D structure)
+and \code{rel_dissimilarity()} (drop pattern, both matrices subsetted
+identically). See \code{vignette("tutorial")} §6.6.}
 
 \item{seed}{Optional integer.}
 

@@ -67,6 +67,54 @@ validate_signal_matrix <- function(x,
   invisible(x)
 }
 
+#' Validate and apply a region mask to a signal matrix
+#'
+#' Centralised handling for the `mask` argument now accepted by every
+#' `rel_*()` function. Validates that `mask` is a logical vector of
+#' the right length (matching `nrow(signal_matrix)`), then row-
+#' subsets the signal matrix to the masked pixels.
+#'
+#' Returns the (possibly-subsetted) matrix, with the
+#' `img_dims` attribute preserved when no subsetting happens (when
+#' `mask = NULL`) and dropped when the mask reshapes the rows
+#' (subsetted matrices are no longer 2D-image-shaped).
+#'
+#' @param signal_matrix Pixels x participants numeric matrix.
+#' @param mask Optional logical vector of length `nrow(signal_matrix)`.
+#' @param name Argument name of the matrix at the call site, for
+#'   error messages.
+#' @return The signal matrix unchanged (`mask = NULL`) or
+#'   `signal_matrix[mask, , drop = FALSE]`.
+#' @keywords internal
+#' @noRd
+apply_mask_to_signal <- function(signal_matrix, mask = NULL,
+                                 name = "signal_matrix") {
+  if (is.null(mask)) return(signal_matrix)
+  if (!is.logical(mask)) {
+    cli::cli_abort(
+      "{.arg mask} must be a logical vector (got {.cls {class(mask)}})."
+    )
+  }
+  if (length(mask) != nrow(signal_matrix)) {
+    cli::cli_abort(c(
+      "{.arg mask} length must match {.code nrow({name})}.",
+      "*" = "{.arg mask}: {length(mask)}",
+      "*" = "{.code nrow({name})}: {nrow(signal_matrix)}"
+    ))
+  }
+  if (sum(mask) < 4L) {
+    cli::cli_abort(c(
+      "{.arg mask} selects too few pixels ({sum(mask)}).",
+      "i" = "Reliability statistics on a few-pixel subset are \\
+             dominated by noise. Use a more permissive mask."
+    ))
+  }
+  out <- signal_matrix[mask, , drop = FALSE]
+  # img_dims attribute is no longer meaningful after row-subset, drop it
+  attr(out, "img_dims") <- NULL
+  out
+}
+
 #' Assert two signal matrices have compatible shape for between-condition
 #'
 #' @keywords internal

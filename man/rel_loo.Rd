@@ -8,7 +8,8 @@ rel_loo(
   signal_matrix,
   flag_threshold = 2.5,
   flag_method = c("sd", "mad"),
-  flag_threshold_sd = NULL
+  flag_threshold_sd = NULL,
+  mask = NULL
 )
 }
 \arguments{
@@ -24,6 +25,10 @@ an alias.}
 
 \item{flag_threshold_sd}{Deprecated alias for \code{flag_threshold}.
 Kept for backwards compatibility with v0.1.0.}
+
+\item{mask}{Optional logical vector of length
+\code{nrow(signal_matrix)} restricting computation to a region (e.g.,
+from \code{\link[=face_mask]{face_mask()}} or \code{\link[=load_face_mask]{load_face_mask()}}).}
 }
 \value{
 Object of class \code{rcicrely_loo}. Fields described in
