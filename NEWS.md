@@ -1,3 +1,39 @@
+# rcicrely 0.2.2 (unreleased)
+
+## Documentation: `infoval()` framing for Brief-RC
+
+Clarifies how to read the per-producer infoVal z-score and what
+trial-count matching does (and does not) say about Brief-RC.
+
+- `infoval()` help and `vignette("tutorial")` (Brief-RC end-to-end
+  section) now state explicitly that infoVal is a **magnitude**
+  statistic (Frobenius norm of the mask): it answers "is the mask
+  larger than chance?" but not "is it pointing at the right
+  pattern?". Cross-paradigm comparisons (Brief-RC vs 2IFC absolute
+  z-scores) need care because Brief-RC's per-trial cognitive
+  richness may produce more accurately localized masks without
+  changing magnitude.
+- Reframes the trial-count-matching rationale: Brief-RC producers
+  are **not** perceptually exposed to fewer pool items than 2IFC
+  producers (each Brief-RC trial integrates 12 noisy faces of
+  context). What `infoval()` matches the reference to is the number
+  of **recorded** mask contributions per producer, which is typically
+  smaller than the pool size in Brief-RC and equals the pool size in
+  2IFC. This is a calibration choice, not a claim about cognitive
+  exposure.
+- No code changes. The simulator at
+  `R/infoval.R::simulate_reference_norms()` mirrors `genMask()`
+  (random `(stim, +/-1)` pairs, mean-by-stim collapse, divide by
+  number of unique chosen stims, Frobenius norm); under random
+  responding the chosen face is oriented vs inverted with 50/50
+  probability, so the reference null is correctly specified for both
+  paradigms.
+
+## Wording: "canonical" -> "standard" / "original" / "upstream" / "typical"
+
+Mechanical project-wide rephrasing in shipped docs (R/, vignettes/,
+README.md, NEWS.md, tests/). No semantic change.
+
 # rcicrely 0.1.1 (unreleased)
 
 ## Raw vs. rendered CIs - documentation overhaul + safety net
@@ -7,7 +43,7 @@ unscaled noise contribution). Reading PNGs from disk via `read_cis()`
 silently loaded the *rendered* CI (`base + scaling(mask)`) and fed
 `scaling(mask)` to downstream metrics, which can distort
 variance-based statistics (`rel_icc()`, Euclidean dissimilarity,
-`pixel_t_test()`, `rel_cluster_test()`). The canonical 2IFC `infoVal`
+`pixel_t_test()`, `rel_cluster_test()`). The standard 2IFC `infoVal`
 path (`rcicr::computeInfoVal2IFC()`) is unaffected because it
 extracts the raw `$ci` element from the rcicr CI-list internally;
 hand-rolled `infoVal` implementations (Brief-RC, custom code) are
