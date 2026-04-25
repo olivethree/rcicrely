@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "rcicrely: Toolkit for reliability analysis of classification images from reverse correlation studies in social psychology"
+abstract: "An R package for reliability assessment of classification images (CIs) produced by reverse correlation experiments. Covers within-condition consistency (permuted split-half with Spearman-Brown, leave-one-out, ICC) and between-condition discriminability (cluster-based permutation testing, representational dissimilarity). Works with both standard 2IFC and Brief-RC."
+authors:
+  - family-names: Oliveira
+    given-names: Manuel
+    email: m.j.barbosa.de.oliveira@tue.nl
+    affiliation: Eindhoven University of Technology
+    orcid: "https://orcid.org/0000-0002-6220-0695"
+repository-code: "https://github.com/olivethree/rcicrely"
+url: "https://olivethree.github.io/rcicrely/"
+license: MIT
+version: 0.2.0
+date-released: "2026-04-25"
+keywords:
+  - reverse correlation
+  - classification images
+  - reliability
+  - psychometrics
+  - R package
+  - Brief-RC
+  - 2IFC

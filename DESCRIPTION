@@ -1,5 +1,5 @@
 Package: rcicrely
-Title: Reliability Assessment for Reverse-Correlation Classification Images
+Title: Toolkit for Reliability Analysis of Classification Images from Reverse Correlation Studies in Social Psychology
 Version: 0.1.1
 Authors@R:
     person("Manuel", "Oliveira",
@@ -12,7 +12,7 @@ Description: Assess the reliability of classification images (CIs) produced
     between-condition discriminability (pixel-wise Welch t, cluster-based
     permutation with max-statistic family-wise error control, bootstrap
     representational dissimilarity). Supports both standard 2IFC (via the
-    canonical rcicr package) and Brief-RC 12 (Schmitz, Rougier & Yzerbyt,
+    upstream rcicr package) and Brief-RC 12 (Schmitz, Rougier & Yzerbyt,
     2024 — implemented natively in this package). Operates directly on the
     pixel-level signal produced by the original producers, so it does not
     depend on a second-phase trait-rating study.
