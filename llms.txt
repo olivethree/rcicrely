@@ -1,8 +1,9 @@
 # rcicrely
 
-> **Reliability assessment for reverse-correlation classification
-> images.** Within-condition consistency + between-condition
-> discriminability, without a second-phase trait-rating study.
+> **Toolkit for reliability analysis of classification images from
+> reverse correlation studies in social psychology.** Within-condition
+> consistency + between-condition discriminability, without a
+> second-phase trait-rating study.
 
 `rcicrely` assesses the reliability of classification images (CIs)
 produced by reverse-correlation experiments. It answers the questions
@@ -131,9 +132,10 @@ your reviewer explicitly asks.
 
 ## Citation
 
-    Oliveira, M. (2026). rcicrely: Reliability assessment for
-    reverse-correlation classification images. R package v0.1.0.
-    https://github.com/olivethree/rcicrely
+    Oliveira, M. (2026). rcicrely: Toolkit for reliability analysis of
+    classification images from reverse correlation studies in social
+    psychology. R package v0.2.0. Zenodo.
+    https://doi.org/10.5281/zenodo.19772888
 
 ## License
 
