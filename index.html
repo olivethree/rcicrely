@@ -123,7 +123,7 @@
 <div class="section level2">
 <h2 id="whats-different-from-the-trait-rating-iccs-in-the-rc-literature">What’s different from the trait-rating ICCs in the RC literature<a class="anchor" aria-label="anchor" href="#whats-different-from-the-trait-rating-iccs-in-the-rc-literature"></a>
 </h2>
-<p>Most ICCs published in reverse-correlation papers are <strong>trait-rating</strong> reliability (phase-2 naive raters scoring CIs on dimensions like “trustworthy” or “competent”). <code>rcicrely</code>’s ICC is a structurally different object: it operates on the pixel-level signal produced by the original producers, so no phase-2 rating study is involved. This sidesteps the two-phase design Cone et al. (2020) flagged.</p>
+<p>Most ICCs published in reverse-correlation papers are <strong>trait-rating</strong> reliability (phase-2 naive raters scoring CIs on dimensions like “trustworthy” or “competent”). <code>rcicrely</code>’s ICC is a structurally different object: it operates on the pixel-level signal produced by the original producers, so no phase-2 rating study is involved. This sidesteps the two-phase design Cone, Brown-Iannuzzi, Lei, &amp; Dotsch (2021) showed inflates Type I error.</p>
 <p>The package reports <strong>ICC(3,1)</strong> and <strong>ICC(3,k)</strong> by positive argument, not convention: pixels are a fixed <code>img_size × img_size</code> grid (two-way mixed, pixels fixed, participants random), not a random sample from a pixel population. ICC(2,*) is available via the <code>variants</code> argument if your reviewer explicitly asks.</p>
 </div>
 <div class="section level2">

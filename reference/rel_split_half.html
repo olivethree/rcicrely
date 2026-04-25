@@ -79,6 +79,7 @@ corrected reliability <code>r_SB = (2 r) / (1 + r)</code>. 95% CI is the
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">rel_split_half</span><span class="op">(</span></span>
 <span>  <span class="va">signal_matrix</span>,</span>
 <span>  n_permutations <span class="op">=</span> <span class="fl">2000L</span>,</span>
+<span>  mask <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -96,6 +97,15 @@ corrected reliability <code>r_SB = (2 r) / (1 + r)</code>. 95% CI is the
 <dd><p>Integer number of random splits. Default
 2000, cheap and keeps Monte Carlo error on tail probabilities
 below 0.01.</p></dd>
+
+
+<dt id="arg-mask">mask<a class="anchor" aria-label="anchor" href="#arg-mask"></a></dt>
+<dd><p>Optional logical vector of length
+<code>nrow(signal_matrix)</code> restricting computation to a region of
+the image (e.g., from <code><a href="face_mask.html">face_mask()</a></code> or <code><a href="load_face_mask.html">load_face_mask()</a></code>).
+When supplied, the matrix is row-subsetted before any
+permutation. See <code><a href="../articles/tutorial.html">vignette("tutorial")</a></code> §6.6 for the
+apply-symmetrically rule.</p></dd>
 
 
 <dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
@@ -149,7 +159,7 @@ value of classification images. <em>Behavior Research Methods</em>,
 51(5), 2059-2073. <a href="https://doi.org/10.3758/s13428-019-01232-2" class="external-link">doi:10.3758/s13428-019-01232-2</a></p>
 <p>Shrout, P. E., &amp; Fleiss, J. L. (1979). Intraclass correlations:
 uses in assessing rater reliability. <em>Psychological Bulletin</em>,
-86(2), 420-428.</p>
+86(2), 420-428. <a href="https://doi.org/10.1037/0033-2909.86.2.420" class="external-link">doi:10.1037/0033-2909.86.2.420</a></p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

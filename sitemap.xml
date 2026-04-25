@@ -9,10 +9,15 @@
 <url><loc>https://olivethree.github.io/rcicrely/news/index.html</loc></url>
 <url><loc>https://olivethree.github.io/rcicrely/reference/ci_from_responses_2ifc.html</loc></url>
 <url><loc>https://olivethree.github.io/rcicrely/reference/ci_from_responses_briefrc.html</loc></url>
+<url><loc>https://olivethree.github.io/rcicrely/reference/compare_dissimilarity.html</loc></url>
 <url><loc>https://olivethree.github.io/rcicrely/reference/extract_signal.html</loc></url>
+<url><loc>https://olivethree.github.io/rcicrely/reference/face_mask.html</loc></url>
 <url><loc>https://olivethree.github.io/rcicrely/reference/index.html</loc></url>
+<url><loc>https://olivethree.github.io/rcicrely/reference/infoval.html</loc></url>
+<url><loc>https://olivethree.github.io/rcicrely/reference/load_face_mask.html</loc></url>
 <url><loc>https://olivethree.github.io/rcicrely/reference/load_signal_matrix.html</loc></url>
 <url><loc>https://olivethree.github.io/rcicrely/reference/pixel_t_test.html</loc></url>
+<url><loc>https://olivethree.github.io/rcicrely/reference/plot_agreement_map.html</loc></url>
 <url><loc>https://olivethree.github.io/rcicrely/reference/rcicrely-package.html</loc></url>
 <url><loc>https://olivethree.github.io/rcicrely/reference/read_cis.html</loc></url>
 <url><loc>https://olivethree.github.io/rcicrely/reference/read_noise_matrix.html</loc></url>
@@ -20,6 +25,7 @@
 <url><loc>https://olivethree.github.io/rcicrely/reference/rel_dissimilarity.html</loc></url>
 <url><loc>https://olivethree.github.io/rcicrely/reference/rel_icc.html</loc></url>
 <url><loc>https://olivethree.github.io/rcicrely/reference/rel_loo.html</loc></url>
+<url><loc>https://olivethree.github.io/rcicrely/reference/rel_loo_z.html</loc></url>
 <url><loc>https://olivethree.github.io/rcicrely/reference/rel_split_half.html</loc></url>
 <url><loc>https://olivethree.github.io/rcicrely/reference/run_between.html</loc></url>
 <url><loc>https://olivethree.github.io/rcicrely/reference/run_within.html</loc></url>

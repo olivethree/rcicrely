@@ -9,7 +9,7 @@ produced?". Most papers report ICC(3,k) as the headline.
 ## Usage
 
 ``` r
-rel_icc(signal_matrix, variants = c("3_1", "3_k"))
+rel_icc(signal_matrix, variants = c("3_1", "3_k"), mask = NULL)
 ```
 
 ## Arguments
@@ -22,6 +22,16 @@ rel_icc(signal_matrix, variants = c("3_1", "3_k"))
 
   Character vector of which ICC variants to return. Subset of
   `c("3_1", "3_k", "2_1", "2_k")`. Defaults to `c("3_1", "3_k")`.
+
+- mask:
+
+  Optional logical vector of length `nrow(signal_matrix)` restricting
+  computation to a region (e.g., from
+  [`face_mask()`](https://olivethree.github.io/rcicrely/reference/face_mask.md)
+  or
+  [`load_face_mask()`](https://olivethree.github.io/rcicrely/reference/load_face_mask.md)).
+  ICC is variance-based; the masked statistic reflects only the selected
+  pixels.
 
 ## Value
 
@@ -47,7 +57,8 @@ Most ICCs reported in the reverse-correlation literature are
 dimensions (trustworthy, competent, ...). rcicrely's ICC is structurally
 different: it operates on the pixel-level signal produced by the
 original producers. No phase-2 rating study is involved. This sidesteps
-the two-phase design Cone et al. (2020) criticised.
+the two-phase design Cone, Brown-Iannuzzi, Lei, & Dotsch (2021) showed
+inflates Type I error.
 
 ## Reading the result
 
@@ -91,15 +102,17 @@ chapter 3.
 
 Shrout, P. E., & Fleiss, J. L. (1979). Intraclass correlations: uses in
 assessing rater reliability. *Psychological Bulletin*, 86(2), 420-428.
+[doi:10.1037/0033-2909.86.2.420](https://doi.org/10.1037/0033-2909.86.2.420)
 
 McGraw, K. O., & Wong, S. P. (1996). Forming inferences about some
 intraclass correlation coefficients. *Psychological Methods*, 1(1),
 30-46.
+[doi:10.1037/1082-989X.1.1.30](https://doi.org/10.1037/1082-989X.1.1.30)
 
-Cone, J., Flaharty, K., & Ferguson, M. J. (2019). Believability of
-evidence matters for correcting social impressions. *Proceedings of the
-National Academy of Sciences*, 116(20), 9802-9807.
-[doi:10.1073/pnas.1903222116](https://doi.org/10.1073/pnas.1903222116)
+Cone, J., Brown-Iannuzzi, J. L., Lei, R., & Dotsch, R. (2021). Type I
+error is inflated in the two-phase reverse correlation procedure.
+*Social Psychological and Personality Science*, 12(5), 760-768.
+[doi:10.1177/1948550620938616](https://doi.org/10.1177/1948550620938616)
 
 ## See also
 

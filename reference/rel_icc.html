@@ -55,7 +55,7 @@ ICC(3,k) as the headline.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">rel_icc</span><span class="op">(</span><span class="va">signal_matrix</span>, variants <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"3_1"</span>, <span class="st">"3_k"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">rel_icc</span><span class="op">(</span><span class="va">signal_matrix</span>, variants <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"3_1"</span>, <span class="st">"3_k"</span><span class="op">)</span>, mask <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -71,6 +71,14 @@ base-subtracted.</p></dd>
 <dd><p>Character vector of which ICC variants to return.
 Subset of <code>c("3_1", "3_k", "2_1", "2_k")</code>. Defaults to
 <code>c("3_1", "3_k")</code>.</p></dd>
+
+
+<dt id="arg-mask">mask<a class="anchor" aria-label="anchor" href="#arg-mask"></a></dt>
+<dd><p>Optional logical vector of length
+<code>nrow(signal_matrix)</code> restricting computation to a region
+(e.g., from <code><a href="face_mask.html">face_mask()</a></code> or <code><a href="load_face_mask.html">load_face_mask()</a></code>). ICC is
+variance-based; the masked statistic reflects only the
+selected pixels.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -99,8 +107,8 @@ a 262,144 x 30 matrix).</p>
 trait dimensions (trustworthy, competent, ...). rcicrely's ICC is
 structurally different: it operates on the pixel-level signal
 produced by the original producers. No phase-2 rating study is
-involved. This sidesteps the two-phase design Cone et al. (2020)
-criticised.</p>
+involved. This sidesteps the two-phase design Cone, Brown-Iannuzzi,
+Lei, &amp; Dotsch (2021) showed inflates Type I error.</p>
     </div>
     <div class="section level2">
     <h2 id="reading-the-result">Reading the result<a class="anchor" aria-label="anchor" href="#reading-the-result"></a></h2>
@@ -143,14 +151,14 @@ the result will not match what raw responses would produce. See
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
     <p>Shrout, P. E., &amp; Fleiss, J. L. (1979). Intraclass correlations:
 uses in assessing rater reliability. <em>Psychological Bulletin</em>,
-86(2), 420-428.</p>
+86(2), 420-428. <a href="https://doi.org/10.1037/0033-2909.86.2.420" class="external-link">doi:10.1037/0033-2909.86.2.420</a></p>
 <p>McGraw, K. O., &amp; Wong, S. P. (1996). Forming inferences about some
 intraclass correlation coefficients. <em>Psychological Methods</em>,
-1(1), 30-46.</p>
-<p>Cone, J., Flaharty, K., &amp; Ferguson, M. J. (2019). Believability of
-evidence matters for correcting social impressions. <em>Proceedings
-of the National Academy of Sciences</em>, 116(20), 9802-9807.
-<a href="https://doi.org/10.1073/pnas.1903222116" class="external-link">doi:10.1073/pnas.1903222116</a></p>
+1(1), 30-46. <a href="https://doi.org/10.1037/1082-989X.1.1.30" class="external-link">doi:10.1037/1082-989X.1.1.30</a></p>
+<p>Cone, J., Brown-Iannuzzi, J. L., Lei, R., &amp; Dotsch, R. (2021). Type
+I error is inflated in the two-phase reverse correlation procedure.
+<em>Social Psychological and Personality Science</em>, 12(5), 760-768.
+<a href="https://doi.org/10.1177/1948550620938616" class="external-link">doi:10.1177/1948550620938616</a></p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

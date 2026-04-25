@@ -61,6 +61,7 @@ overall magnitude test in one call.</p>
 <span>  cluster_threshold <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>  alpha <span class="op">=</span> <span class="fl">0.05</span>,</span>
 <span>  ci_level <span class="op">=</span> <span class="fl">0.95</span>,</span>
+<span>  mask <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -101,6 +102,14 @@ the <code>img_dims</code> attribute on <code>signal_matrix_a</code>, or from
 <dd><p>Passed to <code><a href="rel_dissimilarity.html">rel_dissimilarity()</a></code>. Default 0.95.</p></dd>
 
 
+<dt id="arg-mask">mask<a class="anchor" aria-label="anchor" href="#arg-mask"></a></dt>
+<dd><p>Optional logical vector of length
+<code>nrow(signal_matrix_a)</code>. Threaded through to both
+<code><a href="rel_cluster_test.html">rel_cluster_test()</a></code> (zero-out pattern, preserving 2D structure)
+and <code><a href="rel_dissimilarity.html">rel_dissimilarity()</a></code> (drop pattern, both matrices subsetted
+identically). See <code><a href="../articles/tutorial.html">vignette("tutorial")</a></code> §6.6.</p></dd>
+
+
 <dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
 <dd><p>Optional integer.</p></dd>
 
@@ -127,9 +136,9 @@ object each, fields as in the standalone functions.
     <h2 id="reliability-metrics-expect-raw-masks">Reliability metrics expect raw masks<a class="anchor" aria-label="anchor" href="#reliability-metrics-expect-raw-masks"></a></h2>
 
 
-<p>Both downstream metrics are scale-sensitive in different ways
-(cluster test entirely; dissimilarity's Pearson r partly,
-Euclidean entirely). See
+<p>Both downstream metrics are scale-sensitive: the cluster test
+uses variance-based Welch t, and Euclidean distance in
+<code><a href="rel_dissimilarity.html">rel_dissimilarity()</a></code> is sensitive to any scaling. See
 <code><a href="../articles/tutorial.html">vignette("tutorial", package = "rcicrely")</a></code> chapter 3.</p>
     </div>
     <div class="section level2">

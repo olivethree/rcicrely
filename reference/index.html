@@ -35,7 +35,7 @@
     <div class="section level2">
       <h2 id="loading-data">Loading data<a class="anchor" aria-label="anchor" href="#loading-data"></a></h2>
 
-      <div class="section-desc"><p>Read CI images, build the signal matrix.</p></div>
+      <div class="section-desc"><p>Read CI images, build the signal matrix, load region masks.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -69,6 +69,20 @@
 
         </dt>
         <dd>Load the noise matrix from an rcicr <code>.Rdata</code>, an <code>.rds</code>, or a text file</dd>
+
+        <dt>
+
+          <code><a href="face_mask.html">face_mask()</a></code>
+
+        </dt>
+        <dd>Oval face-region mask for a square image</dd>
+
+        <dt>
+
+          <code><a href="load_face_mask.html">load_face_mask()</a></code>
+
+        </dt>
+        <dd>Load an image-based face-region mask from a PNG or JPEG file</dd>
       </dl></div><div class="section level2">
       <h2 id="ci-from-raw-responses">CI from raw responses<a class="anchor" aria-label="anchor" href="#ci-from-raw-responses"></a></h2>
 
@@ -111,13 +125,6 @@
 
         <dt>
 
-          <code><a href="rel_loo.html">rel_loo()</a></code>
-
-        </dt>
-        <dd>Leave-one-out sensitivity</dd>
-
-        <dt>
-
           <code><a href="rel_icc.html">rel_icc()</a></code>
 
         </dt>
@@ -129,6 +136,29 @@
 
         </dt>
         <dd>Run every within-condition reliability metric</dd>
+      </dl></div><div class="section level2">
+      <h2 id="influence-screening">Influence screening<a class="anchor" aria-label="anchor" href="#influence-screening"></a></h2>
+
+      <div class="section-desc"><p>Producer-level outlier diagnostics (not reliability metrics).</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="rel_loo.html">rel_loo()</a></code>
+
+        </dt>
+        <dd>Leave-one-out influence screening</dd>
+
+        <dt>
+
+          <code><a href="rel_loo_z.html">rel_loo_z()</a></code>
+
+        </dt>
+        <dd>Z-scored leave-one-out influence (accessor)</dd>
       </dl></div><div class="section level2">
       <h2 id="between-condition-inference">Between-condition inference<a class="anchor" aria-label="anchor" href="#between-condition-inference"></a></h2>
 
@@ -144,21 +174,28 @@
           <code><a href="pixel_t_test.html">pixel_t_test()</a></code>
 
         </dt>
-        <dd>Vectorised pixel-wise Welch t-test</dd>
+        <dd>Vectorised pixel-wise t-test (independent or paired)</dd>
 
         <dt>
 
           <code><a href="rel_cluster_test.html">rel_cluster_test()</a></code>
 
         </dt>
-        <dd>Cluster-based permutation test with max-statistic FWER control</dd>
+        <dd>Cluster-based permutation test with family-wise error control</dd>
 
         <dt>
 
           <code><a href="rel_dissimilarity.html">rel_dissimilarity()</a></code>
 
         </dt>
-        <dd>Representational dissimilarity with bootstrap CIs</dd>
+        <dd>Between-condition dissimilarity with bootstrap confidence intervals</dd>
+
+        <dt>
+
+          <code><a href="compare_dissimilarity.html">compare_dissimilarity()</a></code>
+
+        </dt>
+        <dd>Compare Euclidean dissimilarity intervals across multiple contrasts on a single plot</dd>
 
         <dt>
 
@@ -166,6 +203,38 @@
 
         </dt>
         <dd>Run every between-condition discriminability metric</dd>
+      </dl></div><div class="section level2">
+      <h2 id="per-producer-signal">Per-producer signal<a class="anchor" aria-label="anchor" href="#per-producer-signal"></a></h2>
+
+      <div class="section-desc"><p>Informational value with trial-count-matched reference.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="infoval.html">infoval()</a></code>
+
+        </dt>
+        <dd>Per-producer informational value with trial-count-matched reference</dd>
+      </dl></div><div class="section level2">
+      <h2 id="visualisation-helpers">Visualisation helpers<a class="anchor" aria-label="anchor" href="#visualisation-helpers"></a></h2>
+
+      <div class="section-desc"><p>Pixel-wise agreement maps and other plot helpers.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="plot_agreement_map.html">plot_agreement_map()</a></code>
+
+        </dt>
+        <dd>Per-pixel agreement heatmap for a producer signal matrix</dd>
       </dl></div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

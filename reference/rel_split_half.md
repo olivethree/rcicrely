@@ -23,6 +23,7 @@ percentile of the permutation distribution.
 rel_split_half(
   signal_matrix,
   n_permutations = 2000L,
+  mask = NULL,
   seed = NULL,
   progress = TRUE
 )
@@ -38,6 +39,17 @@ rel_split_half(
 
   Integer number of random splits. Default 2000, cheap and keeps Monte
   Carlo error on tail probabilities below 0.01.
+
+- mask:
+
+  Optional logical vector of length `nrow(signal_matrix)` restricting
+  computation to a region of the image (e.g., from
+  [`face_mask()`](https://olivethree.github.io/rcicrely/reference/face_mask.md)
+  or
+  [`load_face_mask()`](https://olivethree.github.io/rcicrely/reference/load_face_mask.md)).
+  When supplied, the matrix is row-subsetted before any permutation. See
+  [`vignette("tutorial")`](https://olivethree.github.io/rcicrely/articles/tutorial.md)
+  §6.6 for the apply-symmetrically rule.
 
 - seed:
 
@@ -91,6 +103,7 @@ classification images. *Behavior Research Methods*, 51(5), 2059-2073.
 
 Shrout, P. E., & Fleiss, J. L. (1979). Intraclass correlations: uses in
 assessing rater reliability. *Psychological Bulletin*, 86(2), 420-428.
+[doi:10.1037/0033-2909.86.2.420](https://doi.org/10.1037/0033-2909.86.2.420)
 
 ## See also
 

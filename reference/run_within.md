@@ -1,12 +1,9 @@
 # Run every within-condition reliability metric
 
-Convenience orchestrator that runs
-[`rel_split_half()`](https://olivethree.github.io/rcicrely/reference/rel_split_half.md),
-[`rel_loo()`](https://olivethree.github.io/rcicrely/reference/rel_loo.md),
-and
-[`rel_icc()`](https://olivethree.github.io/rcicrely/reference/rel_icc.md)
-on a single condition's signal matrix and wraps the three results in an
-`rcicrely_report` for joint printing / plotting.
+Convenience orchestrator that runs the reliability metrics proper
+(split-half with Spearman-Brown correction and ICC) on a single
+condition's signal matrix and wraps the two results in an
+`rcicrely_report` for joint printing and plotting.
 
 Use this when you want the full within-condition reliability report in
 one call. Pass each metric individually if you need to tune arguments
@@ -18,10 +15,8 @@ per metric.
 run_within(
   signal_matrix,
   n_permutations = 2000L,
-  flag_threshold = 2.5,
-  flag_method = c("sd", "mad"),
-  flag_threshold_sd = NULL,
   icc_variants = c("3_1", "3_k"),
+  mask = NULL,
   seed = NULL,
   progress = TRUE
 )
@@ -39,25 +34,19 @@ run_within(
   [`rel_split_half()`](https://olivethree.github.io/rcicrely/reference/rel_split_half.md).
   Default 2000.
 
-- flag_threshold:
-
-  Passed to
-  [`rel_loo()`](https://olivethree.github.io/rcicrely/reference/rel_loo.md).
-  Default 2.5.
-
-- flag_method:
-
-  Passed to
-  [`rel_loo()`](https://olivethree.github.io/rcicrely/reference/rel_loo.md).
-  Default `"sd"`.
-
-- flag_threshold_sd:
-
-  Deprecated alias for `flag_threshold`.
-
 - icc_variants:
 
   Passed to
+  [`rel_icc()`](https://olivethree.github.io/rcicrely/reference/rel_icc.md).
+
+- mask:
+
+  Optional logical vector of length `nrow(signal_matrix)` restricting
+  all metrics to a region (e.g., from
+  [`face_mask()`](https://olivethree.github.io/rcicrely/reference/face_mask.md)).
+  Threaded through to both
+  [`rel_split_half()`](https://olivethree.github.io/rcicrely/reference/rel_split_half.md)
+  and
   [`rel_icc()`](https://olivethree.github.io/rcicrely/reference/rel_icc.md).
 
 - seed:
@@ -70,25 +59,41 @@ run_within(
 
 ## Value
 
-Object of class `rcicrely_report` with `$results` = named list of three
-`rcicrely_*` objects (`split_half`, `loo`, `icc`) and
-`$method = "within"`.
+Object of class `rcicrely_report` with `$results` = named list of two
+`rcicrely_*` objects (`split_half`, `icc`) and `$method = "within"`.
+
+## What is included (and what is not)
+
+`run_within()` returns the two metrics that quantify the reliability of
+the group-level classification image proper: **split-half** (a
+permutation-based estimate of group-CI stability with Spearman-Brown
+projection to the full sample) and **ICC(3,\*)** (the psychometric
+variance decomposition). These are non-redundant — split-half is
+resolution-stable and assumption-light; ICC decomposes variance and
+reports both single-producer and average-measures reliability.
+
+Leave-one-out influence screening lives in
+[`rel_loo()`](https://olivethree.github.io/rcicrely/reference/rel_loo.md)
+and is **not** bundled here. Its output is an influence diagnostic, not
+a reliability statistic, and mixing it into the reliability report
+invites mis-reading `r_loo` values (which are near 1 by construction) as
+reliability.
 
 ## Reading the result
 
-`$results$split_half`, `$results$loo`, `$results$icc`, one result object
-each, with the same fields as the standalone functions.
-`$method = "within"`.
+`$results$split_half`, `$results$icc`, one result object each, with the
+same fields as the standalone functions. `$method = "within"`.
 
 ## Reliability metrics expect raw masks
 
-All three downstream metrics expect the raw mask. See
+Both downstream metrics expect the raw mask. See
 [`vignette("tutorial", package = "rcicrely")`](https://olivethree.github.io/rcicrely/articles/tutorial.md)
 chapter 3.
 
 ## See also
 
 [`rel_split_half()`](https://olivethree.github.io/rcicrely/reference/rel_split_half.md),
-[`rel_loo()`](https://olivethree.github.io/rcicrely/reference/rel_loo.md),
 [`rel_icc()`](https://olivethree.github.io/rcicrely/reference/rel_icc.md),
-[`run_between()`](https://olivethree.github.io/rcicrely/reference/run_between.md)
+[`rel_loo()`](https://olivethree.github.io/rcicrely/reference/rel_loo.md)
+for the influence diagnostic,
+[`run_between()`](https://olivethree.github.io/rcicrely/reference/run_between.md).

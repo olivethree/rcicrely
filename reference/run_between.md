@@ -22,6 +22,7 @@ run_between(
   cluster_threshold = 2,
   alpha = 0.05,
   ci_level = 0.95,
+  mask = NULL,
   seed = NULL,
   progress = TRUE
 )
@@ -69,6 +70,17 @@ run_between(
   [`rel_dissimilarity()`](https://olivethree.github.io/rcicrely/reference/rel_dissimilarity.md).
   Default 0.95.
 
+- mask:
+
+  Optional logical vector of length `nrow(signal_matrix_a)`. Threaded
+  through to both
+  [`rel_cluster_test()`](https://olivethree.github.io/rcicrely/reference/rel_cluster_test.md)
+  (zero-out pattern, preserving 2D structure) and
+  [`rel_dissimilarity()`](https://olivethree.github.io/rcicrely/reference/rel_dissimilarity.md)
+  (drop pattern, both matrices subsetted identically). See
+  [`vignette("tutorial")`](https://olivethree.github.io/rcicrely/articles/tutorial.md)
+  §6.6.
+
 - seed:
 
   Optional integer.
@@ -90,9 +102,10 @@ each, fields as in the standalone functions. `$method = "between"`.
 
 ## Reliability metrics expect raw masks
 
-Both downstream metrics are scale-sensitive in different ways (cluster
-test entirely; dissimilarity's Pearson r partly, Euclidean entirely).
-See
+Both downstream metrics are scale-sensitive: the cluster test uses
+variance-based Welch t, and Euclidean distance in
+[`rel_dissimilarity()`](https://olivethree.github.io/rcicrely/reference/rel_dissimilarity.md)
+is sensitive to any scaling. See
 [`vignette("tutorial", package = "rcicrely")`](https://olivethree.github.io/rcicrely/articles/tutorial.md)
 chapter 3.
 
