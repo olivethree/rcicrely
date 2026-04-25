@@ -22,12 +22,14 @@ navbar:
 
 reference:
   - title: "Loading data"
-    desc: "Read CI images, build the signal matrix."
+    desc: "Read CI images, build the signal matrix, load region masks."
     contents:
       - load_signal_matrix
       - read_cis
       - extract_signal
       - read_noise_matrix
+      - face_mask
+      - load_face_mask
 
   - title: "CI from raw responses"
     desc: "Compute individual CIs from trial-level response data."
@@ -39,9 +41,14 @@ reference:
     desc: "How consistent is a single condition's CI?"
     contents:
       - rel_split_half
-      - rel_loo
       - rel_icc
       - run_within
+
+  - title: "Influence screening"
+    desc: "Producer-level outlier diagnostics (not reliability metrics)."
+    contents:
+      - rel_loo
+      - rel_loo_z
 
   - title: "Between-condition inference"
     desc: "Is condition A's CI distinguishable from condition B's?"
@@ -49,7 +56,18 @@ reference:
       - pixel_t_test
       - rel_cluster_test
       - rel_dissimilarity
+      - compare_dissimilarity
       - run_between
+
+  - title: "Per-producer signal"
+    desc: "Informational value with trial-count-matched reference."
+    contents:
+      - infoval
+
+  - title: "Visualisation helpers"
+    desc: "Pixel-wise agreement maps and other plot helpers."
+    contents:
+      - plot_agreement_map
 
 articles:
   - title: "Tutorial"
