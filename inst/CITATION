@@ -6,7 +6,7 @@ bibentry(
   ),
   author  = person("Manuel", "Oliveira"),
   year    = 2026,
-  note    = "R package version 0.2.0",
+  note    = "R package version 0.2.2",
   doi     = "10.5281/zenodo.19772888",
   url     = "https://github.com/olivethree/rcicrely"
 )

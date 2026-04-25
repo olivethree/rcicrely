@@ -91,14 +91,29 @@ read_noise_matrix <- function(path, baseimage = NULL,
     }
     # fall through: RData
     env <- new.env(parent = emptyenv())
-    tryCatch(load(path, envir = env),
-             error = function(e) {
-               cli::cli_abort(c(
-                 "Could not read {.path {path}} as .rds or .Rdata.",
-                 "i" = "Magic bytes suggest a binary R file, but neither \\
-                        {.fn readRDS} nor {.fn load} could parse it."
-               ))
-             })
+    load_ok <- tryCatch({ load(path, envir = env); TRUE },
+                       error = function(e) FALSE)
+    if (!load_ok) {
+      # gzip magic without an R header may be a gzipped text matrix
+      if (is_gzip && !is_rdx) {
+        text_nm <- tryCatch({
+          tbl <- data.table::fread(path, header = FALSE)
+          if (ncol(tbl) > 0L &&
+                all(vapply(tbl, is.numeric, logical(1L)))) {
+            m <- as.matrix(tbl); dimnames(m) <- NULL
+            storage.mode(m) <- "double"
+            m
+          } else NULL
+        }, error = function(e) NULL)
+        if (!is.null(text_nm)) return(text_nm)
+      }
+      cli::cli_abort(c(
+        "Could not read {.path {path}} as .rds, .Rdata, or gzipped text.",
+        "i" = "Magic bytes suggest a binary R file, but none of \\
+               {.fn readRDS}, {.fn load}, or {.fn data.table::fread} \\
+               could parse it."
+      ))
+    }
     objs <- ls(env)
 
     # Path 1: user pre-saved a `stimuli` object

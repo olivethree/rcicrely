@@ -17,8 +17,8 @@ identifiers:
     value: "10.5281/zenodo.19772888"
     description: "Zenodo concept DOI (always points to the latest version)"
 license: MIT
-version: 0.2.0
-date-released: "2026-04-25"
+version: 0.2.2
+date-released: "2026-04-26"
 keywords:
   - reverse correlation
   - classification images

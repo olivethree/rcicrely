@@ -1,6 +1,6 @@
 Package: rcicrely
 Title: Toolkit for Reliability Analysis of Classification Images from Reverse Correlation Studies in Social Psychology
-Version: 0.1.1
+Version: 0.2.2
 Authors@R:
     person("Manuel", "Oliveira",
            email = "manuel.olivethree@gmail.com",

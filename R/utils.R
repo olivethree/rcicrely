@@ -189,25 +189,41 @@ with_seed <- function(seed, expr) {
 
 #' Optional progress ticker using `cli::cli_progress_*`
 #'
+#' `cli` ties a progress bar's lifetime to the environment in which
+#' it was created and looks bars up by id within that environment. If
+#' `progress_start()` and `progress_tick()` resolve to different
+#' frames — e.g. when the loop runs inside a `with_seed({...})`
+#' captured expression, or under knitr — the lookup misses with
+#' `Cannot find progress bar 'cli-XXXX-YY'`. Fix: pin every bar to a
+#' dedicated package-private env, which lives for the whole R
+#' session and is the same object for `start`, `tick`, and `done`.
+#' The env's parent is `baseenv()` so `cli`'s `glue`-based template
+#' formatting can resolve `::` and other base R names.
+#'
+#' @keywords internal
+#' @noRd
+.rcicrely_progress_env <- new.env(parent = baseenv())
+
 #' @keywords internal
 #' @noRd
 progress_start <- function(total, label, show = TRUE) {
   if (!isTRUE(show)) return(NULL)
-  cli::cli_progress_bar(label, total = total, clear = TRUE)
+  cli::cli_progress_bar(label, total = total, clear = TRUE,
+                        .envir = .rcicrely_progress_env)
 }
 
 #' @keywords internal
 #' @noRd
 progress_tick <- function(id) {
   if (is.null(id)) return(invisible())
-  cli::cli_progress_update(id = id)
+  cli::cli_progress_update(id = id, .envir = .rcicrely_progress_env)
 }
 
 #' @keywords internal
 #' @noRd
 progress_done <- function(id) {
   if (is.null(id)) return(invisible())
-  cli::cli_progress_done(id = id)
+  cli::cli_progress_done(id = id, .envir = .rcicrely_progress_env)
 }
 
 ## ---- session-state warning helpers ----------------------------------

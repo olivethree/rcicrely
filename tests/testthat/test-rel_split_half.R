@@ -31,6 +31,21 @@ test_that("split_half handles odd N via per-perm drop", {
   expect_equal(r$n_participants, 11L)
 })
 
+test_that("split_half does not crash with progress = TRUE (knitr lifecycle)", {
+  # Regression test for the cli progress-bar lifecycle bug fixed by
+  # passing .envir = parent.frame() in progress_start(): the bar was
+  # tied to progress_start()'s own frame and got garbage-collected
+  # before the loop's first progress_tick() — symptom in non-
+  # interactive use (knitr) was "Cannot find progress bar `cli-XXX-YY`".
+  sig <- make_sig(256L, 12L, seed = 99L)
+  expect_no_error(
+    suppressMessages(suppressWarnings(
+      rel_split_half(sig, n_permutations = 30L, seed = 1L,
+                     progress = TRUE)
+    ))
+  )
+})
+
 test_that("split_half aborts below minimum participant count", {
   sig <- matrix(rnorm(100L * 3L), 100L, 3L)
   expect_error(
