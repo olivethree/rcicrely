@@ -3,7 +3,7 @@
 > **Are the classification images from your reverse correlation study
 > reliable enough to publish?** `rcicrely` helps you find out.
 
-## What it does, in plain English
+## Why this package?
 
 You ran a reverse correlation study. Maybe each participant saw pairs of
 noisy faces and picked the one that looked more *trustworthy*. After
@@ -55,25 +55,28 @@ Suppose you ran a study with two conditions, *trustworthy* and
 ``` r
 library(rcicrely)
 
-# 1. Build per-participant CIs from your trial data
-#    (one row per trial; the data frame just needs columns for
-#     participant id, stimulus number, and +/- 1 response)
+# 1. Load your trial-level experiment data (one row per trial; needs
+#    columns for participant id, stimulus number, and +/- 1 response)
+trust_responses   <- read.csv("data/trust_condition_response_data.csv")    # experiment data from the trustworthy condition
+untrust_responses <- read.csv("data/untrust_condition_response_data.csv")  # experiment data from the untrustworthy condition
+
+# 2. Build per-participant CIs from the trial data
 trustworthy <- ci_from_responses_2ifc(
-  responses  = my_trustworthy_data,
+  responses  = trust_responses,
   rdata_path = "data/rcicr_stimuli.Rdata",   # from rcicr stimulus gen
   baseimage  = "base"
 )
 untrustworthy <- ci_from_responses_2ifc(
-  responses  = my_untrustworthy_data,
+  responses  = untrust_responses,
   rdata_path = "data/rcicr_stimuli.Rdata",
   baseimage  = "base"
 )
 
-# 2. Did participants in each condition agree with each other?
+# 3. Did participants in each condition agree with each other?
 print(run_within(trustworthy$signal_matrix,   seed = 1))
 print(run_within(untrustworthy$signal_matrix, seed = 1))
 
-# 3. Are the two conditions actually distinguishable?
+# 4. Are the two conditions actually distinguishable?
 result <- run_between(
   trustworthy$signal_matrix,
   untrustworthy$signal_matrix,
