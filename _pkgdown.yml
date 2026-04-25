@@ -9,7 +9,7 @@ template:
     code_font: {google: "JetBrains Mono"}
 
 home:
-  title: rcicrely — reliability assessment for reverse-correlation CIs
+  title: rcicrely — toolkit for reliability analysis of classification images from reverse correlation studies in social psychology
   description: >
     Within-condition consistency and between-condition discriminability
     for reverse-correlation classification images, without a second-phase

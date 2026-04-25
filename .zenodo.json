@@ -1,0 +1,39 @@
+{
+  "title": "rcicrely: Toolkit for reliability analysis of classification images from reverse correlation studies in social psychology",
+  "description": "<p>An R package for reliability assessment of classification images (CIs) produced by reverse correlation experiments. Covers within-condition consistency (permuted split-half with Spearman-Brown, leave-one-out, ICC) and between-condition discriminability (cluster-based permutation testing with optional TFCE, bootstrap representational dissimilarity), plus per-producer informational value (infoVal) with a trial-count-matched reference distribution. Works with both standard 2IFC and Brief-RC paradigms.</p><p>Companion package to <a href=\"https://github.com/olivethree/rcicrdiagnostics\">rcicrdiagnostics</a>.</p>",
+  "upload_type": "software",
+  "license": "MIT",
+  "access_right": "open",
+  "creators": [
+    {
+      "name": "Oliveira, Manuel",
+      "affiliation": "Eindhoven University of Technology",
+      "orcid": "0000-0002-6220-0695"
+    }
+  ],
+  "keywords": [
+    "reverse correlation",
+    "classification images",
+    "reliability",
+    "psychometrics",
+    "split-half reliability",
+    "intraclass correlation",
+    "cluster-based permutation",
+    "TFCE",
+    "Brief-RC",
+    "2IFC",
+    "R package"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/olivethree/rcicrdiagnostics",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://github.com/rdotsch/rcicr",
+      "relation": "isDerivedFrom",
+      "scheme": "url"
+    }
+  ]
+}

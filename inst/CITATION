@@ -1,0 +1,12 @@
+bibentry(
+  bibtype = "Manual",
+  title   = paste(
+    "rcicrely: Toolkit for reliability analysis of classification",
+    "images from reverse correlation studies in social psychology"
+  ),
+  author  = person("Manuel", "Oliveira"),
+  year    = 2026,
+  note    = "R package version 0.2.0",
+  doi     = "10.5281/zenodo.19772888",
+  url     = "https://github.com/olivethree/rcicrely"
+)

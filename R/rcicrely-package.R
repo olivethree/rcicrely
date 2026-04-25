@@ -1,4 +1,4 @@
-#' rcicrely: reliability assessment for reverse-correlation CIs
+#' rcicrely: toolkit for reliability analysis of classification images from reverse correlation studies in social psychology
 #'
 #' Within-condition consistency (permuted split-half, leave-one-out,
 #' ICC(3,\*)) and between-condition discriminability (Welch pixel t,

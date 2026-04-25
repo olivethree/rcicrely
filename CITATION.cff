@@ -11,6 +11,11 @@ authors:
     orcid: "https://orcid.org/0000-0002-6220-0695"
 repository-code: "https://github.com/olivethree/rcicrely"
 url: "https://olivethree.github.io/rcicrely/"
+doi: "10.5281/zenodo.19772888"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.19772888"
+    description: "Zenodo concept DOI (always points to the latest version)"
 license: MIT
 version: 0.2.0
 date-released: "2026-04-25"

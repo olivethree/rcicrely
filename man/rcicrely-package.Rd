@@ -4,7 +4,7 @@
 \name{rcicrely-package}
 \alias{rcicrely}
 \alias{rcicrely-package}
-\title{rcicrely: reliability assessment for reverse-correlation CIs}
+\title{rcicrely: toolkit for reliability analysis of classification images from reverse correlation studies in social psychology}
 \description{
 Within-condition consistency (permuted split-half, leave-one-out,
 ICC(3,\*)) and between-condition discriminability (Welch pixel t,
