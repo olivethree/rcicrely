@@ -111,6 +111,97 @@ face_mask <- function(img_dims,
   as.vector(result)
 }
 
+#' Load an image-based face-region mask from a PNG or JPEG file
+#'
+#' @description
+#' Reads a binary mask image from disk and returns a logical vector
+#' of length `prod(img_dims)` in column-major order — the format the
+#' rest of the package expects. White / light pixels (above
+#' `threshold`) become `TRUE`, dark pixels become `FALSE`. Use this
+#' for image-based masks created with
+#' [webmorphR::mask_oval()](https://debruine.github.io/webmorphR/),
+#' painted in GIMP, drawn with PowerPoint shapes, or any other tool
+#' that produces a binary PNG/JPEG.
+#'
+#' Companion to [face_mask()] (which generates parametric masks
+#' programmatically). Either function returns the same logical-vector
+#' shape and either is accepted by [infoval()]'s `mask` argument or
+#' by row-subsetting on a signal matrix.
+#'
+#' @param path Path to a PNG or JPEG mask image. Required to be the
+#'   same dimensions as the analysis image.
+#' @param threshold Numeric in `[0, 1]`. Pixels with luminance above
+#'   this threshold are `TRUE`. Default `0.5` (mid-grey).
+#' @param expected_dims Optional integer `c(nrow, ncol)`. When set,
+#'   the function aborts if the loaded image's dimensions do not
+#'   match — useful for catching a wrong-resolution mask before it
+#'   silently corrupts a downstream computation.
+#' @return Logical vector of length `prod(img_dims)`, column-major.
+#' @seealso [face_mask()], [infoval()].
+#' @export
+#' @examples
+#' \dontrun{
+#' # Hand-painted mask: white = include, black = exclude
+#' fm <- load_face_mask("masks/oval_256.png", expected_dims = c(256L, 256L))
+#' iv <- infoval(signal_matrix, noise_matrix, trial_counts,
+#'               mask = fm, iter = 1000L, seed = 1L)
+#' }
+load_face_mask <- function(path, threshold = 0.5,
+                           expected_dims = NULL) {
+  if (!file.exists(path)) {
+    cli::cli_abort("Mask file not found: {.path {path}}")
+  }
+  if (!is.numeric(threshold) || length(threshold) != 1L ||
+        !is.finite(threshold) || threshold < 0 || threshold > 1) {
+    cli::cli_abort(
+      "{.arg threshold} must be a finite numeric in {.code [0, 1]}."
+    )
+  }
+  ext <- tolower(tools::file_ext(path))
+  img <- switch(
+    ext,
+    png = {
+      if (!requireNamespace("png", quietly = TRUE)) {
+        cli::cli_abort(
+          "Reading PNG masks requires the {.pkg png} package."
+        )
+      }
+      png::readPNG(path)
+    },
+    jpg = ,
+    jpeg = {
+      if (!requireNamespace("jpeg", quietly = TRUE)) {
+        cli::cli_abort(
+          "Reading JPEG masks requires the {.pkg jpeg} package."
+        )
+      }
+      jpeg::readJPEG(path)
+    },
+    cli::cli_abort(
+      "Unsupported mask extension {.val {ext}} for {.path {path}}."
+    )
+  )
+  # collapse to luminance if RGB
+  if (length(dim(img)) == 3L) {
+    img <- 0.2126 * img[, , 1] +
+           0.7152 * img[, , 2] +
+           0.0722 * img[, , 3]
+  }
+  img_dims <- as.integer(dim(img))
+  if (!is.null(expected_dims)) {
+    expected_dims <- as.integer(expected_dims)
+    if (!identical(img_dims, expected_dims)) {
+      cli::cli_abort(c(
+        "Mask dimensions do not match {.arg expected_dims}.",
+        "*" = "Loaded mask:    {img_dims[1]} x {img_dims[2]}",
+        "*" = "Expected:       {expected_dims[1]} x {expected_dims[2]}"
+      ))
+    }
+  }
+  # column-major flattening to match the package's image vectorisation
+  as.vector(t(img) > threshold)
+}
+
 #' Internal: ellipse-mask helper
 #'
 #' Builds a logical matrix of pixels inside an ellipse with the

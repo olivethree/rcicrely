@@ -208,6 +208,43 @@ test_that("face_mask region argument selects sub-regions correctly", {
   expect_false(any(mouth & nose))
 })
 
+test_that("load_face_mask reads a binary PNG into a logical vector", {
+  skip_if_not_installed("png")
+  # Build a synthetic 32x32 oval mask, save, reload, check round-trip
+  fm  <- face_mask(c(32L, 32L), region = "full")
+  img <- matrix(as.numeric(fm), 32L, 32L)
+  tmp <- tempfile(fileext = ".png")
+  on.exit(unlink(tmp), add = TRUE)
+  png::writePNG(t(img), tmp)
+  loaded <- load_face_mask(tmp, threshold = 0.5,
+                           expected_dims = c(32L, 32L))
+  expect_length(loaded, 32L * 32L)
+  expect_true(is.logical(loaded))
+  # Round trip: should match the original parametric mask
+  expect_equal(sum(loaded), sum(fm))
+})
+
+test_that("load_face_mask aborts on dimension mismatch", {
+  skip_if_not_installed("png")
+  img <- matrix(0, 16L, 16L)
+  img[5:12, 5:12] <- 1
+  tmp <- tempfile(fileext = ".png")
+  on.exit(unlink(tmp), add = TRUE)
+  png::writePNG(img, tmp)
+  expect_error(
+    load_face_mask(tmp, expected_dims = c(32L, 32L)),
+    "do not match"
+  )
+})
+
+test_that("load_face_mask aborts on bad inputs", {
+  expect_error(load_face_mask("/no/such/file.png"),
+               "not found")
+  tmp <- tempfile(fileext = ".pdf")
+  file.create(tmp); on.exit(unlink(tmp), add = TRUE)
+  expect_error(load_face_mask(tmp), "Unsupported")
+})
+
 test_that("face_mask integrates with infoval as a region restrictor", {
   fx <- make_infoval_fixture(n_side = 32L, n_p = 5L, n_pool = 40L,
                              trials = 100L, snr = 0.4, seed = 1L)
