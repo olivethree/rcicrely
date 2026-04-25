@@ -57,82 +57,111 @@
 <!-- badges: start -->
 
 <blockquote>
-<p><strong>Toolkit for reliability analysis of classification images from reverse correlation studies in social psychology.</strong> Within-condition consistency + between-condition discriminability, without a second-phase trait-rating study.</p>
+<p><strong>Are the classification images from your reverse correlation study reliable enough to publish?</strong> <code>rcicrely</code> helps you find out.</p>
 </blockquote>
-<p><code>rcicrely</code> assesses the reliability of classification images (CIs) produced by reverse-correlation experiments. It answers the questions <code>infoVal</code> doesn’t: is the signal in your CI <em>stable</em>, and is it <em>distinguishable</em> from a comparison condition?</p>
-<ul>
+<div class="section level2">
+<h2 id="what-it-does-in-plain-english">What it does, in plain English<a class="anchor" aria-label="anchor" href="#what-it-does-in-plain-english"></a>
+</h2>
+<p>You ran a reverse correlation study. Maybe each participant saw pairs of noisy faces and picked the one that looked more <em>trustworthy</em>. After averaging across participants, you have a beautiful group-level classification image (CI). Before reporting it, two questions deserve an honest answer:</p>
+<ol style="list-style-type: decimal">
 <li>
-<strong>Within-condition</strong>: permuted split-half with Spearman–Brown correction, leave-one-out sensitivity, ICC(3,1) and ICC(3,k) via direct mean-squares.</li>
+<strong>Did the participants actually agree?</strong> If you split your sample in half, do the two halves produce similar CIs — or did you average a pile of noise?</li>
 <li>
-<strong>Between-condition</strong>: vectorised Welch pixel <em>t</em>, cluster-based permutation with max-statistic FWER control, bootstrap representational dissimilarity.</li>
-</ul>
-<p>Supports both standard <strong>2IFC</strong> (via the original <a href="https://github.com/rdotsch/rcicr" class="external-link"><code>rcicr</code></a>) and <strong>Brief-RC 12</strong> (Schmitz, Rougier &amp; Yzerbyt, 2024; implemented natively).</p>
-<p>Companion to <a href="https://github.com/olivethree/rcicrdiagnostics" class="external-link"><code>rcicrdiagnostics</code></a>: diagnostics catches silent data-processing errors <em>before</em> CI computation; <code>rcicrely</code> asks whether the CIs <em>themselves</em> are reliable and discriminable <em>after</em> they have been cleanly computed.</p>
+<strong>Is the “trustworthy” CI really different from your comparison condition</strong> (say, “untrustworthy”), or could the apparent difference be chance?</li>
+</ol>
+<p><code>rcicrely</code> answers both, working directly on the pixel-level signal produced by your participants. No second-phase study where naive raters score CIs on Likert scales — and no inheriting the Type I error inflation of that two-phase design (Cone, Brown-Iannuzzi, Lei, &amp; Dotsch, 2021).</p>
+<p>It works whether you ran a standard <strong>2IFC</strong> task (the classic reverse-correlation paradigm) or a <strong>Brief-RC 12</strong> task (Schmitz, Rougier &amp; Yzerbyt, 2024 — 12 noisy faces per trial instead of 2).</p>
+</div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p><code>rcicrely</code> is GitHub-only. <code>rcicr</code> (required only for the 2IFC path) is also GitHub-only:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("remotes")</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"rdotsch/rcicr"</span><span class="op">)</span>      <span class="co"># 2IFC path only</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"olivethree/rcicrely"</span><span class="op">)</span></span></code></pre></div>
-<p>If you only use Brief-RC, you can skip <code>rcicr</code>; the Brief-RC CI implementation is fully native.</p>
+<p>If you ran a 2IFC study, you’ll also need <code>rcicr</code> (used to compute the individual CIs):</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"rdotsch/rcicr"</span><span class="op">)</span></span></code></pre></div>
+<p>If you only run Brief-RC, you can skip <code>rcicr</code> — the Brief-RC code is fully native to <code>rcicrely</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
 </h2>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<p>Suppose you ran a study with two conditions, <em>trustworthy</em> and <em>untrustworthy</em>. Here’s the whole workflow.</p>
+<div class="section level3">
+<h3 id="starting-from-raw-trial-level-data">Starting from raw trial-level data<a class="anchor" aria-label="anchor" href="#starting-from-raw-trial-level-data"></a>
+</h3>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/olivethree/rcicrely" class="external-link">rcicrely</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Option A: from a directory of pre-computed CI images</span></span>
-<span><span class="va">signal_A</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/load_signal_matrix.html">load_signal_matrix</a></span><span class="op">(</span></span>
-<span>  dir             <span class="op">=</span> <span class="st">"data/cis_condition_A/"</span>,</span>
-<span>  base_image_path <span class="op">=</span> <span class="st">"data/base.jpg"</span></span>
+<span><span class="co"># 1. Build per-participant CIs from your trial data</span></span>
+<span><span class="co">#    (one row per trial; the data frame just needs columns for</span></span>
+<span><span class="co">#     participant id, stimulus number, and +/- 1 response)</span></span>
+<span><span class="va">trustworthy</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/ci_from_responses_2ifc.html">ci_from_responses_2ifc</a></span><span class="op">(</span></span>
+<span>  responses  <span class="op">=</span> <span class="va">my_trustworthy_data</span>,</span>
+<span>  rdata_path <span class="op">=</span> <span class="st">"data/rcicr_stimuli.Rdata"</span>,   <span class="co"># from rcicr stimulus gen</span></span>
+<span>  baseimage  <span class="op">=</span> <span class="st">"base"</span></span>
 <span><span class="op">)</span></span>
-<span><span class="va">signal_B</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/load_signal_matrix.html">load_signal_matrix</a></span><span class="op">(</span><span class="st">"data/cis_condition_B/"</span>, <span class="st">"data/base.jpg"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Option B: from raw trial-level responses (2IFC)</span></span>
-<span><span class="va">res_A</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/ci_from_responses_2ifc.html">ci_from_responses_2ifc</a></span><span class="op">(</span></span>
-<span>  responses  <span class="op">=</span> <span class="va">my_responses_A</span>,</span>
+<span><span class="va">untrustworthy</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/ci_from_responses_2ifc.html">ci_from_responses_2ifc</a></span><span class="op">(</span></span>
+<span>  responses  <span class="op">=</span> <span class="va">my_untrustworthy_data</span>,</span>
 <span>  rdata_path <span class="op">=</span> <span class="st">"data/rcicr_stimuli.Rdata"</span>,</span>
 <span>  baseimage  <span class="op">=</span> <span class="st">"base"</span></span>
 <span><span class="op">)</span></span>
-<span><span class="va">signal_A</span> <span class="op">&lt;-</span> <span class="va">res_A</span><span class="op">$</span><span class="va">signal_matrix</span></span>
 <span></span>
-<span><span class="co"># Reliability reports</span></span>
-<span><span class="va">within</span>  <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_within.html">run_within</a></span><span class="op">(</span><span class="va">signal_A</span>, n_permutations <span class="op">=</span> <span class="fl">2000</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
-<span><span class="va">between</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_between.html">run_between</a></span><span class="op">(</span><span class="va">signal_A</span>, <span class="va">signal_B</span>,</span>
-<span>                       n_permutations <span class="op">=</span> <span class="fl">2000</span>, n_boot <span class="op">=</span> <span class="fl">2000</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span><span class="co"># 2. Did participants in each condition agree with each other?</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="reference/run_within.html">run_within</a></span><span class="op">(</span><span class="va">trustworthy</span><span class="op">$</span><span class="va">signal_matrix</span>,   seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="reference/run_within.html">run_within</a></span><span class="op">(</span><span class="va">untrustworthy</span><span class="op">$</span><span class="va">signal_matrix</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">within</span><span class="op">)</span>;  <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">within</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">between</span><span class="op">)</span>; <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">between</span><span class="op">)</span></span></code></pre></div>
-<p>See the <a href="https://olivethree.github.io/rcicrely/articles/tutorial.html">user guide vignette</a> for a function-by-function walkthrough covering both paradigms, cluster-map interpretation, sample-size warnings, and the ICC-variant decision.</p>
+<span><span class="co"># 3. Are the two conditions actually distinguishable?</span></span>
+<span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_between.html">run_between</a></span><span class="op">(</span></span>
+<span>  <span class="va">trustworthy</span><span class="op">$</span><span class="va">signal_matrix</span>,</span>
+<span>  <span class="va">untrustworthy</span><span class="op">$</span><span class="va">signal_matrix</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">1</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span>   <span class="co"># cluster map of pixels where conditions differ</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="starting-from-ci-images-already-saved-as-pngjpeg">Starting from CI images already saved as PNG/JPEG<a class="anchor" aria-label="anchor" href="#starting-from-ci-images-already-saved-as-pngjpeg"></a>
+</h3>
+<p>If you’ve already generated your CIs and have them as image files on disk:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/olivethree/rcicrely" class="external-link">rcicrely</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">trustworthy</span>   <span class="op">&lt;-</span> <span class="fu"><a href="reference/load_signal_matrix.html">load_signal_matrix</a></span><span class="op">(</span><span class="st">"data/cis_trustworthy/"</span>,   <span class="st">"data/base.jpg"</span><span class="op">)</span></span>
+<span><span class="va">untrustworthy</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/load_signal_matrix.html">load_signal_matrix</a></span><span class="op">(</span><span class="st">"data/cis_untrustworthy/"</span>, <span class="st">"data/base.jpg"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="reference/run_within.html">run_within</a></span><span class="op">(</span><span class="va">trustworthy</span>,   seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="reference/run_within.html">run_within</a></span><span class="op">(</span><span class="va">untrustworthy</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="reference/run_between.html">run_between</a></span><span class="op">(</span><span class="va">trustworthy</span>, <span class="va">untrustworthy</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<blockquote>
+<p><strong>Heads-up.</strong> Results from PNG/JPEG inputs may differ slightly from raw-response inputs because PNGs encode the <em>display-scaled</em> CI, not the raw signal. The package warns you once per session when this matters; see <a href="https://olivethree.github.io/rcicrely/articles/tutorial.html">the tutorial</a> for the full story.</p>
+</blockquote>
+<p>For a function-by-function walkthrough — including how to interpret cluster maps, sample-size warnings, when to use ICC(3,1) vs ICC(3,k), and Brief-RC end-to-end — see the <strong><a href="https://olivethree.github.io/rcicrely/articles/tutorial.html">full user guide</a></strong>.</p>
+</div>
 </div>
 <div class="section level2">
-<h2 id="important-raw-vs-rendered-cis">Important: raw vs. rendered CIs<a class="anchor" aria-label="anchor" href="#important-raw-vs-rendered-cis"></a>
+<h2 id="under-the-hood">Under the hood<a class="anchor" aria-label="anchor" href="#under-the-hood"></a>
 </h2>
-<p>Reliability metrics in this package operate on the <strong>raw mask</strong> (the participant’s noise contribution before any display transformation). The two ways to get there:</p>
+<p>If you want the technical details:</p>
 <ul>
 <li>
-<strong>Mode 2 (raw responses)</strong> - <code><a href="reference/ci_from_responses_2ifc.html">ci_from_responses_2ifc()</a></code> and <code><a href="reference/ci_from_responses_briefrc.html">ci_from_responses_briefrc()</a></code> return the raw mask directly. Safe.</li>
+<strong>Within-condition reliability</strong>: permuted split-half with Spearman–Brown correction, leave-one-out influence diagnostic, ICC(3,1) and ICC(3,k) computed via direct mean-squares.</li>
 <li>
-<strong>Mode 1 (PNGs on disk)</strong> - <code><a href="reference/read_cis.html">read_cis()</a></code> / <code><a href="reference/extract_signal.html">extract_signal()</a></code> / <code><a href="reference/load_signal_matrix.html">load_signal_matrix()</a></code> load the <em>rendered</em> CI (<code>base + scaling(mask)</code>) because that’s what was saved to disk; subtracting the base then yields <code>scaling(mask)</code>, <strong>not</strong> the raw mask.</li>
+<strong>Between-condition discriminability</strong>: vectorised Welch pixel <em>t</em>, cluster-based permutation with max-statistic FWER control (or threshold-free cluster enhancement), bootstrap representational dissimilarity (Euclidean distance with percentile CIs).</li>
+<li>
+<strong>Per-producer informational value (<code><a href="reference/infoval.html">infoval()</a></code>)</strong>: Frobenius-norm z-score with a reference distribution matched to each producer’s trial count — for both 2IFC and Brief-RC.</li>
 </ul>
-<p>Variance-based reliability metrics (<code><a href="reference/rel_icc.html">rel_icc()</a></code>, Euclidean half of <code><a href="reference/rel_dissimilarity.html">rel_dissimilarity()</a></code>, <code><a href="reference/pixel_t_test.html">pixel_t_test()</a></code>, <code><a href="reference/rel_cluster_test.html">rel_cluster_test()</a></code>) are sensitive to the scaling transform. The standard 2IFC <code>infoVal</code> path (<code><a href="https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html" class="external-link">rcicr::computeInfoVal2IFC()</a></code>) extracts the raw <code>$ci</code> from the rcicr CI-list internally and is unaffected; hand-rolled <code>infoVal</code> implementations (Brief-RC, custom code) need the raw mask and should not be fed PNG-derived data. The package emits a one-time per-session warning when you use Mode 1; silence with <code>acknowledge_scaling = TRUE</code> or <code>options(rcicrely.silence_scaling_warning = TRUE)</code> once you’ve read <a href="https://olivethree.github.io/rcicrely/articles/tutorial.html">chapter 3 of the user guide</a>.</p>
-</div>
-<div class="section level2">
-<h2 id="whats-different-from-the-trait-rating-iccs-in-the-rc-literature">What’s different from the trait-rating ICCs in the RC literature<a class="anchor" aria-label="anchor" href="#whats-different-from-the-trait-rating-iccs-in-the-rc-literature"></a>
-</h2>
-<p>Most ICCs published in reverse-correlation papers are <strong>trait-rating</strong> reliability (phase-2 naive raters scoring CIs on dimensions like “trustworthy” or “competent”). <code>rcicrely</code>’s ICC is a structurally different object: it operates on the pixel-level signal produced by the original producers, so no phase-2 rating study is involved. This sidesteps the two-phase design Cone, Brown-Iannuzzi, Lei, &amp; Dotsch (2021) showed inflates Type I error.</p>
-<p>The package reports <strong>ICC(3,1)</strong> and <strong>ICC(3,k)</strong> by positive argument, not convention: pixels are a fixed <code>img_size × img_size</code> grid (two-way mixed, pixels fixed, participants random), not a random sample from a pixel population. ICC(2,*) is available via the <code>variants</code> argument if your reviewer explicitly asks.</p>
+<p>Companion to <a href="https://github.com/olivethree/rcicrdiagnostics" class="external-link"><code>rcicrdiagnostics</code></a>: that one catches silent data-processing errors <em>before</em> CI computation; <code>rcicrely</code> asks whether the CIs <em>themselves</em> are reliable and discriminable <em>after</em> they’ve been cleanly computed.</p>
 </div>
 <div class="section level2">
 <h2 id="citation">Citation<a class="anchor" aria-label="anchor" href="#citation"></a>
 </h2>
+<p>If <code>rcicrely</code> helps your research, please cite it:</p>
 <pre><code>Oliveira, M. (2026). rcicrely: Toolkit for reliability analysis of
 classification images from reverse correlation studies in social
 psychology. R package v0.2.0. Zenodo.
 https://doi.org/10.5281/zenodo.19772888</code></pre>
+<p>Or run <code>citation("rcicrely")</code> in R for a BibTeX entry.</p>
 </div>
 <div class="section level2">
 <h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>

@@ -1,9 +1,5 @@
 # rcicrely user guide
 
-``` r
-rm(list=ls())
-```
-
 This guide is written for two readers in parallel: the researcher who
 wants to know “which function do I call for the question I have?”, and
 the methodologically-curious user who also wants to know “and why should
