@@ -12,6 +12,10 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
+```{r}
+rm(list=ls())
+```
+
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse  = TRUE,
@@ -104,15 +108,33 @@ Every reliability metric in this package takes a single object: a
 **signal matrix**, pixels by participants. Get this right and the
 rest of the package is a thin shell over it.
 
+> **A note on the word *mask*.** The term has two distinct meanings
+> in RC work and in this package:
+>
+> 1. **Noise mask** (often shortened to *mask* or *raw mask*): the
+>    participant's *visual noise contribution* — the noise pattern
+>    that, when superimposed on the base face, produces their
+>    classification image. This is the core statistical object.
+>    Every `rel_*()` function operates on a matrix of these.
+> 2. **Region mask** (or *pixel mask*): a logical vector marking
+>    which pixels to include in an analysis (oval face region, eyes
+>    region, etc.). This is what `face_mask()` returns and what
+>    `infoval()`'s `mask` argument consumes.
+>
+> Throughout this guide, "mask" without qualification means the noise
+> mask. Pixel selection is always called "region mask" or referenced
+> through `face_mask()`.
+
 ### 3.1 Raw mask vs. rendered CI
 
 A CI exists in two forms.
 
-The **raw mask** is the participant's noise contribution before any
-display transformation. It is what the math is about. For Brief-RC,
-it is `(noise_pool[, chosen_ids] %*% signed_responses) / n_unique`
-(Schmitz's `genMask()`). For 2IFC, it is rcicr's `$ci` element. Values
-are typically in a narrow band around zero (~ +/- 0.05).
+A **raw mask** is the participant's noise contribution before any
+display transformation. It is the object every reliability metric
+operates on. For Brief-RC, it is
+`(noise_pool[, chosen_ids] %*% signed_responses) / n_unique`
+(Schmitz's `genMask()`). For 2IFC, it is rcicr's `$ci` element.
+Values are typically in a narrow band around zero (~ +/- 0.05).
 
 The **rendered CI** is what gets saved to PNG. It is
 `base + scaling(mask)`, where `scaling()` may stretch the mask to the
@@ -652,36 +674,165 @@ statistic (see §5.2).
 
 ## 6. Function reference: between-condition inference
 
-### 6.1 `pixel_t_test()` {#section-pixel-t}
+The two examples in §5 (`sig_A`, `sig_B`) use a half-image signal,
+which produces *very* strong contrasts — useful for demonstrating
+that within-condition reliability metrics work, but it makes the
+between-condition cluster figures look like two solid blobs rather
+than realistic localized clusters. For §6.1–§6.2 we therefore use a
+small additional fixture with **localized circular signal**: two
+small "patches" at different positions on a 32 x 32 grid, mimicking
+how real RC signal tends to cluster around face features rather than
+fill the whole image.
 
-**What it does.** Vectorised Welch's t per pixel between two
-condition signal matrices.
-
-**When to use it.** You want the raw t-map (e.g. for custom plotting,
-threshold sensitivity analysis) without cluster-level inference.
-
-```{r pixel-t}
-t_vec <- pixel_t_test(sig_A, sig_B)
-range(t_vec); length(t_vec)
+```{r fake-data-localized}
+set.seed(7)
+make_localized <- function(centre, n_p = 30L, n_side = 32L,
+                           snr = 0.20, radius = 0.18, seed = NULL) {
+  if (!is.null(seed)) set.seed(seed)
+  rr <- row(matrix(0, n_side, n_side)) / n_side - centre[1]
+  cc <- col(matrix(0, n_side, n_side)) / n_side - centre[2]
+  d  <- sqrt(rr^2 + cc^2)
+  m  <- as.vector(pmax(0, 1 - d / radius))
+  out <- snr * outer(m, runif(n_p, 0.7, 1.3)) +
+         matrix(rnorm(n_side^2 * n_p, sd = 0.05), n_side^2, n_p)
+  attr(out, "img_dims") <- c(n_side, n_side)
+  out
+}
+# Condition A: signal in upper-left; Condition B: signal in lower-right
+sig_A_loc <- make_localized(c(0.30, 0.30), n_p = 30L, seed = 11L)
+sig_B_loc <- make_localized(c(0.70, 0.70), n_p = 30L, seed = 12L)
 ```
 
-Welch's t (unequal variances) is correct - 2IFC and Brief-RC
-conditions can differ in N and variance.
+### 6.1 `pixel_t_test()` — building block, not standalone test {#section-pixel-t}
 
-### 6.2 `rel_cluster_test()` {#section-cluster}
+**What it does.** Computes a Welch's t-statistic per pixel between
+two condition signal matrices. Welch (unequal variances) is the
+correct choice because conditions can differ in both N and
+per-pixel variance. With `paired = TRUE`, computes a paired t on
+the per-producer difference instead.
 
-**What it does.** Cluster-based permutation test with max-statistic
-FWER control. Pixels above the threshold form clusters via
-4-connectivity; cluster mass = sum of t-values inside; null built by
-**stratified** label permutation; max-mass approach controls
-family-wise error.
+**Why this function exists, given that 65,000 simultaneous t-tests
+is statistically meaningless.** It is a *building block*, not an
+inferential test. There are three legitimate uses:
+
+1. **Internal use by `rel_cluster_test()`**: every permutation of
+   the cluster test recomputes a t-map; `pixel_t_test()` exposes
+   that computation. Calling it directly is what the cluster test
+   itself calls under the hood.
+2. **Diagnostic visualisation**: inspecting the raw t-map *before*
+   running the cluster test helps you pick a sensible cluster-
+   forming threshold and see whether any spatially-coherent
+   structure is even there to test.
+3. **Custom inference pipelines**: if you want to implement
+   threshold-free cluster enhancement by hand, define non-standard
+   cluster geometries, or apply a different multiple-comparison
+   correction (FDR, max-T, etc.), this is the input.
+
+**Do not** threshold the returned vector at `|t| > 1.96` and report
+"significant pixels". At 65,536 pixels you would get ~3,300 false
+positives by chance under H0 (any α), and the spatial clustering
+in real CI data makes that even worse. Use `rel_cluster_test()` for
+inference.
+
+```{r pixel-t}
+t_vec <- pixel_t_test(sig_A_loc, sig_B_loc)
+range(t_vec)
+```
+
+A quick visualization makes the output structure obvious. Positive
+(red) regions indicate where condition A's signal is stronger than
+B's; negative (blue) regions where B's is stronger than A's; near-
+white pixels carry no consistent difference. **This is descriptive
+only** — there is no inference yet:
+
+```{r pixel-t-viz, fig.cap = "Raw pixel-wise Welch t-map between two conditions with localized signal patches. Positive (red) = condition A larger; negative (blue) = condition B larger. Note the two distinct hot regions corresponding to the injected signal locations; the rest of the image is dominated by noise. This map is descriptive only — significance comes from rel_cluster_test()."}
+local({
+  op <- par(mar = c(1, 1, 3, 6) + 0.1)
+  on.exit(par(op))
+  n_side <- 32L
+  tmap   <- matrix(t_vec, n_side, n_side)
+  rng    <- max(abs(t_vec))
+  graphics::image(
+    seq_len(n_side), seq_len(n_side),
+    t(tmap[n_side:1L, ]),
+    col  = grDevices::hcl.colors(256L, "RdBu", rev = TRUE),
+    zlim = c(-rng, rng),
+    main = "Raw pixel-wise t-map (descriptive only)",
+    axes = FALSE, xlab = "", ylab = "",
+    asp  = 1, useRaster = TRUE
+  )
+  graphics::box(col = "grey80", lwd = 0.5)
+})
+```
+
+The hot blue/red regions are exactly where the two conditions
+differ; everything else is noise. To turn this descriptive map into
+a statement about *which* differences are reliable, we move on to
+the cluster test.
+
+### 6.2 `rel_cluster_test()` — spatially-localized inference with FWER control {#section-cluster}
+
+**What it does.** Identifies *spatially contiguous regions* of the
+image where two conditions differ, with family-wise error control
+across the whole image (so you do not over-claim significance from
+the kind of mass-testing problem §6.1 warned about).
+
+**The vocabulary.** Three terms are unavoidable; here is what each
+one means in plain language.
+
+- **Cluster-forming threshold** (`cluster_threshold`, default
+  `2.0`). A t-value cutoff used at the *first* step: any pixel with
+  `|t| > 2.0` is "in", everything else is "out". This is *not* a
+  significance threshold — it is the cutoff for deciding which
+  pixels are even candidates for being part of a cluster.
+  Significance is decided afterwards. Lower thresholds catch more
+  diffuse signal; higher thresholds isolate sharper peaks.
+- **4-connectivity**. Once we have a binary "in / out" image, we
+  group adjacent "in" pixels into clusters. *4-connectivity*
+  treats two pixels as adjacent only if they share an edge
+  (up / down / left / right) — the four orthogonal neighbours.
+  *8-connectivity*, the alternative, also counts diagonals.
+  4-connectivity is the more conservative choice: a one-pixel-wide
+  diagonal stripe is split into isolated pixels and forms no
+  cluster, whereas 8-connectivity would chain them. Suits face-CI
+  signal, which tends to be contiguous in orthogonal directions.
+
+  ```
+  4-connectivity:    8-connectivity:
+       . X .              X X X
+       X o X              X o X
+       . X .              X X X
+   (o is the centre, X are neighbours, . are non-neighbours)
+  ```
+
+- **Cluster mass** (`mass`). For each candidate cluster, mass is
+  the *sum of t-values within it*. Not pixel count. This means a
+  small cluster with very strong t-values can have the same mass
+  as a large cluster with weak t-values — the metric mixes
+  *extent* (how big) and *magnitude* (how strong). Cluster mass
+  was introduced by Maris & Oostenveld (2007) and is the dominant
+  choice in EEG / MEG / fMRI cluster-permutation work.
+- **Stratified label permutation**. To build the null distribution,
+  we randomly relabel which producers belong to A vs. B many
+  times, recompute the t-map, find clusters, and record the
+  *maximum* cluster mass per permutation. "Stratified" means we
+  preserve the original group sizes `(N_A, N_B)` exactly each
+  time, so the Welch denominator is not perturbed under H0. With
+  `paired = TRUE`, the permutation is sign-flip on matched pairs
+  instead.
+- **Max-statistic FWER**. Family-wise error rate = the probability
+  of any false positive across the *entire image*. By comparing
+  observed cluster mass to the *maximum* mass under each
+  permutation, we directly bound that probability at `alpha`. No
+  per-pixel correction is needed; the cluster-level p-value is
+  already FWE-corrected.
 
 **When to use it.** "Where in the image do these two conditions
-differ?" with proper multiple-comparison control across pixels.
+differ, and how confident am I that the differences are not noise?"
 
-```{r rel-cluster}
+```{r rel-cluster, results = "hold"}
 clust <- rel_cluster_test(
-  sig_A, sig_B,
+  sig_A_loc, sig_B_loc,
   img_dims          = c(32L, 32L),
   n_permutations    = 500L,
   cluster_threshold = 2.0,
@@ -692,20 +843,49 @@ clust <- rel_cluster_test(
 print(clust)
 ```
 
-```{r plot-cluster, fig.cap = "Per-pixel Welch t-map; significant clusters outlined."}
+```{r plot-cluster, fig.cap = "Pixel-wise Welch t-map (red = condition A larger, blue = condition B larger) with significant cluster contours overlaid in black. The two clusters correspond to the two injected signal patches, and only those clusters are FWE-corrected significant at alpha = 0.05; the surrounding noise does not produce false-positive clusters thanks to the max-statistic correction."}
 plot(clust)
 ```
 
 **Reading the result.** `$observed_t` is the raw t-map.
-`$clusters` is a data.frame with `cluster_id`, `direction`, `mass`,
-`size`, `p_value`, `significant`. `$pos_labels` / `$neg_labels` are
-integer matrices for plotting overlays. `$null_distribution` exposes
-the per-permutation max masses.
+`$clusters` is a data.frame with one row per candidate cluster,
+columns: `cluster_id`, `direction` (`"pos"`/`"neg"`), `mass` (sum
+of t-values), `size` (pixel count), `p_value` (mass percentile
+against the null), `significant` (logical). `$pos_labels` /
+`$neg_labels` are integer matrices the same shape as the image,
+where each non-zero value tags a cluster — useful for custom
+plotting overlays. `$null_distribution` exposes the per-permutation
+max masses.
 
-**Common mistakes.** Reading `cluster_threshold = 2.0` as "p < 0.05"
-- it is the t-cutoff for forming candidate clusters, not the cluster
-significance threshold. Significance is the cluster's mass relative
-to the null. Trusting cluster p-values with `n_permutations < 1000`.
+**TFCE alternative.** For threshold-free cluster enhancement,
+which integrates across many cluster-forming thresholds and
+removes the arbitrary cutoff choice, set `method = "tfce"`. See
+§6.5 of the *deep-dive tutorial* for the full mathematical detail
+and §6.7 below for the agreement-map relative.
+
+```{r rel-cluster-tfce, fig.cap = "TFCE-enhanced map (no cluster-forming threshold to choose). Significant pixels are outlined in black. Compare against the threshold-based version above — TFCE generally has more power for diffuse, low-amplitude signal because it integrates evidence across many thresholds rather than committing to one."}
+clust_tfce <- rel_cluster_test(
+  sig_A_loc, sig_B_loc,
+  img_dims        = c(32L, 32L),
+  method          = "tfce",
+  n_permutations  = 500L,
+  tfce_n_steps    = 50L,
+  alpha           = 0.05,
+  seed            = 1L,
+  progress        = FALSE
+)
+plot(clust_tfce)
+```
+
+**Common mistakes.**
+
+- Reading `cluster_threshold = 2.0` as "p < 0.05". It is the
+  t-cutoff for forming candidate clusters, not the cluster
+  significance threshold.
+- Trusting cluster p-values with `n_permutations < 1000` (the
+  function warns below 100). Tail probabilities below 0.01 need
+  more permutations than that.
+- Using `pixel_t_test()` standalone for inference (§6.1).
 
 **Real example (Oliveira et al., 2019, Study 1).** A central claim
 of the original paper was that the Trust and Friendly CIs overlap
