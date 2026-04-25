@@ -144,6 +144,36 @@ test_that("infoval aborts on shape / name mismatch", {
   )
 })
 
+test_that("2IFC reference is calibrated: random producer z is centred ~ 0", {
+  # Regression test for the v0.2.0 bug where the reference distribution
+  # sampled stim ids with replacement, inflating the reference Frobenius
+  # norm in 2IFC designs (every producer sees every pool item once) and
+  # systematically pushing per-producer z below zero. Discovered while
+  # replicating Oliveira et al. (2019) Study 1.
+  set.seed(123L)
+  n_pix  <- 256L
+  n_pool <- 60L
+  noise  <- matrix(stats::rnorm(n_pix * n_pool), n_pix, n_pool)
+
+  # Many random producers, each one gets a fresh random ±1 over all stims
+  n_producers <- 80L
+  random_signals <- sapply(seq_len(n_producers), function(j) {
+    resp <- sample(c(-1, 1), n_pool, replace = TRUE)
+    (noise %*% resp) / n_pool
+  })
+  colnames(random_signals) <- sprintf("p%02d", seq_len(n_producers))
+  tc <- stats::setNames(rep(n_pool, n_producers), colnames(random_signals))
+
+  iv <- suppressWarnings(infoval(
+    random_signals, noise, tc,
+    iter = 1500L, seed = 1L, progress = FALSE
+  ))
+  # Under H0 the median should be near 0 (within Monte Carlo).
+  # The buggy v0.2.0 implementation produced a median around -1, which
+  # this bound catches.
+  expect_lt(abs(median(iv$infoval)), 0.5)
+})
+
 test_that("face_mask produces a roughly elliptical logical vector", {
   m <- face_mask(c(64L, 64L))
   expect_length(m, 64L * 64L)

@@ -256,19 +256,29 @@ infoval <- function(signal_matrix,
 
 #' Simulate `iter` random Frobenius norms for a given trial count
 #'
-#' Mirrors Schmitz's `genMask()` exactly: random (stim, response)
-#' pairs, mean-by-stim collapse, divide by number of unique chosen
-#' stim ids, Frobenius norm of the resulting mask. Applies `mask`
-#' if supplied.
+#' Matches Schmitz's `genMask()` construction (random sign per stim,
+#' mean-by-stim collapse, divide by number of unique chosen stims,
+#' Frobenius norm of the resulting mask), but samples stim ids
+#' **without replacement** when the trial count fits in the pool —
+#' the canonical case for both 2IFC (every producer sees every pool
+#' item once) and standard Brief-RC (every producer sees a random
+#' subset of distinct pool items). Sampling with replacement was the
+#' v0.2.0 default and produced systematically inflated reference
+#' norms for 2IFC, biasing per-producer infoVal z-scores
+#' downward (Study 1 replication revealed this on real data;
+#' the fix landed in v0.2.1). Replacement is still used when
+#' `n_trials > n_pool`, where it is the only feasible sampling
+#' scheme.
 #'
 #' @keywords internal
 #' @noRd
 simulate_reference_norms <- function(noise_matrix, n_trials, iter,
                                      mask = NULL, pid = NULL) {
   n_pool <- ncol(noise_matrix)
+  use_replace <- n_trials > n_pool
   norms  <- numeric(iter)
   for (k in seq_len(iter)) {
-    stim <- sample.int(n_pool, n_trials, replace = TRUE)
+    stim <- sample.int(n_pool, n_trials, replace = use_replace)
     resp <- sample(c(-1, 1), n_trials, replace = TRUE)
     # Schmitz's genMask duplicate-stim rule: mean(response) by stim,
     # then mask = noise[, unique_stim] %*% mean_resp / n_unique_stim.
