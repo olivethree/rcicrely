@@ -121,11 +121,23 @@ ci_from_responses_2ifc <- function(responses,
 
   unique_resp <- sort(unique(as.numeric(responses[[response_col]])))
   if (!identical(unique_resp, c(-1, 1))) {
-    cli::cli_abort(c(
+    msg <- c(
       "Column {.var {response_col}} must contain only values in \\
        {.val {c(-1, 1)}}.",
       "*" = "Got: {.val {unique_resp}}"
-    ))
+    )
+    if (identical(unique_resp, c(0, 1)) || identical(unique_resp, c(0, 1L))) {
+      msg <- c(
+        msg,
+        "i" = "Did you mean {.code -1 / +1}? The {.code {{0, 1}}} \\
+               coding is the most common silent failure in 2IFC \\
+               pipelines (often produced by experiment software \\
+               that records 'left' / 'right' as 0 / 1).",
+        "i" = "Recode in one line: \\
+               {.code responses${response_col} <- 2 * responses${response_col} - 1}"
+      )
+    }
+    cli::cli_abort(msg)
   }
 
   if (!file.exists(rdata_path)) {

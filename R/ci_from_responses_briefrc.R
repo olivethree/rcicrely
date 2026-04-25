@@ -152,11 +152,23 @@ ci_from_responses_briefrc <- function(responses,
   }
   uniq <- sort(unique(resp_values))
   if (!identical(uniq, c(-1, 1))) {
-    cli::cli_abort(c(
+    msg <- c(
       "Column {.var {response_col}} must contain only values in \\
        {.val {c(-1, 1)}}.",
       "*" = "Got: {.val {uniq}}"
-    ))
+    )
+    if (identical(uniq, c(0, 1)) || identical(uniq, c(0, 1L))) {
+      msg <- c(
+        msg,
+        "i" = "Did you mean {.code -1 / +1}? The {.code {{0, 1}}} \\
+               coding is the most common silent failure in RC \\
+               pipelines (often produced by experiment software \\
+               that records 'left' / 'right' as 0 / 1).",
+        "i" = "Recode in one line: \\
+               {.code responses${response_col} <- 2 * responses${response_col} - 1}"
+      )
+    }
+    cli::cli_abort(msg)
   }
 
   # load noise matrix

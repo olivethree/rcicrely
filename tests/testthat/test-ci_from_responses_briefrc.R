@@ -75,6 +75,25 @@ test_that("Brief-RC rejects bad response coding", {
   )
 })
 
+test_that("Brief-RC `{0,1}` miscoding gets a recoding hint in error", {
+  skip_if_not_installed("png")
+  base_path <- tempfile(fileext = ".png")
+  png::writePNG(matrix(0.5, 4L, 4L), base_path)
+  noise_matrix <- matrix(0, nrow = 16L, ncol = 5L)
+  responses <- data.frame(
+    participant_id = rep("p1", 4L), trial = 1:4,
+    stimulus = c(1L, 2L, 3L, 4L),
+    response = c(0L, 1L, 0L, 1L)   # the canonical miscoding
+  )
+  err <- tryCatch(
+    ci_from_responses_briefrc(responses, noise_matrix = noise_matrix,
+                              base_image_path = base_path),
+    error = function(e) conditionMessage(e)
+  )
+  expect_match(err, "Did you mean")
+  expect_match(err, "Recode in one line")
+})
+
 test_that("briefrc20 method aborts with a clear message", {
   skip_if_not_installed("png")
   base_path <- tempfile(fileext = ".png")
