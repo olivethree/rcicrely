@@ -183,3 +183,39 @@ test_that("face_mask produces a roughly elliptical logical vector", {
   expect_gt(frac, 0.35)
   expect_lt(frac, 0.55)
 })
+
+test_that("face_mask region argument selects sub-regions correctly", {
+  full   <- face_mask(c(128L, 128L), region = "full")
+  eyes   <- face_mask(c(128L, 128L), region = "eyes")
+  mouth  <- face_mask(c(128L, 128L), region = "mouth")
+  nose   <- face_mask(c(128L, 128L), region = "nose")
+  upper  <- face_mask(c(128L, 128L), region = "upper_face")
+  lower  <- face_mask(c(128L, 128L), region = "lower_face")
+  # Each sub-region is a strict subset of the full face
+  expect_true(all(eyes  <= full))
+  expect_true(all(mouth <= full))
+  expect_true(all(nose  <= full))
+  # Sub-regions are smaller than the full face
+  expect_lt(sum(eyes), sum(full))
+  expect_lt(sum(mouth), sum(full))
+  expect_lt(sum(nose), sum(full))
+  # Upper / lower partition (approximately) the full face
+  expect_equal(sum(upper) + sum(lower), sum(full),
+               tolerance = sum(full) * 0.02)
+  # Eyes, mouth, nose are mutually disjoint
+  expect_false(any(eyes  & mouth))
+  expect_false(any(eyes  & nose))
+  expect_false(any(mouth & nose))
+})
+
+test_that("face_mask integrates with infoval as a region restrictor", {
+  fx <- make_infoval_fixture(n_side = 32L, n_p = 5L, n_pool = 40L,
+                             trials = 100L, snr = 0.4, seed = 1L)
+  eyes_mask <- face_mask(c(32L, 32L), region = "eyes")
+  expect_no_error(
+    suppressWarnings(infoval(fx$signal_matrix, fx$noise_matrix,
+                             fx$trial_counts,
+                             iter = 100L, mask = eyes_mask,
+                             seed = 1L, progress = FALSE))
+  )
+})

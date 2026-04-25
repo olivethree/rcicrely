@@ -3,6 +3,67 @@
 ## These are registered via roxygen @exportS3Method tags so R CMD
 ## check is happy even though none of the generics are imported from
 ## another package, they all come from `base`.
+##
+## Plot methods aim for publication-grade base R aesthetics: minimal
+## axis chrome, soft gridlines, viridis-friendly palettes, shaded
+## confidence regions where applicable. The helpers below set these
+## defaults consistently across all `plot.rcicrely_*()` methods.
+
+#' Set publication-style par() defaults. Use inside plot methods.
+#' @keywords internal
+#' @noRd
+set_pub_par <- function(mar = c(4, 4, 2.5, 1) + 0.1) {
+  graphics::par(
+    mar     = mar,
+    mgp     = c(2.0, 0.5, 0),
+    tcl     = -0.3,
+    las     = 1,
+    cex.lab = 0.9,
+    cex.axis= 0.8,
+    cex.main= 1.0,
+    font.main = 1,
+    bty     = "n",
+    family  = ""
+  )
+}
+
+#' Soft horizontal grid behind a plot. Call after `plot()` setup but
+#' before drawing the data.
+#' @keywords internal
+#' @noRd
+add_soft_grid <- function(side = "h", at = NULL,
+                          col = "grey92", lwd = 0.7) {
+  if (is.null(at)) at <- pretty(graphics::par("usr")[if (side == "h") 3:4 else 1:2])
+  if (side == "h") {
+    graphics::abline(h = at, col = col, lwd = lwd)
+  } else {
+    graphics::abline(v = at, col = col, lwd = lwd)
+  }
+}
+
+#' Light L-frame axes (left + bottom only).
+#' @keywords internal
+#' @noRd
+add_clean_axes <- function(x_at = NULL, y_at = NULL,
+                           x_labels = TRUE, y_labels = TRUE,
+                           xlab = NULL, ylab = NULL) {
+  graphics::axis(1, at = x_at, labels = x_labels,
+                 col = "grey50", col.axis = "grey20", lwd = 0.7)
+  graphics::axis(2, at = y_at, labels = y_labels,
+                 col = "grey50", col.axis = "grey20", lwd = 0.7)
+  if (!is.null(xlab)) graphics::title(xlab = xlab, col.lab = "grey20")
+  if (!is.null(ylab)) graphics::title(ylab = ylab, col.lab = "grey20")
+}
+
+#' Subtle filled CI band on a 1D x-axis.
+#' @keywords internal
+#' @noRd
+ci_shade <- function(xlo, xhi, col = "#377EB8", alpha = 0.15) {
+  usr <- graphics::par("usr")
+  graphics::rect(xlo, usr[3], xhi, usr[4],
+                 col = grDevices::adjustcolor(col, alpha.f = alpha),
+                 border = NA)
+}
 
 # ---- rcicrely_split_half ---------------------------------------------------
 
@@ -30,21 +91,47 @@ plot.rcicrely_split_half <- function(x, ...,
                                      main = "Split-half reliability") {
   op <- graphics::par(no.readonly = TRUE)
   on.exit(graphics::par(op), add = TRUE)
-  graphics::hist(
-    x$distribution, breaks = 40,
-    col = "grey80", border = "white",
-    main = main,
-    xlab = "per-split Pearson r"
+  set_pub_par()
+
+  h <- graphics::hist(x$distribution, breaks = 40, plot = FALSE)
+  graphics::plot.new()
+  graphics::plot.window(
+    xlim = range(h$breaks),
+    ylim = c(0, max(h$counts) * 1.08)
   )
-  graphics::abline(v = x$r_hh,   col = "red",  lwd = 2)
-  graphics::abline(v = x$ci_95,  col = "red",  lwd = 1, lty = 2)
+  add_soft_grid("h")
+
+  # Shaded 95% CI band, then the histogram bars on top
+  ci_shade(x$ci_95[1], x$ci_95[2], col = "#377EB8", alpha = 0.18)
+  graphics::rect(
+    h$breaks[-length(h$breaks)], 0,
+    h$breaks[-1L], h$counts,
+    col    = "#9ECAE1",
+    border = "white", lwd = 0.5
+  )
+
+  # Reference lines: r_hh (mean), r_sb (Spearman-Brown projected)
+  graphics::abline(v = x$r_hh, col = "#08519C", lwd = 2)
+  graphics::abline(v = x$r_sb, col = "#D62728", lwd = 2, lty = 2)
+
+  add_clean_axes(xlab = "per-split Pearson r", ylab = "frequency")
+  graphics::title(main = main, col.main = "grey10")
+  graphics::mtext(
+    sprintf("N = %d producers,  %d permutations",
+            x$n_participants, x$n_permutations),
+    side = 3, line = 0.2, cex = 0.78, col = "grey40"
+  )
+
   graphics::legend(
     "topleft",
     legend = c(
       sprintf("r_hh = %.3f", x$r_hh),
-      sprintf("95%% CI = [%.3f, %.3f]", x$ci_95[1], x$ci_95[2])
+      sprintf("r_SB  = %.3f  (Spearman-Brown)", x$r_sb),
+      sprintf("95%% CI on r = [%.3f, %.3f]",
+              x$ci_95[1], x$ci_95[2])
     ),
-    bty = "n", text.col = "red"
+    bty = "n", cex = 0.8,
+    text.col = c("#08519C", "#D62728", "grey30")
   )
   invisible(x)
 }
@@ -109,26 +196,52 @@ summary.rcicrely_loo <- function(object, ...) {
 }
 
 #' @export
-plot.rcicrely_loo <- function(x, ..., main = "Leave-one-out influence (z-scored)") {
+plot.rcicrely_loo <- function(x, ...,
+                              main = "Leave-one-out influence (z-scored)") {
   op <- graphics::par(no.readonly = TRUE)
   on.exit(graphics::par(op), add = TRUE)
-  srt <- sort(x$z_scores)
-  graphics::par(mar = c(8, 4, 4, 2) + 0.1)
-  cols <- ifelse(names(srt) %in% x$flagged, "red", "grey40")
-  graphics::barplot(
-    srt, las = 2, col = cols, border = NA,
-    main = main, ylab = "z-scored LOO influence",
-    ylim = c(min(srt, -x$flag_threshold) - 0.2,
-             max(srt, 0.5) + 0.2)
+  set_pub_par(mar = c(6.5, 4, 2.8, 1) + 0.1)
+
+  srt   <- sort(x$z_scores)
+  flagd <- names(srt) %in% x$flagged
+  ylim  <- c(min(srt, -x$flag_threshold) - 0.4,
+             max(srt, 1)                  + 0.4)
+
+  bar_x <- graphics::barplot(
+    srt, las = 2, col = NA, border = NA,
+    axes = FALSE, ylim = ylim,
+    main = "", names.arg = rep("", length(srt))
   )
-  graphics::abline(h = 0,                     col = "blue", lty = 2)
-  graphics::abline(h = -x$flag_threshold,     col = "red",  lty = 2)
+  add_soft_grid("h")
+
+  cols <- ifelse(flagd, "#D62728", "#5B9BD5")
+  graphics::rect(
+    bar_x - 0.4, 0, bar_x + 0.4, srt,
+    col = cols, border = NA
+  )
+  graphics::abline(h = 0,                  col = "grey50", lwd = 1)
+  graphics::abline(h = -x$flag_threshold,  col = "#D62728",
+                   lwd = 1, lty = 2)
+
+  add_clean_axes(y_at = pretty(ylim),
+                 ylab = "z-score (LOO influence)")
+  graphics::title(main = main, col.main = "grey10")
+
+  # Producer ids on x-axis, vertical
+  graphics::axis(
+    1, at = bar_x, labels = names(srt),
+    las = 2, cex.axis = 0.65, col = "grey50",
+    col.axis = "grey20", lwd = 0.7
+  )
+
   graphics::legend(
-    "topright", bty = "n",
-    legend = c("centre (z = 0)",
-               sprintf("flag threshold (z = -%.2f)",
-                       x$flag_threshold)),
-    text.col = c("blue", "red")
+    "topleft", bty = "n", cex = 0.78,
+    legend = c(
+      sprintf("flag threshold (z = -%.2f)", x$flag_threshold),
+      sprintf("flagged producers: %d/%d",
+              length(x$flagged), length(x$z_scores))
+    ),
+    text.col = c("#D62728", "grey20")
   )
   invisible(x)
 }
@@ -185,9 +298,11 @@ summary.rcicrely_icc <- function(object, ...) {
 }
 
 #' @export
-plot.rcicrely_icc <- function(x, ..., main = "ICC") {
+plot.rcicrely_icc <- function(x, ..., main = "Intraclass correlation") {
   op <- graphics::par(no.readonly = TRUE)
   on.exit(graphics::par(op), add = TRUE)
+  set_pub_par(mar = c(4, 5.5, 2.8, 1) + 0.1)
+
   vals <- c(
     "ICC(3,1)" = x$icc_3_1,
     "ICC(3,k)" = x$icc_3_k,
@@ -195,13 +310,47 @@ plot.rcicrely_icc <- function(x, ..., main = "ICC") {
     "ICC(2,k)" = x$icc_2_k
   )
   vals <- vals[!is.na(vals)]
-  graphics::par(mar = c(5, 5, 4, 2) + 0.1)
-  graphics::barplot(
-    vals, col = "steelblue", border = NA,
-    main = main, ylab = "ICC value",
-    ylim = c(min(0, min(vals)), max(1, max(vals)))
+  vals <- rev(vals) # so first variant ends up at top of horizontal bar
+
+  # Horizontal layout reads better with two-line labels
+  xlim <- c(min(0, min(vals)) - 0.05, max(1, max(vals)) + 0.05)
+  bar_y <- graphics::barplot(
+    vals, horiz = TRUE, las = 1,
+    col = NA, border = NA, axes = FALSE,
+    xlim = xlim, names.arg = rep("", length(vals))
   )
-  graphics::abline(h = 0, col = "grey50")
+  add_soft_grid("v")
+
+  pal <- c("ICC(3,1)" = "#08519C", "ICC(3,k)" = "#3182BD",
+           "ICC(2,1)" = "#D9D9D9", "ICC(2,k)" = "#BDBDBD")
+  cols <- pal[names(vals)]
+
+  graphics::rect(
+    pmin(0, vals), bar_y - 0.4,
+    pmax(0, vals), bar_y + 0.4,
+    col = cols, border = NA
+  )
+  graphics::abline(v = 0, col = "grey60", lwd = 0.8)
+
+  add_clean_axes(x_at = pretty(xlim),
+                 xlab = "ICC value")
+  graphics::axis(
+    2, at = bar_y, labels = names(vals), las = 1,
+    cex.axis = 0.85, col = "grey50", col.axis = "grey20",
+    lwd = 0.7
+  )
+  graphics::title(main = main, col.main = "grey10")
+  graphics::mtext(
+    sprintf("%d targets x %d raters", x$n_targets, x$n_raters),
+    side = 3, line = 0.2, cex = 0.78, col = "grey40"
+  )
+
+  # Value annotations at the end of each bar
+  graphics::text(
+    vals, bar_y, labels = sprintf("%.3f", vals),
+    pos = ifelse(vals >= 0, 4, 2), cex = 0.78,
+    col = "grey20", offset = 0.3
+  )
   invisible(x)
 }
 
@@ -262,41 +411,65 @@ plot.rcicrely_cluster_test <- function(x, ...,
   op <- graphics::par(no.readonly = TRUE)
   on.exit(graphics::par(op), add = TRUE)
   method <- if (is.null(x$method)) "threshold" else x$method
+  set_pub_par(mar = c(1, 1, 3, 6) + 0.1)
+
+  pal <- grDevices::hcl.colors(256L, "RdBu", rev = TRUE)
 
   if (method == "tfce") {
-    if (is.null(main)) main <- "TFCE map (signed)"
+    if (is.null(main)) main <- "TFCE map (signed, FWE-corrected)"
     tfce_mat <- matrix(x$tfce_map, x$img_dims[1L], x$img_dims[2L])
     rng <- max(abs(x$tfce_map), na.rm = TRUE)
     if (!is.finite(rng) || rng == 0) rng <- 1
+    zlim <- c(-rng, rng)
+
     graphics::image(
+      seq_len(x$img_dims[2L]), seq_len(x$img_dims[1L]),
       t(tfce_mat[nrow(tfce_mat):1L, ]),
-      col  = grDevices::hcl.colors(256L, "RdBu", rev = TRUE),
-      zlim = c(-rng, rng),
-      main = main, axes = FALSE, useRaster = TRUE
+      col       = pal,
+      zlim      = zlim,
+      main      = main, axes = FALSE,
+      xlab      = "", ylab = "",
+      asp       = x$img_dims[1L] / x$img_dims[2L],
+      useRaster = TRUE
     )
-    # Outline pixels below alpha in black.
+    graphics::box(col = "grey80", lwd = 0.5)
+
     sig_mat <- matrix(x$tfce_significant_mask,
                       x$img_dims[1L], x$img_dims[2L])
     if (any(sig_mat)) {
       graphics::contour(
+        seq_len(x$img_dims[2L]), seq_len(x$img_dims[1L]),
         t(sig_mat[nrow(sig_mat):1L, ]),
         levels = 0.5, add = TRUE, drawlabels = FALSE,
-        col = "black", lwd = 2
+        col = "grey10", lwd = 1.5
       )
     }
+    add_colour_bar(zlim, pal, label = "TFCE value (signed)")
+    graphics::mtext(
+      sprintf("alpha = %.2f, %d permutations, H = %.1f, E = %.1f",
+              x$alpha, x$n_permutations, x$tfce_H, x$tfce_E),
+      side = 3, line = 0.2, cex = 0.78, col = "grey40"
+    )
     return(invisible(x))
   }
 
-  if (is.null(main)) main <- "Cluster t-map"
+  if (is.null(main)) main <- "Cluster-based permutation t-map"
   tmap <- matrix(x$observed_t, x$img_dims[1L], x$img_dims[2L])
-  rng <- max(abs(x$observed_t), na.rm = TRUE)
+  rng  <- max(abs(x$observed_t), na.rm = TRUE)
+  zlim <- c(-rng, rng)
+
   graphics::image(
+    seq_len(x$img_dims[2L]), seq_len(x$img_dims[1L]),
     t(tmap[nrow(tmap):1L, ]),
-    col = grDevices::hcl.colors(256L, "RdBu", rev = TRUE),
-    zlim = c(-rng, rng),
-    main = main, axes = FALSE,
+    col       = pal,
+    zlim      = zlim,
+    main      = main, axes = FALSE,
+    xlab      = "", ylab = "",
+    asp       = x$img_dims[1L] / x$img_dims[2L],
     useRaster = TRUE
   )
+  graphics::box(col = "grey80", lwd = 0.5)
+
   sig_pos_ids <- x$clusters$cluster_id[
     x$clusters$direction == "pos" & x$clusters$significant
   ]
@@ -307,13 +480,23 @@ plot.rcicrely_cluster_test <- function(x, ...,
     if (length(ids) == 0L) return(invisible())
     mask <- matrix(labels %in% ids, x$img_dims[1L], x$img_dims[2L])
     graphics::contour(
+      seq_len(x$img_dims[2L]), seq_len(x$img_dims[1L]),
       t(mask[nrow(mask):1L, ]),
       levels = 0.5, add = TRUE, drawlabels = FALSE,
-      col = col, lwd = 2
+      col = col, lwd = 1.5
     )
   }
-  add_contour(x$pos_labels, sig_pos_ids, "black")
-  add_contour(x$neg_labels, sig_neg_ids, "black")
+  add_contour(x$pos_labels, sig_pos_ids, "grey10")
+  add_contour(x$neg_labels, sig_neg_ids, "grey10")
+
+  add_colour_bar(zlim, pal, label = "Welch t")
+  n_sig <- sum(x$clusters$significant)
+  graphics::mtext(
+    sprintf("|t| threshold = %.1f, alpha = %.2f, %d perms, %d/%d clusters significant",
+            x$cluster_threshold, x$alpha, x$n_permutations,
+            n_sig, nrow(x$clusters)),
+    side = 3, line = 0.2, cex = 0.78, col = "grey40"
+  )
   invisible(x)
 }
 
@@ -355,25 +538,162 @@ summary.rcicrely_dissim <- function(object, ...) {
 }
 
 #' @export
-plot.rcicrely_dissim <- function(x, ..., main = "Bootstrap distributions") {
+plot.rcicrely_dissim <- function(x, ...,
+                                 main = "Bootstrap distributions") {
   op <- graphics::par(no.readonly = TRUE)
   on.exit(graphics::par(op), add = TRUE)
-  graphics::par(mfrow = c(1L, 2L))
+  graphics::par(mfrow = c(1L, 2L), oma = c(0, 0, 2, 0))
 
-  graphics::hist(x$boot_cor, breaks = 40, col = "grey80",
-                 border = "white",
-                 main = "Pearson r", xlab = "r")
-  graphics::abline(v = x$correlation, col = "red",  lwd = 2)
-  graphics::abline(v = x$ci_cor,      col = "red",  lty = 2)
+  hist_ci <- function(values, observed, ci, xlab, panel_title,
+                      col_band) {
+    set_pub_par()
+    h <- graphics::hist(values, breaks = 40, plot = FALSE)
+    graphics::plot.new()
+    graphics::plot.window(
+      xlim = range(h$breaks),
+      ylim = c(0, max(h$counts) * 1.1)
+    )
+    add_soft_grid("h")
+    ci_shade(ci[1], ci[2], col = col_band, alpha = 0.20)
+    graphics::rect(
+      h$breaks[-length(h$breaks)], 0,
+      h$breaks[-1L], h$counts,
+      col    = grDevices::adjustcolor(col_band, 0.55),
+      border = "white", lwd = 0.5
+    )
+    graphics::abline(v = observed, col = col_band, lwd = 2)
+    add_clean_axes(xlab = xlab, ylab = "frequency")
+    graphics::title(main = panel_title, col.main = "grey10")
+  }
 
-  graphics::hist(x$boot_dist, breaks = 40, col = "grey80",
-                 border = "white",
-                 main = "Euclidean distance", xlab = "distance")
-  graphics::abline(v = x$euclidean, col = "red",  lwd = 2)
-  graphics::abline(v = x$ci_dist,   col = "red",  lty = 2)
+  hist_ci(x$boot_dist, x$euclidean, x$ci_dist,
+          xlab = "Euclidean distance",
+          panel_title = "Euclidean (primary)",
+          col_band = "#08519C")
+  hist_ci(x$boot_cor, x$correlation, x$ci_cor,
+          xlab = "Pearson r",
+          panel_title = "Pearson r (deprecated)",
+          col_band = "#969696")
 
-  graphics::mtext(main, outer = TRUE, line = -1.5, cex = 1.1)
+  graphics::mtext(
+    sprintf("%s   |   n_boot = %d, %.0f%% CI",
+            main, x$n_boot, x$ci_level * 100),
+    outer = TRUE, line = 0.4, cex = 0.95, col = "grey20"
+  )
   invisible(x)
+}
+
+#' Compare Euclidean dissimilarity intervals across multiple
+#' contrasts on a single plot
+#'
+#' @description
+#' Side-by-side comparison of `rel_dissimilarity()` results: one
+#' point per contrast, with its 95% percentile bootstrap CI as a
+#' horizontal range. Useful for paper figures showing whether two
+#' contrasts (e.g., Trust vs Friendly, Dominant vs Competent) have
+#' overlapping or non-overlapping CIs without forcing the reader to
+#' read four numbers from a table.
+#'
+#' @param ... Named `rcicrely_dissim` objects (use `name = obj`
+#'   syntax). Names become the y-axis labels.
+#' @param metric `"euclidean"` (default) or `"euclidean_normalised"`.
+#' @param main Plot title.
+#' @return Invisibly a data frame of (label, observed, ci_low,
+#'   ci_high) for further use.
+#' @seealso [rel_dissimilarity()]
+#' @export
+#' @examples
+#' \dontrun{
+#' d_AB <- rel_dissimilarity(sig_A, sig_B, n_boot = 500L, seed = 1L)
+#' d_AC <- rel_dissimilarity(sig_A, sig_C, n_boot = 500L, seed = 1L)
+#' compare_dissimilarity("A vs B" = d_AB, "A vs C" = d_AC)
+#' }
+compare_dissimilarity <- function(...,
+                                  metric = c("euclidean",
+                                             "euclidean_normalised"),
+                                  main   = "Between-condition Euclidean distance") {
+  metric <- match.arg(metric)
+  contrasts <- list(...)
+  if (length(contrasts) == 0L) {
+    cli::cli_abort("Pass at least one named {.cls rcicrely_dissim} object.")
+  }
+  if (is.null(names(contrasts)) || any(names(contrasts) == "")) {
+    cli::cli_abort("All arguments must be named (e.g. `\"A vs B\" = d_AB`).")
+  }
+  if (!all(vapply(contrasts, inherits, logical(1L),
+                  what = "rcicrely_dissim"))) {
+    cli::cli_abort("All arguments must be {.cls rcicrely_dissim} objects.")
+  }
+
+  # Pull observed value, CI bounds, and bootstrap distribution per contrast
+  if (metric == "euclidean") {
+    obs <- vapply(contrasts, function(d) d$euclidean, numeric(1L))
+    ci  <- t(vapply(contrasts, function(d) d$ci_dist, numeric(2L)))
+    boots <- lapply(contrasts, function(d) d$boot_dist)
+    xlab  <- "Euclidean distance"
+  } else {
+    obs <- vapply(contrasts, function(d) d$euclidean_normalised, numeric(1L))
+    n   <- vapply(contrasts, function(d) d$n_pixels, numeric(1L))
+    ci  <- t(vapply(contrasts, function(d) {
+      d$ci_dist / sqrt(d$n_pixels)
+    }, numeric(2L)))
+    boots <- lapply(contrasts, function(d) d$boot_dist / sqrt(d$n_pixels))
+    xlab  <- "Euclidean / sqrt(n_pixels)"
+  }
+  labels <- names(contrasts)
+  k <- length(labels)
+
+  op <- graphics::par(no.readonly = TRUE)
+  on.exit(graphics::par(op), add = TRUE)
+  set_pub_par(mar = c(4, max(8, max(nchar(labels)) * 0.55), 2.8, 1) + 0.1)
+
+  xlim <- range(c(0, ci, obs))
+  xlim[2] <- xlim[2] * 1.05
+  graphics::plot.new()
+  graphics::plot.window(xlim = xlim, ylim = c(0.5, k + 0.5))
+  add_soft_grid("v")
+
+  cols <- grDevices::hcl.colors(max(k, 2L), "Dark 3")[seq_len(k)]
+  ys <- seq_len(k)
+
+  # Density "violin" lookalike: rescaled bootstrap density per row
+  for (i in seq_len(k)) {
+    dens <- stats::density(boots[[i]])
+    sc   <- 0.35 / max(dens$y)
+    graphics::polygon(
+      c(dens$x, rev(dens$x)),
+      c(ys[i] + dens$y * sc, rev(ys[i] - dens$y * sc)),
+      col    = grDevices::adjustcolor(cols[i], 0.18),
+      border = NA
+    )
+  }
+
+  # CI bars + observed points
+  graphics::segments(
+    ci[, 1], ys, ci[, 2], ys,
+    col = cols, lwd = 4, lend = "butt"
+  )
+  graphics::points(obs, ys, pch = 19, col = cols, cex = 1.4)
+  graphics::points(obs, ys, pch = 21, col = "white", bg = cols,
+                   cex = 1.4, lwd = 0.8)
+
+  add_clean_axes(x_at = pretty(xlim), xlab = xlab)
+  graphics::axis(2, at = ys, labels = labels, las = 1,
+                 cex.axis = 0.85, col = "grey50",
+                 col.axis = "grey20", lwd = 0.7)
+  graphics::title(main = main, col.main = "grey10")
+  graphics::mtext(
+    sprintf("Points = observed; bars = 95%% percentile CI; shaded = bootstrap density"),
+    side = 3, line = 0.2, cex = 0.75, col = "grey40"
+  )
+
+  invisible(data.frame(
+    label    = labels,
+    observed = obs,
+    ci_low   = ci[, 1],
+    ci_high  = ci[, 2],
+    stringsAsFactors = FALSE
+  ))
 }
 
 # ---- rcicrely_report -------------------------------------------------------
@@ -453,24 +773,58 @@ summary.rcicrely_infoval <- function(object, ...) {
 }
 
 #' @export
-plot.rcicrely_infoval <- function(x, ..., main = "Informational value (z)") {
+plot.rcicrely_infoval <- function(x, ...,
+                                  main = "Informational value (per-producer z)") {
   op <- graphics::par(no.readonly = TRUE)
   on.exit(graphics::par(op), add = TRUE)
-  srt <- sort(x$infoval)
-  graphics::par(mar = c(8, 4, 4, 2) + 0.1)
-  cols <- ifelse(srt > 1.96, "steelblue", "grey40")
-  graphics::barplot(
-    srt, las = 2, col = cols, border = NA,
-    main = main, ylab = "infoval (z-score)",
-    ylim = c(min(srt, -1) - 0.5, max(srt, 3) + 0.5)
+  set_pub_par(mar = c(6.5, 4, 2.8, 1) + 0.1)
+
+  srt  <- sort(x$infoval)
+  ylim <- c(min(srt, -1) - 0.5, max(srt, 2.5) + 0.5)
+
+  bar_x <- graphics::barplot(
+    srt, las = 2, col = NA, border = NA, axes = FALSE,
+    ylim = ylim, main = "", names.arg = rep("", length(srt))
   )
-  graphics::abline(h = 0,    col = "blue", lty = 2)
-  graphics::abline(h = 1.96, col = "red",  lty = 2)
+  add_soft_grid("h")
+
+  cols <- ifelse(
+    srt >  1.96, "#08519C",
+    ifelse(srt >  0, "#9ECAE1",
+           ifelse(srt > -1.96, "#FDBB84", "#D62728"))
+  )
+  graphics::rect(
+    bar_x - 0.4, 0, bar_x + 0.4, srt,
+    col = cols, border = NA
+  )
+  graphics::abline(h = 0,    col = "grey50", lwd = 1)
+  graphics::abline(h = 1.96, col = "#D62728", lwd = 1, lty = 2)
+  graphics::abline(h = -1.96, col = "#D62728", lwd = 1, lty = 2)
+
+  add_clean_axes(y_at = pretty(ylim),
+                 ylab = "infoVal z-score")
+  graphics::axis(
+    1, at = bar_x, labels = names(srt),
+    las = 2, cex.axis = 0.65, col = "grey50",
+    col.axis = "grey20", lwd = 0.7
+  )
+  graphics::title(main = main, col.main = "grey10")
+
+  n_above <- sum(x$infoval > 1.96)
+  graphics::mtext(
+    sprintf("median z = %+.2f, %d/%d producers above z = 1.96",
+            stats::median(x$infoval), n_above,
+            length(x$infoval)),
+    side = 3, line = 0.2, cex = 0.78, col = "grey40"
+  )
   graphics::legend(
-    "topleft", bty = "n",
-    legend = c("reference median (z = 0)",
-               "z = 1.96 (one-tailed ~ p < .025)"),
-    text.col = c("blue", "red")
+    "topleft", bty = "n", cex = 0.78,
+    legend = c("z > 1.96 (clear signal)",
+               "z > 0",
+               "z < 0 (low-rank / idiosyncratic)",
+               "z < -1.96"),
+    fill = c("#08519C", "#9ECAE1", "#FDBB84", "#D62728"),
+    border = NA
   )
   invisible(x)
 }

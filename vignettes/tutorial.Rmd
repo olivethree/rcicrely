@@ -781,6 +781,22 @@ The two metrics report the same pattern from different angles —
 Pearson is the within-shape question, Euclidean is the
 how-far-apart question.
 
+**Comparing multiple contrasts side-by-side.** When you have
+several `rel_dissimilarity()` results and want one figure that
+shows whether their CIs overlap, use `compare_dissimilarity()`. It
+draws each contrast as a horizontal point with its 95% CI and the
+underlying bootstrap density, so the reader can read overlap (or
+non-overlap) at a glance. Useful for paper figures.
+
+```{r compare-dissim, eval = FALSE}
+d_TF <- rel_dissimilarity(sm_trust,    sm_friendly, n_boot = 500L, seed = 1L)
+d_DC <- rel_dissimilarity(sm_dominant, sm_competent, n_boot = 500L, seed = 2L)
+compare_dissimilarity(
+  "Trust vs Friendly"     = d_TF,
+  "Dominant vs Competent" = d_DC
+)
+```
+
 ### 6.4 `run_between()` {#section-run-between}
 
 **What it does.** Calls both between-condition metrics and bundles
@@ -995,6 +1011,114 @@ showed strong informational value (z = 11.39, n_eff = 6000); 2 of
 > uncovered while replicating Oliveira et al. (2019), Study 1. If
 > you computed infoVal under v0.2.0 and got systematically negative
 > z-scores, re-run after upgrading.
+
+### 6.6 Region-by-region analyses with `face_mask()`
+
+`face_mask()` accepts a `region` argument that returns a logical
+vector for one of: `"full"` (default), `"eyes"`, `"nose"`,
+`"mouth"`, `"upper_face"`, `"lower_face"`. Pass the mask to
+`infoval()` directly via the `mask` argument, or apply it via
+row-subsetting on a signal matrix to compute any `rel_*()` metric
+on a single anatomical region:
+
+```{r face-mask-regions, eval = FALSE}
+img <- c(256L, 256L)
+m_full  <- face_mask(img, region = "full")
+m_eyes  <- face_mask(img, region = "eyes")
+m_mouth <- face_mask(img, region = "mouth")
+
+# Region-restricted ICC: pass the masked rows of the signal matrix
+rel_icc(sm_trust[m_eyes,  , drop = FALSE])
+rel_icc(sm_trust[m_mouth, , drop = FALSE])
+
+# Region-restricted infoVal: pass the mask directly
+infoval(sm_trust, noise_matrix,
+        trial_counts = setNames(rep(300L, 20L), colnames(sm_trust)),
+        iter = 1000L, mask = m_eyes,  seed = 1L)
+infoval(sm_trust, noise_matrix,
+        trial_counts = setNames(rep(300L, 20L), colnames(sm_trust)),
+        iter = 1000L, mask = m_mouth, seed = 1L)
+```
+
+Region geometries are heuristic approximations matched to a typical
+centred face on a square base image. For non-default base images,
+tune the full-face oval via `centre`, `half_width`, `half_height`;
+sub-region positions scale relative to that ellipse.
+
+**Real example (Oliveira et al., 2019, Study 1, Trust condition).**
+Region-restricted ICC(3,1) on the same 20-producer signal matrix
+shows where producer agreement is concentrated:
+
+```{r face-mask-icc-real, eval = FALSE}
+# rel_icc(sm_trust[face_mask(c(256L,256L), region = R), , drop = FALSE])
+#> region        n_pixels   ICC(3,1)   ICC(3,k)
+#> full           32,192     0.109      0.710
+#> eyes            1,022     0.069      0.595
+#> nose              770     0.028      0.363
+#> mouth             966     0.092      0.670
+#> upper_face     16,096     0.087      0.655
+#> lower_face     16,096     0.130      0.749
+```
+
+Producer agreement is strongest in the lower-face region (mouth +
+jaw), weakest in the nose. The pattern aligns with the visible
+features of the published Trust group CI (Figure 1 of the paper).
+
+Region-restricted infoVal on the same data:
+
+```{r face-mask-infoval-real, eval = FALSE}
+# infoval(sm_trust, noise_matrix, tc, mask = face_mask(c(256L,256L), region = R), ...)
+#> region   median z   range          n above 1.96
+#> full     +0.51      [-1.81, +3.13]      4/20
+#> eyes     +0.55      [-0.98, +1.56]      0/20
+#> mouth    +0.52      [-0.76, +4.67]      3/20
+```
+
+Regional infoVal works as a sensitivity check: if a region's
+median z is markedly lower than the full-face median, the group
+signal is *not* concentrated in that region; if it is markedly
+higher, the region carries more than its pixel-share of the signal.
+For Trust, the eye and mouth regions both replicate the full-face
+median; the eye region's per-producer range is narrower, suggesting
+producers agree on *direction* in the eye region but the energy is
+modest.
+
+**Critical-review note.** Region masks are heuristic. They do not
+account for individual differences in face geometry (the base
+face's eyes, nose, mouth occupy different pixels on different
+photographs), and they assume the typical centred-face layout
+shipped with most rcicr stimulus pools. For studies using
+non-centred or differently-proportioned base faces, define a custom
+mask via `ellipse_mask()` (internal) or by hand-curating a logical
+pixel vector. The geometries shipped here are calibrated to KDEF-
+style 256x256 male faces and should reproduce reasonably for
+most published RC datasets.
+
+### 6.7 Visualising producer agreement: `plot_agreement_map()`
+
+A complement to the group-mean CI image: a heatmap of where
+producers in a single condition *agree* on the direction of signal.
+Each pixel's colour is proportional to a one-sample t-statistic
+across producers (mean / standard error), so positive saturation
+means agreement on positive signal and negative saturation means
+agreement on negative signal.
+
+```{r plot-agreement-map, eval = FALSE}
+# Continuous t-map (default)
+plot_agreement_map(sm_trust)
+
+# Region-restricted, mouth only
+plot_agreement_map(sm_trust,
+                   mask = face_mask(c(256L, 256L), region = "mouth"))
+
+# Thresholded view (only pixels with |t| > 2.0 are coloured)
+plot_agreement_map(sm_trust, threshold = 2.0)
+```
+
+Use this for **descriptive** figures of where producers agree
+within a condition; pair with `rel_cluster_test()` (which is the
+**inferential** counterpart for between-condition pixel-level
+contrasts).
 
 ## 7. Brief-RC end-to-end
 

@@ -6,6 +6,7 @@
 \usage{
 face_mask(
   img_dims,
+  region = c("full", "eyes", "nose", "mouth", "upper_face", "lower_face"),
   centre = c(0.5, 0.5),
   half_width = 0.35,
   half_height = 0.45
@@ -14,14 +15,18 @@ face_mask(
 \arguments{
 \item{img_dims}{Integer \code{c(nrow, ncol)}.}
 
+\item{region}{Character. One of \code{"full"} (default), \code{"eyes"},
+\code{"nose"}, \code{"mouth"}, \code{"upper_face"}, \code{"lower_face"}.}
+
 \item{centre}{Numeric \code{c(row, col)} in (0, 1) coordinates. Default
-\code{c(0.5, 0.5)}.}
+\code{c(0.5, 0.5)}. Defines the centre of the full-face oval; sub-
+region positions are calibrated relative to this centre.}
 
-\item{half_width}{Ellipse horizontal half-axis, in (0, 1) fraction
-of image width. Default 0.35.}
+\item{half_width}{Full-face ellipse horizontal half-axis, in (0, 1)
+fraction of image width. Default 0.35.}
 
-\item{half_height}{Ellipse vertical half-axis, in (0, 1) fraction
-of image height. Default 0.45.}
+\item{half_height}{Full-face ellipse vertical half-axis, in (0, 1)
+fraction of image height. Default 0.45.}
 }
 \value{
 Logical vector of length \code{prod(img_dims)}, column-major
@@ -29,20 +34,34 @@ to match the package's image vectorisation convention.
 }
 \description{
 Returns a logical vector of length \code{prod(img_dims)} marking an
-elliptical face region centred on the image. This is the mask
-Schmitz, Rougier, & Yzerbyt (2024) apply before computing
-informational value on Brief-RC classification images; passing it
-to \code{\link[=infoval]{infoval()}} restricts both observed and reference Frobenius
-norms to the same face region.
+elliptical face region (or a face sub-region) centred on the
+image. Pass to \code{\link[=infoval]{infoval()}} to restrict both observed and reference
+Frobenius norms to the masked region; pass to any \verb{rel_*()}
+function via row-subsetting (\code{signal_matrix[mask, ]}) to compute
+reliability or discriminability on a single anatomical region.
 
-The default ellipse roughly matches the Schmitz geometry:
-half-width 35\% of image side, half-height 45\% of image side,
-centred at the image midpoint. Use the arguments to tune for
-your base image.
+Five regions are supported:
+\itemize{
+\item \code{"full"} (default): the full face oval (Schmitz, Rougier, &
+Yzerbyt 2024 geometry).
+\item \code{"eyes"}: two small ellipses at the typical eye positions.
+\item \code{"nose"}: a narrow vertical ellipse along the midline.
+\item \code{"mouth"}: a wide-and-short ellipse below centre.
+\item \code{"upper_face"}, \code{"lower_face"}: the top and bottom halves of the
+full face oval, useful for crude top/bottom comparisons.
+}
+
+All region geometries are heuristic approximations matched to a
+typical centred face on a square base image (e.g., 256x256 male
+face from the KDEF). For non-default base images, use \code{centre},
+\code{half_width}, \code{half_height} to tune the full-face oval; the
+sub-region geometries scale relative to that ellipse.
 }
 \examples{
-fm <- face_mask(c(128L, 128L))
-sum(fm) / length(fm)  # roughly pi * 0.35 * 0.45 ~ 0.49
+full  <- face_mask(c(128L, 128L))                   # ~0.49 of image
+eyes  <- face_mask(c(128L, 128L), region = "eyes")  # ~0.02 of image
+mouth <- face_mask(c(128L, 128L), region = "mouth") # ~0.04 of image
+c(full = mean(full), eyes = mean(eyes), mouth = mean(mouth))
 }
 \references{
 Schmitz, M., Rougier, M., & Yzerbyt, V. (2024). Introducing the
@@ -51,5 +70,5 @@ representations. \emph{European Journal of Social Psychology}.
 \doi{10.1002/ejsp.3100}
 }
 \seealso{
-\code{\link[=infoval]{infoval()}}
+\code{\link[=infoval]{infoval()}}, \code{\link[=plot_agreement_map]{plot_agreement_map()}}
 }
