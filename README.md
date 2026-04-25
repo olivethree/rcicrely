@@ -6,9 +6,10 @@
 [![R-CMD-check](https://github.com/olivethree/rcicrely/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/olivethree/rcicrely/actions/workflows/R-CMD-check.yaml)
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19772888.svg)](https://doi.org/10.5281/zenodo.19772888)
 <!-- badges: end -->
 
-> **Reliability assessment for reverse-correlation classification images.**
+> **Toolkit for reliability analysis of classification images from reverse correlation studies in social psychology.**
 > Within-condition consistency + between-condition discriminability,
 > without a second-phase trait-rating study.
 
@@ -125,9 +126,10 @@ sample from a pixel population. ICC(2,*) is available via the
 ## Citation
 
 ```
-Oliveira, M. (2026). rcicrely: Reliability assessment for
-reverse-correlation classification images. R package v0.1.0.
-https://github.com/olivethree/rcicrely
+Oliveira, M. (2026). rcicrely: Toolkit for reliability analysis of
+classification images from reverse correlation studies in social
+psychology. R package v0.2.0. Zenodo.
+https://doi.org/10.5281/zenodo.19772888
 ```
 
 ## License
