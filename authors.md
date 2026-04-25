@@ -7,7 +7,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/olivethree/rcicrely/blob/main/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/olivethree/rcicrely/blob/v0.2.0/DESCRIPTION)
 
 Oliveira M (2026). *rcicrely: Toolkit for Reliability Analysis of
 Classification Images from Reverse Correlation Studies in Social
