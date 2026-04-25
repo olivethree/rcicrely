@@ -7,17 +7,19 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/olivethree/rcicrely/blob/main/DESCRIPTION)
+[`inst/CITATION`](https://github.com/olivethree/rcicrely/blob/main/inst/CITATION)
 
-Oliveira M (2026). *rcicrely: Toolkit for Reliability Analysis of
-Classification Images from Reverse Correlation Studies in Social
-Psychology*. R package version 0.1.1,
-<https://github.com/olivethree/rcicrely>.
+Oliveira M (2026). *rcicrely: Toolkit for reliability analysis of
+classification images from reverse correlation studies in social
+psychology*.
+[doi:10.5281/zenodo.19772888](https://doi.org/10.5281/zenodo.19772888).
+R package version 0.2.0, <https://github.com/olivethree/rcicrely>.
 
     @Manual{,
-      title = {rcicrely: Toolkit for Reliability Analysis of Classification Images from Reverse Correlation Studies in Social Psychology},
+      title = {rcicrely: Toolkit for reliability analysis of classification images from reverse correlation studies in social psychology},
       author = {Manuel Oliveira},
       year = {2026},
-      note = {R package version 0.1.1},
+      note = {R package version 0.2.0},
+      doi = {10.5281/zenodo.19772888},
       url = {https://github.com/olivethree/rcicrely},
     }
