@@ -131,15 +131,15 @@ mask:
 
     PNG_pixels - base = scaling(mask)   (NOT  mask)
 
-|                                                                                             Metric | Behavior under scaling                                   |
-|---------------------------------------------------------------------------------------------------:|:---------------------------------------------------------|
-|                                                                        `rel_split_half`, `rel_loo` | Survives uniform scaling. Breaks under per-CI “matched”. |
-|                                                               `rel_dissimilarity` (Pearson r half) | Same.                                                    |
-|                                                               `rel_dissimilarity` (Euclidean half) | **Distorted** by any scaling.                            |
-|                                                                                          `rel_icc` | **Distorted** by any scaling.                            |
-|                                                                 `pixel_t_test`, `rel_cluster_test` | **Distorted** by per-CI scaling.                         |
-| [`rcicr::computeInfoVal2IFC()`](https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html) (canonical) | Uses raw `$ci` internally, unaffected.                   |
-|                                                           Hand-rolled `infoVal` (Brief-RC, custom) | **Distorted** by any scaling. Use the raw mask.          |
+|                                                                                            Metric | Behavior under scaling                                   |
+|--------------------------------------------------------------------------------------------------:|:---------------------------------------------------------|
+|                                                                       `rel_split_half`, `rel_loo` | Survives uniform scaling. Breaks under per-CI “matched”. |
+|                                                              `rel_dissimilarity` (Pearson r half) | Same.                                                    |
+|                                                              `rel_dissimilarity` (Euclidean half) | **Distorted** by any scaling.                            |
+|                                                                                         `rel_icc` | **Distorted** by any scaling.                            |
+|                                                                `pixel_t_test`, `rel_cluster_test` | **Distorted** by per-CI scaling.                         |
+| [`rcicr::computeInfoVal2IFC()`](https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html) (standard) | Uses raw `$ci` internally, unaffected.                   |
+|                                                          Hand-rolled `infoVal` (Brief-RC, custom) | **Distorted** by any scaling. Use the raw mask.          |
 
 ### 3.2 Two paths to the signal matrix
 
@@ -295,7 +295,7 @@ bundled with the package, but every output shown is real.
 ## 4. Function reference: I/O
 
 The six functions in this section get your data into the package’s
-canonical signal-matrix shape (`pixels x participants`). Two of them —
+standard signal-matrix shape (`pixels x participants`). Two of them —
 [`ci_from_responses_2ifc()`](https://olivethree.github.io/rcicrely/reference/ci_from_responses_2ifc.md)
 and
 [`ci_from_responses_briefrc()`](https://olivethree.github.io/rcicrely/reference/ci_from_responses_briefrc.md)
@@ -536,8 +536,8 @@ is read from the rdata via `baseimage` *label*, not a path. Passing
 ### 4.6 `ci_from_responses_briefrc()`
 
 **What it does.** Native Brief-RC 12 implementation of Schmitz’s
-`genMask()` formula. No `rcicr::*_brief` calls (those don’t exist in
-canonical rcicr v1.0.1).
+`genMask()` formula. No `rcicr::*_brief` calls (those don’t exist in the
+upstream rcicr v1.0.1).
 
 **When to use it.** You have Brief-RC 12 trial-level responses and the
 noise pool used at stimulus generation.
@@ -1725,7 +1725,7 @@ pool); participant picks one. The recorded format is one row per trial,
 columns `participant_id`, `trial`, `stimulus` (chosen pool id),
 `response` (`+1` if oriented, `-1` if inverted). `rcicrely`’s
 implementation is native (no rcicr `_brief` functions, which don’t exist
-in canonical rcicr v1.0.1).
+in the upstream rcicr v1.0.1).
 
 ``` r
 # 1. Generate the noise pool (once per project) - heavy step.
@@ -1769,10 +1769,37 @@ if (requireNamespace("png", quietly = TRUE)) {
 **Brief-RC `infoVal`** ships in v0.2 as
 [`infoval()`](https://olivethree.github.io/rcicrely/reference/infoval.md)
 (see §6.5). The reference distribution is matched to each producer’s
-trial count (not the pool size), which closes a calibration gap that
-biases canonical 2IFC infoVal downward when applied to Brief-RC data.
-Pass the **raw mask** (`res$signal_matrix`) — not `res$rendered_ci` or a
-PNG.
+recorded trial count (number of `(stim, +/-1)` contributions entering
+the mask), not to the pool size. For 2IFC the two are equal so the
+original rcicr default is fine; for Brief-RC each producer typically
+records fewer choices than there are pool items, so a pool-size
+reference biases infoVal downward.
+[`infoval()`](https://olivethree.github.io/rcicrely/reference/infoval.md)
+closes that calibration gap. Pass the **raw mask** (`res$signal_matrix`)
+— not `res$rendered_ci` or a PNG.
+
+A note on what “subset” means here. Brief-RC’s whole point is that each
+trial is *cognitively* richer than 2IFC: the producer integrates 12
+noisy faces of context, not 2. So Brief-RC producers do **not** see less
+of the pool at the perceptual level. What the
+[`infoval()`](https://olivethree.github.io/rcicrely/reference/infoval.md)
+reference is matched to is the number of **recorded** choices that enter
+the mask — one `(stim, +/-1)` per trial — which is typically smaller
+than the pool size in Brief-RC studies. This is the right calibration
+for the magnitude statistic infoVal computes; it is not a claim about
+cognitive exposure.
+
+A note on cross-paradigm comparisons. infoVal measures the **magnitude**
+of the mask (Frobenius norm) against a chance reference. Brief-RC’s
+purported cognitive benefit — better target localisation per trial — may
+produce a more accurate but not necessarily larger mask, and a magnitude
+statistic does not distinguish those. Treat absolute Brief-RC vs 2IFC
+z-score differences with caution.
+[`rel_split_half()`](https://olivethree.github.io/rcicrely/reference/rel_split_half.md)/[`rel_icc()`](https://olivethree.github.io/rcicrely/reference/rel_icc.md)
+(signal stability) and
+[`rel_cluster_test()`](https://olivethree.github.io/rcicrely/reference/rel_cluster_test.md)/[`rel_dissimilarity()`](https://olivethree.github.io/rcicrely/reference/rel_dissimilarity.md)
+(between- condition separability) are the right complements when you
+care about pattern accuracy rather than magnitude.
 
 ## 8. Interpreting results and common pitfalls
 
@@ -1808,7 +1835,7 @@ scaling that was applied at PNG-write time. Mode 2 is the safe path.
 **`infoVal` correctness.**
 [`rcicr::computeInfoVal2IFC()`](https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html)
 extracts the raw `$ci` from its input CI-list internally, so the
-canonical 2IFC path is safe regardless of `scaling`. The pitfall is in
+standard 2IFC path is safe regardless of `scaling`. The pitfall is in
 hand-rolled `infoVal` implementations, for Brief-RC, or for any custom
 code that consumes a bare matrix, which must be fed the raw mask.
 Feeding rendered/scaled values silently distorts the reference

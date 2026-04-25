@@ -16,7 +16,7 @@ produced by reverse-correlation experiments. It answers the questions
   permutation with max-statistic FWER control, bootstrap
   representational dissimilarity.
 
-Supports both standard **2IFC** (via the canonical
+Supports both standard **2IFC** (via the original
 [`rcicr`](https://github.com/rdotsch/rcicr)) and **Brief-RC 12**
 (Schmitz, Rougier & Yzerbyt, 2024; implemented natively).
 
@@ -102,8 +102,7 @@ Euclidean half of
 [`rel_dissimilarity()`](https://olivethree.github.io/rcicrely/reference/rel_dissimilarity.md),
 [`pixel_t_test()`](https://olivethree.github.io/rcicrely/reference/pixel_t_test.md),
 [`rel_cluster_test()`](https://olivethree.github.io/rcicrely/reference/rel_cluster_test.md))
-are sensitive to the scaling transform. The canonical 2IFC `infoVal`
-path
+are sensitive to the scaling transform. The standard 2IFC `infoVal` path
 ([`rcicr::computeInfoVal2IFC()`](https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html))
 extracts the raw `$ci` from the rcicr CI-list internally and is
 unaffected; hand-rolled `infoVal` implementations (Brief-RC, custom

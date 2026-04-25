@@ -152,18 +152,40 @@ simulation efficient when several producers have the same number
 of trials.</p>
 <p>Choice of statistic: the <strong>Frobenius norm</strong> is the correct form
 per Schmitz, Muller, &amp; Yzerbyt (2019, comment) and the 2020
-erratum. Canonical <code><a href="https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html" class="external-link">rcicr::computeInfoVal2IFC()</a></code> already uses it
+erratum. The original <code><a href="https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html" class="external-link">rcicr::computeInfoVal2IFC()</a></code> already uses it
 (<code>norm(matrix(target_ci[["ci"]]), "f")</code>); this function matches
 that convention for both 2IFC and Brief-RC data.</p>
-<p>Trial-count matching: canonical
+<p>Trial-count matching: the original
 <code><a href="https://rdrr.io/pkg/rcicr/man/generateReferenceDistribution2IFC.html" class="external-link">rcicr::generateReferenceDistribution2IFC()</a></code> builds the reference
 using the full pool size (<code>n_trials = ncol(noise_matrix)</code>). For
-2IFC this is appropriate because every producer responds to every
-pool item. For Brief-RC, each producer sees only a subset of the
-pool, so a pool-size reference is a mismatch and biases infoVal
-downward. <code>infoval()</code> closes this gap by keying the reference on
-actual per-producer trial count.</p>
-    </div>
+2IFC this is appropriate because every producer typically responds
+to every pool item, so per-producer trial count equals the pool
+size. For Brief-RC the producer's <em>cognitive exposure</em> per trial is
+richer than 2IFC (12 noisy faces vs 2), but only one chosen
+<code>(stim, +/-1)</code> is recorded per trial, so the number of mask
+contributions is <code>n_trials</code> and is typically smaller than
+<code>n_pool</code>. A pool-size reference is therefore a mismatch for
+Brief-RC and biases infoVal downward. <code>infoval()</code> closes this gap
+by keying the reference on the actual per-producer recorded trial
+count.</p>
+<p>What infoVal measures (and what it does not). The Frobenius norm
+is a <strong>magnitude</strong> statistic, not a target-alignment one: it
+answers "is the mask larger than chance?" but not "is it pointing
+at the right pattern?". Two consequences worth flagging when
+interpreting per-producer z-scores:</p><ul><li><p><strong>Cross-paradigm comparisons need care.</strong> Brief-RC and 2IFC are
+placed on the same z-scale by <code>infoval()</code> (per-producer trial-
+count-matched reference, identical mask construction), but the
+<em>cognitive</em> processes generating those masks differ. A producer
+who benefits from Brief-RC's richer per-trial context might
+produce a more accurately localized but not necessarily larger
+mask, and the magnitude metric will not reward that. Treat
+absolute Brief-RC vs 2IFC z-score differences with caution.</p></li>
+<li><p><strong>Stability and discriminability are different questions.</strong>
+<code><a href="rel_split_half.html">rel_split_half()</a></code> / <code><a href="rel_icc.html">rel_icc()</a></code> ask whether the signal is
+stable; <code><a href="rel_cluster_test.html">rel_cluster_test()</a></code> / <code><a href="rel_dissimilarity.html">rel_dissimilarity()</a></code> ask whether
+conditions are separable. These are the right complements to a
+magnitude-based infoVal.</p></li>
+</ul></div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
     <p>Brinkman, L., Goffin, S., van de Schoot, R., van Haren, N. E. M.,

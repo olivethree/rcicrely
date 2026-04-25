@@ -67,8 +67,7 @@ are sensitive to the scaling transform; only correlation-based metrics
 correlation half of
 [`rel_dissimilarity()`](https://olivethree.github.io/rcicrely/reference/rel_dissimilarity.md))
 survive a single uniform linear scaling unmodified, and even those break
-under per-CI `"matched"`-style scaling. The canonical 2IFC `infoVal`
-path
+under per-CI `"matched"`-style scaling. The standard 2IFC `infoVal` path
 ([`rcicr::computeInfoVal2IFC()`](https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html))
 extracts the raw `$ci` internally from the rcicr CI-list and is **not**
 affected; hand-rolled `infoVal` implementations (Brief-RC, custom code)

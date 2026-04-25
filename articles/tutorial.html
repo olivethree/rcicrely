@@ -237,7 +237,7 @@ recover the raw mask:</p>
 <tr class="even">
 <td align="right">
 <code><a href="https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html" class="external-link">rcicr::computeInfoVal2IFC()</a></code>
-(canonical)</td>
+(standard)</td>
 <td align="left">Uses raw <code>$ci</code> internally, unaffected.</td>
 </tr>
 <tr class="odd">
@@ -407,7 +407,7 @@ package, but every output shown is real.</p>
 <h2 id="function-reference-io">4. Function reference: I/O<a class="anchor" aria-label="anchor" href="#function-reference-io"></a>
 </h2>
 <p>The six functions in this section get your data into the package’s
-canonical signal-matrix shape (<code>pixels x participants</code>). Two
+standard signal-matrix shape (<code>pixels x participants</code>). Two
 of them — <code><a href="../reference/ci_from_responses_2ifc.html">ci_from_responses_2ifc()</a></code> and
 <code><a href="../reference/ci_from_responses_briefrc.html">ci_from_responses_briefrc()</a></code> — take <strong>trial-level
 response data</strong>; before diving into them the shape and coding
@@ -734,7 +734,7 @@ scaled even when the signal_matrix isn’t.</p>
 </h3>
 <p><strong>What it does.</strong> Native Brief-RC 12 implementation of
 Schmitz’s <code>genMask()</code> formula. No <code>rcicr::*_brief</code>
-calls (those don’t exist in canonical rcicr v1.0.1).</p>
+calls (those don’t exist in the upstream rcicr v1.0.1).</p>
 <p><strong>When to use it.</strong> You have Brief-RC 12 trial-level
 responses and the noise pool used at stimulus generation.</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
@@ -1831,7 +1831,7 @@ trial, columns <code>participant_id</code>, <code>trial</code>,
 <code>stimulus</code> (chosen pool id), <code>response</code>
 (<code>+1</code> if oriented, <code>-1</code> if inverted).
 <code>rcicrely</code>’s implementation is native (no rcicr
-<code>_brief</code> functions, which don’t exist in canonical rcicr
+<code>_brief</code> functions, which don’t exist in the upstream rcicr
 v1.0.1).</p>
 <div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># 1. Generate the noise pool (once per project) - heavy step.</span></span>
@@ -1872,11 +1872,34 @@ v1.0.1).</p>
 <span><span class="op">}</span></span></code></pre></div>
 <p><strong>Brief-RC <code>infoVal</code></strong> ships in v0.2 as
 <code><a href="../reference/infoval.html">infoval()</a></code> (see §6.5). The reference distribution is matched
-to each producer’s trial count (not the pool size), which closes a
-calibration gap that biases canonical 2IFC infoVal downward when applied
-to Brief-RC data. Pass the <strong>raw mask</strong>
-(<code>res$signal_matrix</code>) — not <code>res$rendered_ci</code> or a
-PNG.</p>
+to each producer’s recorded trial count (number of
+<code>(stim, +/-1)</code> contributions entering the mask), not to the
+pool size. For 2IFC the two are equal so the original rcicr default is
+fine; for Brief-RC each producer typically records fewer choices than
+there are pool items, so a pool-size reference biases infoVal downward.
+<code><a href="../reference/infoval.html">infoval()</a></code> closes that calibration gap. Pass the <strong>raw
+mask</strong> (<code>res$signal_matrix</code>) — not
+<code>res$rendered_ci</code> or a PNG.</p>
+<p>A note on what “subset” means here. Brief-RC’s whole point is that
+each trial is <em>cognitively</em> richer than 2IFC: the producer
+integrates 12 noisy faces of context, not 2. So Brief-RC producers do
+<strong>not</strong> see less of the pool at the perceptual level. What
+the <code><a href="../reference/infoval.html">infoval()</a></code> reference is matched to is the number of
+<strong>recorded</strong> choices that enter the mask — one
+<code>(stim, +/-1)</code> per trial — which is typically smaller than
+the pool size in Brief-RC studies. This is the right calibration for the
+magnitude statistic infoVal computes; it is not a claim about cognitive
+exposure.</p>
+<p>A note on cross-paradigm comparisons. infoVal measures the
+<strong>magnitude</strong> of the mask (Frobenius norm) against a chance
+reference. Brief-RC’s purported cognitive benefit — better target
+localisation per trial — may produce a more accurate but not necessarily
+larger mask, and a magnitude statistic does not distinguish those. Treat
+absolute Brief-RC vs 2IFC z-score differences with caution.
+<code><a href="../reference/rel_split_half.html">rel_split_half()</a></code>/<code><a href="../reference/rel_icc.html">rel_icc()</a></code> (signal stability)
+and <code><a href="../reference/rel_cluster_test.html">rel_cluster_test()</a></code>/<code><a href="../reference/rel_dissimilarity.html">rel_dissimilarity()</a></code>
+(between- condition separability) are the right complements when you
+care about pattern accuracy rather than magnitude.</p>
 </div>
 <div class="section level2">
 <h2 id="interpreting-results-and-common-pitfalls">8. Interpreting results and common pitfalls<a class="anchor" aria-label="anchor" href="#interpreting-results-and-common-pitfalls"></a>
@@ -1909,8 +1932,8 @@ the difference depends on the scaling that was applied at PNG-write
 time. Mode 2 is the safe path.</p>
 <p><strong><code>infoVal</code> correctness.</strong>
 <code><a href="https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html" class="external-link">rcicr::computeInfoVal2IFC()</a></code> extracts the raw
-<code>$ci</code> from its input CI-list internally, so the canonical
-2IFC path is safe regardless of <code>scaling</code>. The pitfall is in
+<code>$ci</code> from its input CI-list internally, so the standard 2IFC
+path is safe regardless of <code>scaling</code>. The pitfall is in
 hand-rolled <code>infoVal</code> implementations, for Brief-RC, or for
 any custom code that consumes a bare matrix, which must be fed the raw
 mask. Feeding rendered/scaled values silently distorts the reference
