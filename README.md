@@ -9,121 +9,137 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19772888.svg)](https://doi.org/10.5281/zenodo.19772888)
 <!-- badges: end -->
 
-> **Toolkit for reliability analysis of classification images from reverse correlation studies in social psychology.**
-> Within-condition consistency + between-condition discriminability,
-> without a second-phase trait-rating study.
+> **Are the classification images from your reverse correlation study reliable enough to publish?** `rcicrely` helps you find out.
 
-`rcicrely` assesses the reliability of classification images (CIs)
-produced by reverse-correlation experiments. It answers the questions
-`infoVal` doesn't: is the signal in your CI *stable*, and is it
-*distinguishable* from a comparison condition?
+## What it does, in plain English
 
-- **Within-condition**: permuted split-half with Spearman–Brown
-  correction, leave-one-out sensitivity, ICC(3,1) and ICC(3,k) via
-  direct mean-squares.
-- **Between-condition**: vectorised Welch pixel *t*, cluster-based
-  permutation with max-statistic FWER control, bootstrap
-  representational dissimilarity.
+You ran a reverse correlation study. Maybe each participant saw pairs of
+noisy faces and picked the one that looked more *trustworthy*. After
+averaging across participants, you have a beautiful group-level
+classification image (CI). Before reporting it, two questions deserve
+an honest answer:
 
-Supports both standard **2IFC** (via the original
-[`rcicr`](https://github.com/rdotsch/rcicr)) and **Brief-RC 12**
-(Schmitz, Rougier & Yzerbyt, 2024; implemented natively).
+1. **Did the participants actually agree?** If you split your sample in
+   half, do the two halves produce similar CIs — or did you average a
+   pile of noise?
+2. **Is the "trustworthy" CI really different from your comparison
+   condition** (say, "untrustworthy"), or could the apparent
+   difference be chance?
 
-Companion to [`rcicrdiagnostics`](https://github.com/olivethree/rcicrdiagnostics):
-diagnostics catches silent data-processing errors *before* CI
-computation; `rcicrely` asks whether the CIs *themselves* are reliable
-and discriminable *after* they have been cleanly computed.
+`rcicrely` answers both, working directly on the pixel-level signal
+produced by your participants. No second-phase study where naive
+raters score CIs on Likert scales — and no inheriting the Type I error
+inflation of that two-phase design (Cone, Brown-Iannuzzi, Lei, &
+Dotsch, 2021).
+
+It works whether you ran a standard **2IFC** task (the classic
+reverse-correlation paradigm) or a **Brief-RC 12** task (Schmitz,
+Rougier & Yzerbyt, 2024 — 12 noisy faces per trial instead of 2).
 
 ## Installation
 
-`rcicrely` is GitHub-only. `rcicr` (required only for the 2IFC path)
-is also GitHub-only:
-
 ```r
 # install.packages("remotes")
-remotes::install_github("rdotsch/rcicr")      # 2IFC path only
 remotes::install_github("olivethree/rcicrely")
 ```
 
-If you only use Brief-RC, you can skip `rcicr`; the Brief-RC CI
-implementation is fully native.
+If you ran a 2IFC study, you'll also need `rcicr` (used to compute the
+individual CIs):
+
+```r
+remotes::install_github("rdotsch/rcicr")
+```
+
+If you only run Brief-RC, you can skip `rcicr` — the Brief-RC code is
+fully native to `rcicrely`.
 
 ## Quick start
+
+Suppose you ran a study with two conditions, *trustworthy* and
+*untrustworthy*. Here's the whole workflow.
+
+### Starting from raw trial-level data
 
 ```r
 library(rcicrely)
 
-# Option A: from a directory of pre-computed CI images
-signal_A <- load_signal_matrix(
-  dir             = "data/cis_condition_A/",
-  base_image_path = "data/base.jpg"
+# 1. Build per-participant CIs from your trial data
+#    (one row per trial; the data frame just needs columns for
+#     participant id, stimulus number, and +/- 1 response)
+trustworthy <- ci_from_responses_2ifc(
+  responses  = my_trustworthy_data,
+  rdata_path = "data/rcicr_stimuli.Rdata",   # from rcicr stimulus gen
+  baseimage  = "base"
 )
-signal_B <- load_signal_matrix("data/cis_condition_B/", "data/base.jpg")
-
-# Option B: from raw trial-level responses (2IFC)
-res_A <- ci_from_responses_2ifc(
-  responses  = my_responses_A,
+untrustworthy <- ci_from_responses_2ifc(
+  responses  = my_untrustworthy_data,
   rdata_path = "data/rcicr_stimuli.Rdata",
   baseimage  = "base"
 )
-signal_A <- res_A$signal_matrix
 
-# Reliability reports
-within  <- run_within(signal_A, n_permutations = 2000, seed = 1L)
-between <- run_between(signal_A, signal_B,
-                       n_permutations = 2000, n_boot = 2000, seed = 1L)
+# 2. Did participants in each condition agree with each other?
+print(run_within(trustworthy$signal_matrix,   seed = 1))
+print(run_within(untrustworthy$signal_matrix, seed = 1))
 
-print(within);  plot(within)
-print(between); plot(between)
+# 3. Are the two conditions actually distinguishable?
+result <- run_between(
+  trustworthy$signal_matrix,
+  untrustworthy$signal_matrix,
+  seed = 1
+)
+print(result)
+plot(result)   # cluster map of pixels where conditions differ
 ```
 
-See the [user guide vignette](https://olivethree.github.io/rcicrely/articles/tutorial.html)
-for a function-by-function walkthrough covering both paradigms,
-cluster-map interpretation, sample-size warnings, and the
-ICC-variant decision.
+### Starting from CI images already saved as PNG/JPEG
 
-## Important: raw vs. rendered CIs
+If you've already generated your CIs and have them as image files on
+disk:
 
-Reliability metrics in this package operate on the **raw mask** (the
-participant's noise contribution before any display transformation).
-The two ways to get there:
+```r
+library(rcicrely)
 
-- **Mode 2 (raw responses)** - `ci_from_responses_2ifc()` and
-  `ci_from_responses_briefrc()` return the raw mask directly. Safe.
-- **Mode 1 (PNGs on disk)** - `read_cis()` / `extract_signal()` /
-  `load_signal_matrix()` load the *rendered* CI (`base + scaling(mask)`)
-  because that's what was saved to disk; subtracting the base then
-  yields `scaling(mask)`, **not** the raw mask.
+trustworthy   <- load_signal_matrix("data/cis_trustworthy/",   "data/base.jpg")
+untrustworthy <- load_signal_matrix("data/cis_untrustworthy/", "data/base.jpg")
 
-Variance-based reliability metrics (`rel_icc()`, Euclidean half of
-`rel_dissimilarity()`, `pixel_t_test()`, `rel_cluster_test()`) are
-sensitive to the scaling transform. The standard 2IFC `infoVal`
-path (`rcicr::computeInfoVal2IFC()`) extracts the raw `$ci` from
-the rcicr CI-list internally and is unaffected; hand-rolled
-`infoVal` implementations (Brief-RC, custom code) need the raw mask
-and should not be fed PNG-derived data. The package emits a
-one-time per-session warning when you use Mode 1; silence with
-`acknowledge_scaling = TRUE` or
-`options(rcicrely.silence_scaling_warning = TRUE)` once you've read
-[chapter 3 of the user guide](https://olivethree.github.io/rcicrely/articles/tutorial.html).
+print(run_within(trustworthy,   seed = 1))
+print(run_within(untrustworthy, seed = 1))
+print(run_between(trustworthy, untrustworthy, seed = 1))
+```
 
-## What's different from the trait-rating ICCs in the RC literature
+> **Heads-up.** Results from PNG/JPEG inputs may differ slightly from
+> raw-response inputs because PNGs encode the *display-scaled* CI, not
+> the raw signal. The package warns you once per session when this
+> matters; see [the tutorial](https://olivethree.github.io/rcicrely/articles/tutorial.html)
+> for the full story.
 
-Most ICCs published in reverse-correlation papers are **trait-rating**
-reliability (phase-2 naive raters scoring CIs on dimensions like
-"trustworthy" or "competent"). `rcicrely`'s ICC is a structurally
-different object: it operates on the pixel-level signal produced by
-the original producers, so no phase-2 rating study is involved. This
-sidesteps the two-phase design Cone, Brown-Iannuzzi, Lei, & Dotsch
-(2021) showed inflates Type I error.
+For a function-by-function walkthrough — including how to interpret
+cluster maps, sample-size warnings, when to use ICC(3,1) vs ICC(3,k),
+and Brief-RC end-to-end — see the **[full user guide](https://olivethree.github.io/rcicrely/articles/tutorial.html)**.
 
-The package reports **ICC(3,1)** and **ICC(3,k)** by positive
-argument, not convention: pixels are a fixed `img_size × img_size`
-grid (two-way mixed, pixels fixed, participants random), not a random
-sample from a pixel population. ICC(2,*) is available via the
-`variants` argument if your reviewer explicitly asks.
+## Under the hood
+
+If you want the technical details:
+
+- **Within-condition reliability**: permuted split-half with
+  Spearman–Brown correction, leave-one-out influence diagnostic,
+  ICC(3,1) and ICC(3,k) computed via direct mean-squares.
+- **Between-condition discriminability**: vectorised Welch pixel *t*,
+  cluster-based permutation with max-statistic FWER control (or
+  threshold-free cluster enhancement), bootstrap representational
+  dissimilarity (Euclidean distance with percentile CIs).
+- **Per-producer informational value (`infoval()`)**: Frobenius-norm
+  z-score with a reference distribution matched to each producer's
+  trial count — for both 2IFC and Brief-RC.
+
+Companion to [`rcicrdiagnostics`](https://github.com/olivethree/rcicrdiagnostics):
+that one catches silent data-processing errors *before* CI computation;
+`rcicrely` asks whether the CIs *themselves* are reliable and
+discriminable *after* they've been cleanly computed.
 
 ## Citation
+
+If `rcicrely` helps your research, please cite it:
 
 ```
 Oliveira, M. (2026). rcicrely: Toolkit for reliability analysis of
@@ -131,6 +147,8 @@ classification images from reverse correlation studies in social
 psychology. R package v0.2.0. Zenodo.
 https://doi.org/10.5281/zenodo.19772888
 ```
+
+Or run `citation("rcicrely")` in R for a BibTeX entry.
 
 ## License
 
