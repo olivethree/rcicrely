@@ -1,4 +1,4 @@
-test_that("2IFC wrapper smokes against canonical rcicr if available", {
+test_that("2IFC wrapper smokes against the original rcicr if available", {
   skip_if_not_installed("rcicr")
   skip_if_not_installed("jpeg")
   skip_if_not_installed("foreach")

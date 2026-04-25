@@ -42,7 +42,7 @@
 #' ([rel_split_half()], [rel_loo()], correlation half of
 #' [rel_dissimilarity()]) survive a single uniform linear scaling
 #' unmodified, and even those break under per-CI `"matched"`-style
-#' scaling. The canonical 2IFC `infoVal` path
+#' scaling. The standard 2IFC `infoVal` path
 #' (`rcicr::computeInfoVal2IFC()`) extracts the raw `$ci` internally
 #' from the rcicr CI-list and is **not** affected; hand-rolled
 #' `infoVal` implementations (Brief-RC, custom code) **are**, and

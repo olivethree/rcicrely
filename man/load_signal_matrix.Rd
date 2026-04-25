@@ -60,7 +60,7 @@ sensitive to the scaling transform; only correlation-based metrics
 (\code{\link[=rel_split_half]{rel_split_half()}}, \code{\link[=rel_loo]{rel_loo()}}, correlation half of
 \code{\link[=rel_dissimilarity]{rel_dissimilarity()}}) survive a single uniform linear scaling
 unmodified, and even those break under per-CI \code{"matched"}-style
-scaling. The canonical 2IFC \code{infoVal} path
+scaling. The standard 2IFC \code{infoVal} path
 (\code{rcicr::computeInfoVal2IFC()}) extracts the raw \verb{$ci} internally
 from the rcicr CI-list and is \strong{not} affected; hand-rolled
 \code{infoVal} implementations (Brief-RC, custom code) \strong{are}, and

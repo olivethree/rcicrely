@@ -65,7 +65,7 @@ even when \code{scaling != "none"}).
 \description{
 Native implementation of Schmitz, Rougier & Yzerbyt (2024)'s Brief-RC
 mask. \strong{Does not} call any \verb{rcicr::*_brief} function, those do
-not exist in canonical rcicr v1.0.1. Only rcicr's noise-pattern
+not exist in the upstream rcicr v1.0.1. Only rcicr's noise-pattern
 pool (the \code{stimuli} object inside an \code{.Rdata} from
 \code{generateStimuli2IFC()}) is reused; the mask is computed in pure R.
 
@@ -96,7 +96,7 @@ to reliability metrics or to any external infoVal computation.
 producer. \strong{Visualization only.} Save to PNG, plot for
 inspection, but do not feed into reliability metrics, the
 scaling step distorts variance-based statistics. Also do not
-feed it to a hand-rolled Brief-RC \code{infoVal} (no canonical
+feed it to a hand-rolled Brief-RC \code{infoVal} (no upstream
 implementation exists in either rcicr or rcicrely): the
 reference distribution would compare against a different
 scale.

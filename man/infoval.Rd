@@ -98,18 +98,44 @@ of trials.
 
 Choice of statistic: the \strong{Frobenius norm} is the correct form
 per Schmitz, Muller, & Yzerbyt (2019, comment) and the 2020
-erratum. Canonical \code{rcicr::computeInfoVal2IFC()} already uses it
+erratum. The original \code{rcicr::computeInfoVal2IFC()} already uses it
 (\code{norm(matrix(target_ci[["ci"]]), "f")}); this function matches
 that convention for both 2IFC and Brief-RC data.
 
-Trial-count matching: canonical
+Trial-count matching: the original
 \code{rcicr::generateReferenceDistribution2IFC()} builds the reference
 using the full pool size (\code{n_trials = ncol(noise_matrix)}). For
-2IFC this is appropriate because every producer responds to every
-pool item. For Brief-RC, each producer sees only a subset of the
-pool, so a pool-size reference is a mismatch and biases infoVal
-downward. \code{infoval()} closes this gap by keying the reference on
-actual per-producer trial count.
+2IFC this is appropriate because every producer typically responds
+to every pool item, so per-producer trial count equals the pool
+size. For Brief-RC the producer's \emph{cognitive exposure} per trial is
+richer than 2IFC (12 noisy faces vs 2), but only one chosen
+\verb{(stim, +/-1)} is recorded per trial, so the number of mask
+contributions is \code{n_trials} and is typically smaller than
+\code{n_pool}. A pool-size reference is therefore a mismatch for
+Brief-RC and biases infoVal downward. \code{infoval()} closes this gap
+by keying the reference on the actual per-producer recorded trial
+count.
+
+What infoVal measures (and what it does not). The Frobenius norm
+is a \strong{magnitude} statistic, not a target-alignment one: it
+answers "is the mask larger than chance?" but not "is it pointing
+at the right pattern?". Two consequences worth flagging when
+interpreting per-producer z-scores:
+\itemize{
+\item \strong{Cross-paradigm comparisons need care.} Brief-RC and 2IFC are
+placed on the same z-scale by \code{infoval()} (per-producer trial-
+count-matched reference, identical mask construction), but the
+\emph{cognitive} processes generating those masks differ. A producer
+who benefits from Brief-RC's richer per-trial context might
+produce a more accurately localized but not necessarily larger
+mask, and the magnitude metric will not reward that. Treat
+absolute Brief-RC vs 2IFC z-score differences with caution.
+\item \strong{Stability and discriminability are different questions.}
+\code{rel_split_half()} / \code{rel_icc()} ask whether the signal is
+stable; \code{rel_cluster_test()} / \code{rel_dissimilarity()} ask whether
+conditions are separable. These are the right complements to a
+magnitude-based infoVal.
+}
 }
 \references{
 Brinkman, L., Goffin, S., van de Schoot, R., van Haren, N. E. M.,

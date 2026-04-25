@@ -83,7 +83,7 @@ test_that("Brief-RC `{0,1}` miscoding gets a recoding hint in error", {
   responses <- data.frame(
     participant_id = rep("p1", 4L), trial = 1:4,
     stimulus = c(1L, 2L, 3L, 4L),
-    response = c(0L, 1L, 0L, 1L)   # the canonical miscoding
+    response = c(0L, 1L, 0L, 1L)   # the classic miscoding
   )
   err <- tryCatch(
     ci_from_responses_briefrc(responses, noise_matrix = noise_matrix,

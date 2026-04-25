@@ -291,10 +291,10 @@ warn_mode1_scaling <- function(acknowledge_scaling = FALSE) {
     "*" = "{.fn rel_icc}, Euclidean half of {.fn rel_dissimilarity}, \\
            {.fn pixel_t_test}, {.fn rel_cluster_test} and any \\
            hand-rolled {.code infoVal} computation (e.g. for Brief-RC, \\
-           which has no canonical implementation) are sensitive to \\
+           which has no upstream implementation) are sensitive to \\
            {.strong any} scaling.",
     "i" = "{.code rcicr::computeInfoVal2IFC()} extracts the raw \\
-           {.field $ci} component internally, so the canonical 2IFC \\
+           {.field $ci} component internally, so the standard 2IFC \\
            infoVal path is unaffected.",
     "i" = "Prefer Mode 2 ({.fn ci_from_responses_2ifc} / \\
            {.fn ci_from_responses_briefrc}) when raw responses are \\
