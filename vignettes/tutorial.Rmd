@@ -227,7 +227,59 @@ preserving), but the row-mean variance the ICC formula depends on is
 data is therefore not the same ICC computed on the raw mask. The
 same logic applies to Euclidean distance and to `infoVal`.
 
-### 3.4 A recurring real-world example
+### 3.4 Base image preparation
+
+Both 2IFC and Brief-RC pipelines depend on a base face image. Both
+the visible quality of generated CIs and the reliability statistics
+that follow are sensitive to how this image is prepared.
+Requirements:
+
+- **Square** (e.g. 256x256, 512x512).
+- **Grayscale** — single channel. RGB images error out of rcicr
+  with non-conformable-array messages.
+- **Pixel range `[0, 1]`** (the convention `png::readPNG` and
+  `jpeg::readJPEG` produce).
+- **Centred face** with eye / nose / mouth roughly at the geometry
+  the Schmitz oval mask assumes (eyes near the upper third, mouth
+  near the lower third). The
+  built-in `face_mask(region = ...)` geometries assume this layout;
+  custom or off-centre faces need their own mask geometry.
+
+The conventional base face is a *morph* of several individual faces,
+which removes idiosyncratic features and centres the geometry.
+[webmorphR](https://github.com/debruine/webmorphR) (DeBruine, 2022)
+is the current best-in-class tool for producing one. Typical
+pipeline:
+
+```{r webmorphR-pipeline, eval = FALSE}
+# install.packages("webmorphR")
+library(webmorphR)
+
+stim <- read_stim("path/to/raw_face_images/") |>
+  auto_delin() |>                       # auto landmark delineation
+  align(procrustes = TRUE) |>           # Procrustes alignment
+  crop(width = 0.85, height = 0.85) |>  # tight crop around the face
+  to_size(c(256, 256)) |>               # resize to rcicr-friendly size
+  greyscale() |>                        # single channel, in [0, 1]
+  avg()                                 # morph into one average face
+
+write_stim(stim, dir = "stimuli/", names = "base", format = "png")
+```
+
+`write_stim()` produces `stimuli/base.png`, ready for
+`rcicr::generateStimuli2IFC(base_face_files = list(base = "stimuli/base.png"))`.
+For non-square crops, oval-region operations, and feature-aligned
+masks (which then plug into [`load_face_mask()`](#section-load-face-mask)),
+see `?webmorphR::mask_oval` and `?webmorphR::crop_tem`. Cite
+DeBruine (2022).
+
+If you do not have a stack to morph (e.g. you are working from a
+single base photograph), prepare it by hand: any image editor will
+do (GIMP / Krita / Photoshop / PowerPoint export). Convert to
+grayscale, crop to a square that fits the face within the central
+~70%, resize to the target dimension, save as PNG.
+
+### 3.5 A recurring real-world example
 
 The synthetic demos in the function-reference sections below are
 deliberately small so the vignette knits in seconds. To see what
@@ -258,6 +310,62 @@ vignette chunks below are marked `eval = FALSE` because the data
 is not bundled with the package, but every output shown is real.
 
 ## 4. Function reference: I/O
+
+The six functions in this section get your data into the package's
+canonical signal-matrix shape (`pixels x participants`). Two of
+them — `ci_from_responses_2ifc()` and `ci_from_responses_briefrc()`
+— take **trial-level response data**; before diving into them the
+shape and coding conventions for that data deserve a quick callout.
+
+### Input response-data shape
+
+One row per trial. The format can be a `data.frame`, `data.table`,
+`tibble`, or anything that behaves like a data frame; the source
+(CSV, RData, Parquet, programmatic construction) does not matter,
+only that the columns below are present.
+
+| Column           | Purpose                                                                                 |
+|------------------|-----------------------------------------------------------------------------------------|
+| `participant_id` | Identifier per producer. Character or integer.                                          |
+| `stimulus`       | Stimulus / pool id. Numbering must match what was used at stimulus generation.          |
+| `response`       | `+1` or `-1` (see below).                                                               |
+| `rt` (optional)  | Response time in milliseconds. Not consumed by `rcicrely`; useful for `rcicrdiagnostics`. |
+
+**Response coding.**
+
+- **2IFC**: `response = +1` if the participant chose the *oriented*
+  variant on that trial, `-1` if the *inverted* variant. Each trial
+  has its own unique stimulus pair, so `stimulus` indexes the *pair*
+  and ranges `1:n_trials`.
+- **Brief-RC 12** (Schmitz, Rougier & Yzerbyt, 2024): on each trial
+  the participant sees 12 noisy faces (6 oriented + 6 inverted from
+  6 distinct underlying noise patterns) and picks one. Recorded as
+  one row per trial, with `stimulus` = pool id of the chosen
+  pattern and `response = +1` if the oriented variant was chosen,
+  `-1` if the inverted. The same `stimulus` id can repeat across
+  trials.
+
+> **Watch out for the `{0, 1}` miscoding.** This is the single most
+> common silent failure in RC pipelines: experiment software
+> sometimes records "left" / "right" or "first" / "second" as
+> `0` / `1`, and the analyst forgets to recode. Pass `{0, 1}`
+> responses to `ci_from_responses_*()` and the resulting CI is
+> approximately blank — the math leans heavily on the sign. Both
+> functions error out at the input boundary if responses are not in
+> `{-1, +1}`. If you see that error, the fix is one line:
+> `responses$response <- 2 * responses$response - 1`.
+
+> **Brief-RC: do not record the 11 unselected faces.** Each Brief-RC
+> trial shows 12 faces but the participant chooses one. Record only
+> the chosen face (one row per trial, as above). Do *not* record
+> the 11 unselected faces as additional rows with `response = 0`,
+> and do *not* use the "expanded" 12-rows-per-trial format that
+> weights chosen as `+1` and unchosen as `-1/11`. Neither
+> convention matches the Schmitz `genMask()` formula
+> (`mask = noise[, chosen] %*% chosen_responses / n_unique_chosen`)
+> that `ci_from_responses_briefrc()` implements. Unselected faces'
+> noise patterns simply do not enter the multiplication; their
+> absence *is* the zero.
 
 ### 4.1 `read_cis()`
 
@@ -369,6 +477,37 @@ saved to the file). Cache to `.rds` once and load from there.
 Multiple stale `.rdata` files in one directory: rcicr timestamps
 filenames; pick the most recent by mtime if you have several.
 
+#### What is in an rcicr `.RData`
+
+`load("rcic_stimuli.Rdata")` adds the following objects to your
+environment. Names are short and not self-explanatory; the table
+below is the field guide.
+
+| Object                | Plain-language description                                                                                                                                                                                                                                                              |
+|-----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `base_face_files`     | Named list of file paths to the original face images. The list names (e.g. `"base"`) are the labels you pass downstream as `baseimage = "..."`.                                                                                                                                          |
+| `base_faces`          | Base images themselves, loaded as numeric matrices of grayscale pixels in `[0, 1]`. One matrix per label; shape `img_size x img_size`.                                                                                                                                                  |
+| `img_size`            | Side length of the (square) images in pixels.                                                                                                                                                                                                                                            |
+| `n_trials`            | Number of stimulus pairs (and unique noise patterns) generated.                                                                                                                                                                                                                          |
+| `noise_type`          | Type of noise basis. The rcicr default and only well-tested option is `"sinusoid"`.                                                                                                                                                                                                      |
+| `p`                   | The **noise basis**. A list with `$patches` (a stack of standard sinusoidal patterns at multiple scales, orientations, phases) and `$patchIdx` (an index that maps positions in a parameter vector to entries in `$patches`). Think of `$patches` as a dictionary of sinusoidal "ingredients". |
+| `stimuli_params`      | The **per-trial recipe** for combining `p`'s ingredients. A named list of matrices, one per base face. Each row is one trial; each entry is a contrast weight. `rcicr::generateNoiseImage(stimuli_params[[base]][i, ], p)` reconstructs trial `i`.                                       |
+| `seed`                | Random seed used at generation, for reproducibility.                                                                                                                                                                                                                                      |
+| `label`, `stimulus_path`, `trial`, `generator_version`, `use_same_parameters` | Bookkeeping; not consumed by analysis.                                                                                                                                                                                          |
+| `reference_norms`     | A vector of random-responder Frobenius norms. **Not present at first.** Created and inserted in place the first time `rcicr::computeInfoVal2IFC()` is called on the file. Copy the rdata first if you want it untouched.                                                                |
+
+The load-bearing objects for analysis are `base_faces`,
+`stimuli_params`, `p`, and `img_size`. The full set of trial-level
+noise images is **not stored**; it is recomputed on demand via
+`generateNoiseImage()` (which `read_noise_matrix()` calls in a
+loop). For 256x256 images and `n_trials = 770` (rcicr default) this
+takes a few seconds; cache the result with `saveRDS()` to skip it
+on subsequent runs.
+
+> **Filename note.** On macOS the file is saved with a lowercase
+> `.Rdata` extension. `list.files(pattern = "\\.RData$")` will miss
+> it; use `ignore.case = TRUE`.
+
 ### 4.5 `ci_from_responses_2ifc()` {#section-cifr-2ifc}
 
 **What it does.** Wraps `rcicr::batchGenerateCI2IFC()` with all known
@@ -447,6 +586,44 @@ downstream stats.
 ```{r cleanup-demo, include = FALSE}
 unlink(demo_dir, recursive = TRUE)
 ```
+
+### 4.7 `load_face_mask()` {#section-load-face-mask}
+
+**What it does.** Reads a binary mask image from disk (PNG or JPEG)
+and returns a logical vector of length `prod(img_dims)` in
+column-major order — the format the rest of the package's mask
+arguments expect. Companion to [`face_mask()`](#section-face-mask)
+(parametric / programmatic) for users who want to work with
+hand-painted, webmorphR-generated, or otherwise externally-produced
+masks.
+
+**When to use it.** You have a binary mask image (e.g.,
+`webmorphR::mask_oval()` output saved with `write_stim()`, a
+hand-painted GIMP / PowerPoint mask, or any other source). You want
+to apply it via `infoval()`'s `mask` argument, via
+`plot_agreement_map()`'s `mask` argument, or via row-subsetting on a
+signal matrix.
+
+```{r load-face-mask-demo, eval = FALSE}
+fm <- load_face_mask("masks/oval_256.png",
+                     threshold     = 0.5,
+                     expected_dims = c(256L, 256L))
+mean(fm)               # fraction of pixels included
+infoval(signal_matrix, noise_matrix, trial_counts,
+        mask = fm, iter = 1000L, seed = 1L)
+```
+
+**Reading the result.** A logical vector. White / light pixels
+(luminance above `threshold`, default 0.5) become `TRUE`; dark
+pixels become `FALSE`. RGB images are converted to luminance via
+ITU-R BT.709 weights.
+
+**Common mistakes.** Mask dimensions different from the analysis
+image: pass `expected_dims = c(nrow, ncol)` to catch this at the
+input boundary instead of having the math go silently wrong
+downstream. Mask saved with the *opposite* convention (black =
+include, white = exclude): the easy fix is `!load_face_mask(...)` to
+invert the logical vector.
 
 ## 5. Function reference: within-condition reliability
 
@@ -1192,14 +1369,33 @@ showed strong informational value (z = 11.39, n_eff = 6000); 2 of
 > you computed infoVal under v0.2.0 and got systematically negative
 > z-scores, re-run after upgrading.
 
-### 6.6 Region-by-region analyses with `face_mask()`
+### 6.6 Region-by-region analyses with `face_mask()` {#section-face-mask}
 
 `face_mask()` accepts a `region` argument that returns a logical
 vector for one of: `"full"` (default), `"eyes"`, `"nose"`,
-`"mouth"`, `"upper_face"`, `"lower_face"`. Pass the mask to
-`infoval()` directly via the `mask` argument, or apply it via
+`"mouth"`, `"upper_face"`, `"lower_face"`. The companion
+[`load_face_mask()`](#section-load-face-mask) reads an externally-
+generated mask (e.g., from `webmorphR::mask_oval()` or a
+hand-painted PNG) into the same logical-vector format. Pass either
+to `infoval()` directly via the `mask` argument, or apply it via
 row-subsetting on a signal matrix to compute any `rel_*()` metric
 on a single anatomical region:
+
+> **Apply the mask symmetrically.** This is the single most
+> important rule when working with masks in any reliability or
+> discriminability analysis: **the same mask must enter both arms
+> of any comparison**. For [`infoval()`](#section-infoval), pass
+> the mask via the `mask` argument so observed and reference
+> Frobenius norms are restricted to the same pixels. For `rel_*()`
+> reliability metrics, subset the signal matrix
+> (`signal_matrix[mask, , drop = FALSE]`) and compute *all* metrics
+> on the same subsetted matrix. For
+> [`rel_cluster_test()`](#section-cluster) /
+> [`rel_dissimilarity()`](#section-dissim), subset *both*
+> condition matrices identically before passing them in. Mixing a
+> masked observed value with an unmasked reference (or two
+> conditions masked differently) yields a number with no defensible
+> interpretation.
 
 ```{r face-mask-regions, eval = FALSE}
 img <- c(256L, 256L)
