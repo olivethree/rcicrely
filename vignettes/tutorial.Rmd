@@ -57,27 +57,10 @@ directly from the pixel-level signal produced by the original
 producers, sidestepping the two-phase design Cone, Brown-Iannuzzi,
 Lei, and Dotsch (2021) showed inflates Type I error.
 
-### `infoVal` and `rcicrely` together
-
-Since v0.2 `rcicrely` ships its own `infoval()` (see §6.5) that
-handles **both 2IFC and Brief-RC** with a single function. The
-reference distribution is keyed on each producer's actual trial
-count rather than the full pool size (the calibration matters most
-for Brief-RC, where producers see only a subset of the pool, but the
-function works equivalently for 2IFC). The two checks remain
-complementary: `infoval()` tests presence of signal; `rel_*()` tests
-reliability and discriminability of signal.
-
-`rcicr::computeInfoVal2IFC()` is still useful as an external cross-
-check for 2IFC data. It pulls the raw `$ci` element from the rcicr
-CI-list internally (`norm(matrix(target_ci[["ci"]]), "f")`), so the
-scaling settings used at CI generation do not affect its output.
-
-The scaling caveat applies when you compute `infoVal` outside that
-path: both `rcicrely::infoval()` and any hand-rolled implementation
-must be fed the raw mask, never a PNG-derived or otherwise scaled
-matrix. §3 and §4 explain how each input mode delivers (or does
-not deliver) the raw mask.
+Since v0.2 `rcicrely` also ships [`infoval()`](#section-infoval),
+covering both 2IFC and Brief-RC with a single function. `infoval()`
+tests presence of signal; `rel_*()` tests reliability and
+discriminability of signal; they are complementary.
 
 ## 2. Installation
 
@@ -280,33 +263,9 @@ do (GIMP / Krita / Photoshop / PowerPoint export). Convert to
 grayscale, crop to a square that fits the face within the central
 ~70%, resize to the target dimension, save as PNG.
 
-### 3.5 A recurring real-world example
-
-The synthetic demos in the function-reference sections below are
-deliberately small so the vignette knits in seconds. To see what
-each function looks like on a published RC dataset, the sections
-that follow each include a short **Real example** callout drawn
-from one source:
-
-> Oliveira, M., Garcia-Marques, T., Dotsch, R., & Garcia-Marques,
-> L. (2019). Dominance and competence face to face: Dissociations
-> obtained with a reverse correlation approach. *European Journal
-> of Social Psychology*. <https://doi.org/10.1002/ejsp.2569>
-
-In Study 1, 200 participants completed a 2IFC reverse-correlation
-task with **300 trials each** on a 256x256 male base face,
-across 10 trait conditions in a between-subjects design (20
-producers per trait). Trait labels: `Dominant`, `Submissive`,
-`Trust`, `Untrust`, `Friendly`, `Unfriendly`, `Intelligent`,
-`Unintelligent`, `Competent`, `Incompetent`. The full data,
-parameter file, and analysis scripts are openly available on OSF:
-<https://doi.org/10.17605/osf.io/hr5pd>.
-
-The "Real example" callouts below show the call you would make
-against this data and the output captured from a complete replication
-run. The chunks are marked `eval = FALSE` because the data is not
-bundled with the package; every output shown is from the published
-dataset.
+The function-reference sections (§4–§6) work on small synthetic
+data so the vignette knits in seconds. For an end-to-end
+demonstration on a published RC dataset, see §7.
 
 ## 4. Function reference: I/O
 
@@ -366,148 +325,85 @@ only that the columns below are present.
 > noise patterns simply do not enter the multiplication; their
 > absence *is* the zero.
 
-### 4.1 `read_cis()`
+### 4.1 `load_signal_matrix()` {#section-load-signal-matrix}
 
-**What it does.** Reads every PNG/JPEG in a directory, converts each
-to grayscale, returns a pixels by participants numeric matrix.
+**What it does.** Reads every PNG/JPEG in a directory, subtracts the
+base image, and returns a pixels-by-participants signal matrix in one
+call. The end product is `scaling(mask)` (Mode 1; see §3.2).
 
-**When to use it.** You have one CI image per producer already saved
-on disk and you want to load them into R as a numeric matrix. Pair
-with [`extract_signal()`](#section-extract-signal) to get a
-base-subtracted signal matrix.
-
-```{r read-cis-demo}
-# Make a tiny synthetic dataset on disk to demonstrate against.
-demo_dir <- tempfile("ci_demo_"); dir.create(demo_dir)
-base_img <- matrix(0.5, 32L, 32L)
-png_path <- function(i) file.path(demo_dir, sprintf("p%02d.png", i))
-if (requireNamespace("png", quietly = TRUE)) {
-  for (i in 1:6) {
-    img <- pmin(pmax(base_img + matrix(rnorm(32 * 32, sd = 0.05), 32, 32),
-                     0), 1)
-    png::writePNG(img, png_path(i))
-  }
-}
-```
-
-```{r read-cis-call, eval = requireNamespace("png", quietly = TRUE)}
-cis <- read_cis(demo_dir, acknowledge_scaling = TRUE)
-dim(cis)
-attr(cis, "img_dims")
-```
-
-**Reading the result.** `nrow = n_pixels`, `ncol = n_files`. The
-`img_dims` attribute carries `c(nrow, ncol)` of the original image so
-plotting helpers know how to reshape.
-
-**Common mistakes.** Forgetting to subtract the base before passing
-to a `rel_*` function (use [`extract_signal()`](#section-extract-signal)
-or the convenience wrapper [`load_signal_matrix()`](#section-load-signal-matrix)).
-Mixing CIs of different sizes - aborts loudly. Trusting reliability
-numbers without reading the raw vs. rendered note (chapter 3).
-
-### 4.2 `extract_signal()` {#section-extract-signal}
-
-**What it does.** Subtracts the base image from each column of a CI
-matrix, so reliability metrics see only the participant-specific
-contribution.
-
-**When to use it.** You have the output of [`read_cis()`](#read_cis)
-and you want a base-subtracted signal matrix.
-
-```{r extract-signal-demo, eval = requireNamespace("png", quietly = TRUE)}
-base_path <- file.path(demo_dir, "_base.png")
-png::writePNG(base_img, base_path)
-signal <- extract_signal(cis, base_image_path = base_path,
-                         acknowledge_scaling = TRUE)
-dim(signal); attr(signal, "img_dims")
-```
-
-**Reading the result.** Same shape as `cis`, with the `img_dims`
-attribute preserved. Column names propagate.
-
-**Common mistakes.** Pointing at the wrong base (a generated CI PNG
-of the right size will pass the dimension check). Treating the result
-as the raw mask; it is `scaling(mask)` if PNGs were rendered with any
-scaling. See chapter 3.
-
-### 4.3 `load_signal_matrix()` {#section-load-signal-matrix}
-
-**What it does.** Convenience wrapper that calls [`read_cis()`](#read_cis)
-and [`extract_signal()`](#section-extract-signal) in one go.
-
-**When to use it.** Most of the time, when you don't need to do
-anything between reading and subtracting (e.g. masking pixels,
-swapping the base).
+**When to use it.** You have one CI image per producer on disk.
 
 ```{r load-signal-demo, eval = requireNamespace("png", quietly = TRUE)}
+# Tiny synthetic dataset on disk to demonstrate against:
+demo_dir  <- tempfile("ci_demo_"); dir.create(demo_dir)
+base_img  <- matrix(0.5, 32L, 32L)
+base_path <- file.path(demo_dir, "_base.png")
+png::writePNG(base_img, base_path)
+for (i in 1:6) {
+  img <- pmin(pmax(base_img + matrix(rnorm(32 * 32, sd = 0.05), 32, 32),
+                   0), 1)
+  png::writePNG(img, file.path(demo_dir, sprintf("p%02d.png", i)))
+}
+
 signal <- load_signal_matrix(
   dir                 = demo_dir,
   base_image_path     = base_path,
   pattern             = "^p[0-9]+\\.png$",  # exclude _base.png
   acknowledge_scaling = TRUE
 )
-dim(signal)
+dim(signal); attr(signal, "img_dims")
 ```
 
-### 4.4 `read_noise_matrix()`
+**Reading the result.** `nrow = n_pixels`, `ncol = n_files`; the
+`img_dims` attribute carries `c(nrow, ncol)` of the original image
+so plot helpers know how to reshape.
+
+**Common mistakes.** Pointing at the wrong base (a generated CI PNG
+of the right size will pass the dimension check). Mixing CIs of
+different sizes (aborts loudly). Treating this as the raw mask
+(it isn't; see §3.2).
+
+**Granular API.** If you need to intervene between reading and
+subtracting (custom masking, swap the base), the two underlying
+functions are exported: `read_cis(dir)` returns the raw pixel matrix,
+then `extract_signal(cis, base_image_path)` does the subtraction.
+`load_signal_matrix()` is exactly the composition of those two.
+
+### 4.2 `read_noise_matrix()`
 
 **What it does.** Loads the pixels by trials noise pool used at
-stimulus generation. Three formats: rcicr `.Rdata` (reconstructs from
-`stimuli_params` + `p`), saved `.rds`, or whitespace-delimited text.
+stimulus generation. Autodetects three formats: whitespace-delimited
+text (`.txt`, the format Schmitz et al. distribute on OSF), saved
+R `.rds`, or an rcicr `.Rdata` (reconstructs from `stimuli_params`
++ `p`).
 
 **When to use it.** You are computing Brief-RC CIs and want to load
 the noise pool once, then reuse it across multiple
 [`ci_from_responses_briefrc()`](#section-cifr-briefrc) calls.
 
 ```{r read-noise-demo, eval = FALSE}
-# from the rcicr rdata (slow - reconstructs each trial via
+# Plain text (the Schmitz et al. 2024 OSF format):
+noise <- read_noise_matrix("data/noise_matrix.txt")
+
+# Cached .rds saved from rcicr's return-as-dataframe output (fast):
+noise <- read_noise_matrix("data/noise_matrix.rds")
+
+# rcicr .Rdata (slow; reconstructs each trial via
 # rcicr::generateNoiseImage):
 noise <- read_noise_matrix("data/rcicr_stimuli.Rdata")
-
-# from a cached rds you saved from the rcicr return value (fast):
-noise <- read_noise_matrix("data/noise_matrix.rds")
 ```
 
 **Common mistakes.** Assuming the rcicr `.Rdata` contains a `stimuli`
-object (it does not - the pixels-by-trials matrix is the *return
+object (it does not; the pixels-by-trials matrix is the *return
 value* of `generateStimuli2IFC(return_as_dataframe = TRUE)`, never
 saved to the file). Cache to `.rds` once and load from there.
-Multiple stale `.rdata` files in one directory: rcicr timestamps
-filenames; pick the most recent by mtime if you have several.
+Multiple stale `.rdata` files in one directory (rcicr timestamps
+filenames; pick the most recent by mtime if you have several).
 
-#### What is in an rcicr `.RData`
+For a field guide to which objects live in the rcicr `.Rdata` and
+what each one means, see `?read_noise_matrix`.
 
-`load("rcic_stimuli.Rdata")` adds the following objects to your
-environment. Names are short and not self-explanatory; the table
-below is the field guide.
-
-| Object                | Plain-language description                                                                                                                                                                                                                                                              |
-|-----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `base_face_files`     | Named list of file paths to the original face images. The list names (e.g. `"base"`) are the labels you pass downstream as `baseimage = "..."`.                                                                                                                                          |
-| `base_faces`          | Base images themselves, loaded as numeric matrices of grayscale pixels in `[0, 1]`. One matrix per label; shape `img_size x img_size`.                                                                                                                                                  |
-| `img_size`            | Side length of the (square) images in pixels.                                                                                                                                                                                                                                            |
-| `n_trials`            | Number of stimulus pairs (and unique noise patterns) generated.                                                                                                                                                                                                                          |
-| `noise_type`          | Type of noise basis. The rcicr default and only well-tested option is `"sinusoid"`.                                                                                                                                                                                                      |
-| `p`                   | The **noise basis**. A list with `$patches` (a stack of standard sinusoidal patterns at multiple scales, orientations, phases) and `$patchIdx` (an index that maps positions in a parameter vector to entries in `$patches`). Think of `$patches` as a dictionary of sinusoidal "ingredients". |
-| `stimuli_params`      | The **per-trial recipe** for combining `p`'s ingredients. A named list of matrices, one per base face. Each row is one trial; each entry is a contrast weight. `rcicr::generateNoiseImage(stimuli_params[[base]][i, ], p)` reconstructs trial `i`.                                       |
-| `seed`                | Random seed used at generation, for reproducibility.                                                                                                                                                                                                                                      |
-| `label`, `stimulus_path`, `trial`, `generator_version`, `use_same_parameters` | Bookkeeping; not consumed by analysis.                                                                                                                                                                                          |
-| `reference_norms`     | A vector of random-responder Frobenius norms. **Not present at first.** Created and inserted in place the first time `rcicr::computeInfoVal2IFC()` is called on the file. Copy the rdata first if you want it untouched.                                                                |
-
-The load-bearing objects for analysis are `base_faces`,
-`stimuli_params`, `p`, and `img_size`. The full set of trial-level
-noise images is **not stored**; it is recomputed on demand via
-`generateNoiseImage()` (which `read_noise_matrix()` calls in a
-loop). For 256x256 images and `n_trials = 770` (rcicr default) this
-takes a few seconds; cache the result with `saveRDS()` to skip it
-on subsequent runs.
-
-> **Filename note.** On macOS the file is saved with a lowercase
-> `.Rdata` extension. `list.files(pattern = "\\.RData$")` will miss
-> it; use `ignore.case = TRUE`.
-
-### 4.5 `ci_from_responses_2ifc()` {#section-cifr-2ifc}
+### 4.3 `ci_from_responses_2ifc()` {#section-cifr-2ifc}
 
 **What it does.** Wraps `rcicr::batchGenerateCI2IFC()` with all known
 gotchas pre-handled, returns a uniform result list.
@@ -539,7 +435,7 @@ is read from the rdata via `baseimage` *label*, not a path. Passing
 "raw" - the rendered output is scaled even when the signal_matrix
 isn't.
 
-### 4.6 `ci_from_responses_briefrc()` {#section-cifr-briefrc}
+### 4.4 `ci_from_responses_briefrc()` {#section-cifr-briefrc}
 
 **What it does.** Native Brief-RC 12 implementation of Schmitz's
 `genMask()` formula. No `rcicr::*_brief` calls (those don't exist in
@@ -587,44 +483,6 @@ downstream stats.
 ```{r cleanup-demo, include = FALSE}
 unlink(demo_dir, recursive = TRUE)
 ```
-
-### 4.7 `load_face_mask()` {#section-load-face-mask}
-
-**What it does.** Reads a binary mask image from disk (PNG or JPEG)
-and returns a logical vector of length `prod(img_dims)` in
-column-major order (the format the rest of the package's mask
-arguments expect). Companion to [`face_mask()`](#section-face-mask)
-(parametric / programmatic) for users who want to work with
-hand-painted, webmorphR-generated, or otherwise externally-produced
-masks.
-
-**When to use it.** You have a binary mask image (e.g.,
-`webmorphR::mask_oval()` output saved with `write_stim()`, a
-hand-painted GIMP / PowerPoint mask, or any other source). You want
-to apply it via `infoval()`'s `mask` argument, via
-`plot_agreement_map()`'s `mask` argument, or via row-subsetting on a
-signal matrix.
-
-```{r load-face-mask-demo, eval = FALSE}
-fm <- load_face_mask("masks/oval_256.png",
-                     threshold     = 0.5,
-                     expected_dims = c(256L, 256L))
-mean(fm)               # fraction of pixels included
-infoval(signal_matrix, noise_matrix, trial_counts,
-        mask = fm, iter = 1000L, seed = 1L)
-```
-
-**Reading the result.** A logical vector. White / light pixels
-(luminance above `threshold`, default 0.5) become `TRUE`; dark
-pixels become `FALSE`. RGB images are converted to luminance via
-ITU-R BT.709 weights.
-
-**Common mistakes.** Mask dimensions different from the analysis
-image: pass `expected_dims = c(nrow, ncol)` to catch this at the
-input boundary instead of having the math go silently wrong
-downstream. Mask saved with the *opposite* convention (black =
-include, white = exclude): the easy fix is `!load_face_mask(...)` to
-invert the logical vector.
 
 ## 5. Function reference: within-condition reliability
 
@@ -679,23 +537,6 @@ unless asked otherwise). `$ci_95`, `$ci_95_sb` are percentile CIs.
 audience cares about the full-sample CI. Running with
 `n_permutations < 200` and trusting the CIs.
 
-**Real example (Oliveira et al., 2019, Study 1).** Per-trait
-group-CI reliability for the Trust and Dominant conditions (20
-producers each, 300 trials, 256x256 image):
-
-```{r split-half-oliveira-2019, eval = FALSE}
-# sm_trust, sm_dominant: pixels x 20 producer signal matrices
-# (built from the response data; see study1_replication.Rmd)
-rel_split_half(sm_trust,    n_permutations = 500L, seed = 1L)
-#> Trust:    r_hh = 0.405, r_sb = 0.577, 95% CI on r_sb = [0.539, 0.616]
-rel_split_half(sm_dominant, n_permutations = 500L, seed = 1L)
-#> Dominant: r_hh = 0.262, r_sb = 0.415, 95% CI on r_sb = [0.380, 0.450]
-```
-
-The Trust CI replicates with a clearly higher group-level
-reliability than the Dominant CI, consistent with the inter-rater
-agreement ordering reported in Table 1 of Oliveira et al. (2019).
-
 ### 5.2 `rel_loo()` - influence screening (not a reliability metric) {#section-rel-loo}
 
 **What it does.** For each producer, correlates the full-sample
@@ -739,43 +580,20 @@ head(rel_loo_z(r_loo))
 # ...
 ```
 
-**Reading the result.** `$z_scores` is the informative quantity -
-plot / report it directly. `$correlations` is retained for
-transparency (values near 1 by construction because the full-sample
-mean and the leave-one-out mean share `(N - 1) / N` of their data).
-`$flagged` lists ids below threshold. `$summary_df` is a tidy table
-sorted by `z_score`.
+**Reading the result.** `$z_scores` is the informative quantity;
+plot or report it directly. `$correlations` is retained for
+transparency, but **do not read it as reliability**: `r_loo` is
+almost always in `[0.95, 0.999]` at N = 30 even on very noisy CIs
+because the full-sample mean and the leave-one-out mean share
+`(N-1)/N` of their data. A naive reader can mistake "LOO r = 0.98"
+for "the CIs are 98% reliable"; that is wrong. For reliability use
+`rel_split_half()` or `rel_icc()` (§5.1, §5.3). `$flagged` lists ids
+below threshold; `$summary_df` is a tidy table sorted by `z_score`.
 
-**Why you should not read `$correlations` as reliability.** `r_loo`
-values are almost always in `[0.95, 0.999]` at N = 30, even on very
-noisy CIs, because the two vectors being correlated overlap in
-`(N - 1) / N` of their data. A naive reader can misinterpret
-"LOO r = 0.98" as "the CIs are 98% reliable"; this is wrong. Report
-reliability via `rel_split_half()` or `rel_icc()` (§5.1, §5.3).
-
-**Common mistakes.** Treating `$flagged` as "drop these producers" -
+**Common mistakes.** Treating `$flagged` as "drop these producers";
 investigate first. A flagged producer may have a genuinely atypical
 mental representation rather than bad data. Cross-check with
 `rcicrdiagnostics` to rule out response-coding errors.
-
-**Real example (Oliveira et al., 2019, Study 1, Trust condition).**
-Median raw `r_loo` is .992 (MAD = .001), illustrating the near-1
-absolute value structurally. Zero producers cleared the default
-MAD-based flag threshold, but the z-scored ordering is still
-informative for inspection priority:
-
-```{r loo-oliveira-2019, eval = FALSE}
-loo <- rel_loo(sm_trust, flag_method = "mad")
-head(rel_loo_z(loo), 3)
-#>   participant_id  correlation  z_score  flag
-#> 1          18043       0.9905    -1.68  FALSE
-#> 2          18051       0.9911    -0.99  FALSE
-#> 3          18131       0.9913    -0.79  FALSE
-```
-
-The producers at the top of the z-ordering are the ones whose
-removal moves the group CI most relative to the rest. Even when
-none clear the flag threshold, this is the inspection order.
 
 ### 5.3 `rel_icc()` {#section-rel-icc}
 
@@ -812,23 +630,6 @@ ICC(3,*) is the defensible choice. Use
 `variants = c("3_1", "3_k", "2_1", "2_k")` when both are needed.
 
 ICC is **strongly** scale-sensitive. Use the raw mask only.
-
-**Real example (Oliveira et al., 2019, Study 1).** Two-way mixed
-ICC on 65,536-pixel raw masks, 20 producers per condition:
-
-```{r icc-oliveira-2019, eval = FALSE}
-rel_icc(sm_trust)
-#> ICC(3,1) = 0.1008,  ICC(3,k) = 0.6917
-rel_icc(sm_dominant)
-#> ICC(3,1) = 0.0489,  ICC(3,k) = 0.5068
-```
-
-ICC(3,1) (the resolution-comparable single-producer reliability)
-is clearly higher for Trust than for Dominant, matching the
-reliability ordering reported in the original paper. ICC(3,k) is
-high in absolute terms but the resolution asymptote is a known
-property of ICC(*,k) at large pixel counts; report ICC(3,1) as the
-primary cross-study comparable number.
 
 ### 5.4 `run_within()` {#section-run-within}
 
@@ -1063,31 +864,6 @@ plot(clust_tfce)
   more permutations than that.
 - Using `pixel_t_test()` standalone for inference (§6.1).
 
-**Real example (Oliveira et al., 2019, Study 1).** The Dominant vs
-Competent contrast on 20-producer signal matrices (256x256 raw masks)
-yields spatially-localized, FWE-controlled clusters where the two
-group CIs disagree:
-
-```{r cluster-oliveira-2019, eval = FALSE}
-rel_cluster_test(sm_dominant, sm_competent,
-                 img_dims       = c(256L, 256L),
-                 cluster_threshold = 2.0,
-                 n_permutations = 1000L,
-                 seed           = 1L)
-```
-
-```{r oliveira-cluster-fig, echo = FALSE, out.width = "70%", fig.cap = "Cluster test, Dominant vs Competent group CIs (Oliveira et al., 2019, Study 1). Pixel-wise Welch t-map rendered as a translucent diverging overlay on the male base face (positive/red = Dominant larger, negative/blue = Competent larger). Significant clusters at FWE-corrected alpha = .05 are outlined in black."}
-fig_DC <- system.file(
-  "extdata", "oliveira_2019_examples",
-  "cluster_dominant_vs_competent.png",
-  package = "rcicrely"
-)
-if (nzchar(fig_DC)) knitr::include_graphics(fig_DC)
-```
-
-Pair this with `rel_dissimilarity()` (next section) for the
-overall-magnitude part of the same claim.
-
 ### 6.3 `rel_dissimilarity()` {#section-dissim}
 
 **What it does.** Two scalar dissimilarity metrics between the two
@@ -1123,25 +899,6 @@ give r ~ 1; the magnitude difference shows up in `$euclidean`.
 `$euclidean` scales with sqrt(n_pixels) so it is a within-study
 metric, not comparable across resolutions.
 
-**Real example (Oliveira et al., 2019, Study 1).** Euclidean
-distances between group-mean CIs on 256x256 raw masks, 500
-bootstrap replicates each:
-
-```{r dissim-oliveira-2019, eval = FALSE}
-rel_dissimilarity(sm_trust,    sm_friendly, n_boot = 500L, seed = 1L)
-#> Euclidean = 16.81, 95% CI [19.26, 24.86], normalised = 0.0657
-rel_dissimilarity(sm_dominant, sm_competent, n_boot = 500L, seed = 2L)
-#> Euclidean = 21.08, 95% CI [21.53, 30.75], normalised = 0.0823
-```
-
-The Dominant-vs-Competent contrast yields a substantially larger
-Euclidean distance than Trust-vs-Friendly, the same direction as
-the published group-CI Pearson correlations (.69 for Trust x
-Friendly, -.22 for Dominant x Competent in Table 2 of the paper).
-The two metrics report the same pattern from different angles:
-Pearson is the within-shape question, Euclidean is the
-how-far-apart question.
-
 **Comparing multiple contrasts side-by-side.** When you have
 several `rel_dissimilarity()` results and want one figure that
 shows whether their CIs overlap, use `compare_dissimilarity()`. It
@@ -1150,11 +907,11 @@ underlying bootstrap density, so the reader can read overlap (or
 non-overlap) at a glance. Useful for paper figures.
 
 ```{r compare-dissim, eval = FALSE}
-d_TF <- rel_dissimilarity(sm_trust,    sm_friendly, n_boot = 500L, seed = 1L)
-d_DC <- rel_dissimilarity(sm_dominant, sm_competent, n_boot = 500L, seed = 2L)
+d_AB <- rel_dissimilarity(sm_A, sm_B, n_boot = 500L, seed = 1L)
+d_CD <- rel_dissimilarity(sm_C, sm_D, n_boot = 500L, seed = 2L)
 compare_dissimilarity(
-  "Trust vs Friendly"     = d_TF,
-  "Dominant vs Competent" = d_DC
+  "A vs B" = d_AB,
+  "C vs D" = d_CD
 )
 ```
 
@@ -1336,51 +1093,12 @@ the median per-producer z and treat values < 1.96 as evidence of
 metric with the group-level question of whether the CI carries
 information.
 
-**Real example (Oliveira et al., 2019, Study 1, Trust condition).**
-The same diagnostic recipe above, run on real published data. The
-20 individual producers were each shown 300 trials (so the
-trial-count-matched reference is simulated at 300):
-
-```{r infoval-oliveira-2019, eval = FALSE}
-# Per-producer infoVal
-tc <- setNames(rep(300L, 20L), colnames(sm_trust))
-iv <- infoval(sm_trust, noise_matrix, tc, iter = 1000L, seed = 1L)
-#> per-producer: median z = 0.35, range [-1.69, 2.30], n above 1.96 = 2/20
-
-# Group-mean CI infoVal (effective n_trials = 300 x 20 = 6000)
-group  <- matrix(rowMeans(sm_trust), ncol = 1,
-                 dimnames = list(NULL, "TRUST_group"))
-iv_grp <- infoval(group, noise_matrix,
-                  setNames(6000L, "TRUST_group"),
-                  iter = 1000L, seed = 1L)
-#> group-mean CI z = 11.39
-
-# Face-mask lift on per-producer z
-iv_masked <- infoval(sm_trust, noise_matrix, tc,
-                     mask = face_mask(c(256L, 256L)),
-                     iter = 1000L, seed = 1L)
-#> masked median = 0.50  (vs unmasked median = 0.35; lift = +0.15)
-```
-
-This is exactly the pattern described in the troubleshooting list
-above: per-producer z is centred around 0.35 with only 2 of 20
-producers individually above the 1.96 threshold, and yet the
-group-mean CI z is 11.39, *unmistakable* signal. The published
-Trust/Friendly correlation of .69 (Table 2 of the paper) and the
-observable trait dissociations in the group CIs (Figure 1 of the
-paper) are both consistent with the group-level z, not with reading
-the per-producer median as a "weak signal" verdict. Reporting
-recommendation in practice: "the group-mean classification image
-showed strong informational value (z = 11.39, n_eff = 6000); 2 of
-20 producers individually exceeded z = 1.96."
-
-> **Calibration note.** This output reflects the v0.2.1 fix in
-> `simulate_reference_norms()` (sample stim ids without replacement
-> when `n_trials <= n_pool`). v0.2.0 over-inflated the reference
-> norm and gave `median z = -1.54` for the same data (a bug
-> uncovered while replicating Oliveira et al. (2019), Study 1). If
-> you computed infoVal under v0.2.0 and got systematically negative
-> z-scores, re-run after upgrading.
+> **Calibration note.** Since v0.2.1, `simulate_reference_norms()`
+> samples stim ids *without* replacement when `n_trials <= n_pool`.
+> v0.2.0 over-inflated the reference norm and biased per-producer
+> z-scores systematically below zero. If you computed infoVal under
+> v0.2.0 and got negative z-scores on cooperative producers, re-run
+> after upgrading.
 
 ### 6.6 Region-by-region analyses with `face_mask()` {#section-face-mask}
 
@@ -1417,15 +1135,13 @@ m_eyes  <- face_mask(img, region = "eyes")
 m_mouth <- face_mask(img, region = "mouth")
 
 # Region-restricted ICC: pass the masked rows of the signal matrix
-rel_icc(sm_trust[m_eyes,  , drop = FALSE])
-rel_icc(sm_trust[m_mouth, , drop = FALSE])
+rel_icc(signal_matrix[m_eyes,  , drop = FALSE])
+rel_icc(signal_matrix[m_mouth, , drop = FALSE])
 
 # Region-restricted infoVal: pass the mask directly
-infoval(sm_trust, noise_matrix,
-        trial_counts = setNames(rep(300L, 20L), colnames(sm_trust)),
+infoval(signal_matrix, noise_matrix, trial_counts,
         iter = 1000L, mask = m_eyes,  seed = 1L)
-infoval(sm_trust, noise_matrix,
-        trial_counts = setNames(rep(300L, 20L), colnames(sm_trust)),
+infoval(signal_matrix, noise_matrix, trial_counts,
         iter = 1000L, mask = m_mouth, seed = 1L)
 ```
 
@@ -1434,73 +1150,24 @@ centred face on a square base image. For non-default base images,
 tune the full-face oval via `centre`, `half_width`, `half_height`;
 sub-region positions scale relative to that ellipse.
 
-**Real example (Oliveira et al., 2019, Study 1, Trust condition).**
-Region-restricted ICC(3,1) on the same 20-producer signal matrix
-shows where producer agreement is concentrated:
+**Region-restricted between-condition inference** uses the same
+mask but applied symmetrically to both arms. Because
+`rel_cluster_test()` needs every pixel in the image grid to label
+connected components, the way to restrict it is to *zero-fill*
+outside the region in both signal matrices: clusters then can only
+form within the kept region.
 
-```{r face-mask-icc-real, eval = FALSE}
-# rel_icc(sm_trust[face_mask(c(256L,256L), region = R), , drop = FALSE])
-#> region        n_pixels   ICC(3,1)   ICC(3,k)
-#> full           32,192     0.109      0.710
-#> eyes            1,022     0.069      0.595
-#> nose              770     0.028      0.363
-#> mouth             966     0.092      0.670
-#> upper_face     16,096     0.087      0.655
-#> lower_face     16,096     0.130      0.749
-```
-
-Producer agreement is strongest in the lower-face region (mouth +
-jaw), weakest in the nose. The pattern aligns with the visible
-features of the published Trust group CI (Figure 1 of the paper).
-
-Region-restricted infoVal on the same data:
-
-```{r face-mask-infoval-real, eval = FALSE}
-# infoval(sm_trust, noise_matrix, tc, mask = face_mask(c(256L,256L), region = R), ...)
-#> region   median z   range          n above 1.96
-#> full     +0.51      [-1.81, +3.13]      4/20
-#> eyes     +0.55      [-0.98, +1.56]      0/20
-#> mouth    +0.52      [-0.76, +4.67]      3/20
-```
-
-Regional infoVal works as a sensitivity check: if a region's
-median z is markedly lower than the full-face median, the group
-signal is *not* concentrated in that region; if it is markedly
-higher, the region carries more than its pixel-share of the signal.
-For Trust, the eye and mouth regions both replicate the full-face
-median; the eye region's per-producer range is narrower, suggesting
-producers agree on *direction* in the eye region but the energy is
-modest.
-
-Region-restricted **between-condition** inference works the same
-way: zero-fill outside the region in both signal matrices and pass
-them to `rel_cluster_test()`, so clusters can only form inside the
-kept region. Here is Trustworthy vs Dominant, restricted to the eyes
-and mouth:
-
-```{r cluster-region-trust-dominant, eval = FALSE}
-img_dims <- c(256L, 256L)
-m_eyes   <- face_mask(img_dims, region = "eyes")
-m_mouth  <- face_mask(img_dims, region = "mouth")
-
+```{r region-cluster-pattern, eval = FALSE}
 zero_fill <- function(sm, keep) {
   out <- sm
   out[!keep, ] <- 0
   out
 }
 
-clust_eyes  <- rel_cluster_test(
-  zero_fill(sm_trust,    m_eyes),
-  zero_fill(sm_dominant, m_eyes),
-  img_dims          = img_dims,
-  cluster_threshold = 2.0,
-  n_permutations    = 1000L,
-  seed              = 1L
-)
-
-clust_mouth <- rel_cluster_test(
-  zero_fill(sm_trust,    m_mouth),
-  zero_fill(sm_dominant, m_mouth),
+m_eyes <- face_mask(img_dims, region = "eyes")
+clust_eyes <- rel_cluster_test(
+  zero_fill(sm_A, m_eyes),
+  zero_fill(sm_B, m_eyes),
   img_dims          = img_dims,
   cluster_threshold = 2.0,
   n_permutations    = 1000L,
@@ -1508,14 +1175,8 @@ clust_mouth <- rel_cluster_test(
 )
 ```
 
-```{r oliveira-region-fig, echo = FALSE, out.width = "95%", fig.cap = "Region-restricted cluster test, Trustworthy vs Dominant group CIs (Oliveira et al., 2019, Study 1). Pixel-wise Welch t-map rendered as a translucent diverging overlay on the male base face; positive/red = Trustworthy larger, negative/blue = Dominant larger. Eyes region (left panel) and mouth region (right panel). Significant clusters at FWE-corrected alpha = .05 are outlined in black."}
-fig_TD <- system.file(
-  "extdata", "oliveira_2019_examples",
-  "cluster_trust_vs_dominant_eyes_mouth.png",
-  package = "rcicrely"
-)
-if (nzchar(fig_TD)) knitr::include_graphics(fig_TD)
-```
+§7 walks through both region-restricted ICC and region-restricted
+cluster contrasts on a real dataset with figures.
 
 **Critical-review note.** Region masks are heuristic. They do not
 account for individual differences in face geometry (the base
@@ -1528,6 +1189,29 @@ pixel vector. The geometries shipped here are calibrated to KDEF-
 style 256x256 male faces and should reproduce reasonably for
 most published RC datasets.
 
+#### Loading an external mask: `load_face_mask()` {#section-load-face-mask}
+
+If your mask comes from outside R (a hand-painted PNG, a
+`webmorphR::mask_oval()` output, or any other binary image),
+`load_face_mask()` converts it to the logical-vector format
+`face_mask()` returns:
+
+```{r load-face-mask-demo, eval = FALSE}
+fm <- load_face_mask("masks/oval_256.png",
+                     threshold     = 0.5,
+                     expected_dims = c(256L, 256L))
+mean(fm)               # fraction of pixels included
+infoval(signal_matrix, noise_matrix, trial_counts,
+        mask = fm, iter = 1000L, seed = 1L)
+```
+
+White / light pixels (luminance above `threshold`, default 0.5)
+become `TRUE`; dark pixels become `FALSE`. RGB images are converted
+to luminance via ITU-R BT.709 weights. Pass `expected_dims` to abort
+on mask-vs-signal dimension mismatches at the input boundary; if the
+saved image uses the opposite convention (black = include),
+`!load_face_mask(...)` inverts it.
+
 ### 6.7 Visualising producer agreement: `plot_agreement_map()`
 
 A complement to the group-mean CI image: a heatmap of where
@@ -1539,14 +1223,14 @@ agreement on negative signal.
 
 ```{r plot-agreement-map, eval = FALSE}
 # Continuous t-map (default)
-plot_agreement_map(sm_trust)
+plot_agreement_map(signal_matrix)
 
 # Region-restricted, mouth only
-plot_agreement_map(sm_trust,
+plot_agreement_map(signal_matrix,
                    mask = face_mask(c(256L, 256L), region = "mouth"))
 
 # Thresholded view (only pixels with |t| > 2.0 are coloured)
-plot_agreement_map(sm_trust, threshold = 2.0)
+plot_agreement_map(signal_matrix, threshold = 2.0)
 ```
 
 Use this for **descriptive** figures of where producers agree
@@ -1554,7 +1238,242 @@ within a condition; pair with `rel_cluster_test()` (which is the
 **inferential** counterpart for between-condition pixel-level
 contrasts).
 
-## 7. Brief-RC end-to-end
+## 7. Demo: applying `rcicrely` to Oliveira et al. (2019), Study 1
+
+This section walks the package end-to-end on a published 2IFC
+dataset, in the order a researcher would actually run the analyses.
+Every output shown is real (chunks are `eval = FALSE` because the
+data is not bundled).
+
+> Oliveira, M., Garcia-Marques, T., Dotsch, R., & Garcia-Marques, L.
+> (2019). Dominance and competence face to face: Dissociations
+> obtained with a reverse correlation approach. *European Journal
+> of Social Psychology*. <https://doi.org/10.1002/ejsp.2569>.
+> Open data: <https://doi.org/10.17605/osf.io/hr5pd>.
+
+In Study 1, 200 participants completed a 2IFC reverse-correlation
+task with **300 trials each** on a 256x256 male base face, across
+10 trait conditions in a between-subjects design (20 producers per
+trait): Dominant, Submissive, Trust, Untrust, Friendly, Unfriendly,
+Intelligent, Unintelligent, Competent, Incompetent.
+
+### 7.1 Setup: per-trait signal matrices
+
+The legacy 2015 stimulus rdata uses an older rcicr format (basis
+named `s` instead of `p`); reconstruct the noise matrix once with a
+small helper, then build one signal matrix per trait. The pattern
+generalises to any 2IFC study with `participant_id`, `stimulus`,
+`response` columns:
+
+```{r demo-build-signals, eval = FALSE}
+library(rcicrely)
+responses <- read.csv2("study1data.csv")            # 200 producers
+noise_matrix <- read_noise_matrix("rcic_stimuli.Rdata",
+                                  baseimage = "male")
+
+# Per-trait per-producer raw mask: (noise[, stim] %*% sign) / n_trials
+build_signal_matrix <- function(nm, sub) {
+  ids <- unique(sub$subject)
+  out <- vapply(ids, function(s) {
+    r <- sub[sub$subject == s, ]; r <- r[order(r$trial), ]
+    as.vector(nm[, r$stimulus] %*% r$response) / nrow(r)
+  }, numeric(nrow(nm)))
+  colnames(out) <- as.character(ids)
+  attr(out, "img_dims") <- c(256L, 256L)
+  attr(out, "source")   <- "raw"
+  out
+}
+
+traits <- sort(unique(responses$trait))
+signal_by_trait <- setNames(
+  lapply(traits, function(tr)
+    build_signal_matrix(noise_matrix,
+                        responses[responses$trait == tr, ])),
+  traits
+)
+sm_trust     <- signal_by_trait[["TRUST"]]
+sm_dominant  <- signal_by_trait[["DOMINANT"]]
+sm_competent <- signal_by_trait[["COMPETENT"]]
+sm_friendly  <- signal_by_trait[["FRIENDLY"]]
+```
+
+### 7.2 Within-condition reliability
+
+Did the 20 producers in each condition agree?
+
+```{r demo-within, eval = FALSE}
+rel_split_half(sm_trust,    n_permutations = 500L, seed = 1L)
+#> Trust:    r_hh = 0.405, r_sb = 0.577, 95% CI on r_sb = [0.539, 0.616]
+rel_split_half(sm_dominant, n_permutations = 500L, seed = 1L)
+#> Dominant: r_hh = 0.262, r_sb = 0.415, 95% CI on r_sb = [0.380, 0.450]
+
+rel_icc(sm_trust)
+#> ICC(3,1) = 0.1008,  ICC(3,k) = 0.6917
+rel_icc(sm_dominant)
+#> ICC(3,1) = 0.0489,  ICC(3,k) = 0.5068
+```
+
+Trust replicates with clearly higher group-level reliability than
+Dominant on both metrics. ICC(3,1) (the resolution-comparable
+single-producer reliability) and Spearman-Brown-projected `r_SB`
+agree on the ordering. ICC(3,k) is high in absolute terms because
+of the resolution asymptote at large pixel counts; ICC(3,1) is the
+cross-study comparable number.
+
+LOO inspection on Trust:
+
+```{r demo-loo, eval = FALSE}
+loo <- rel_loo(sm_trust, flag_method = "mad")
+head(rel_loo_z(loo), 3)
+#>   participant_id  correlation  z_score  flag
+#> 1          18043       0.9905    -1.68  FALSE
+#> 2          18051       0.9911    -0.99  FALSE
+#> 3          18131       0.9913    -0.79  FALSE
+```
+
+Median raw `r_loo` is .992 (MAD = .001), near 1 by construction.
+Zero producers cleared the MAD flag threshold, but the z-scored
+ordering still ranks producers by influence on the group CI: the
+top of the table is the inspection priority list.
+
+### 7.3 Per-producer signal vs. chance
+
+`infoval()` answers "does each producer's mask carry more than
+chance?". With 300 trials per producer the trial-count-matched
+reference is simulated at 300:
+
+```{r demo-infoval, eval = FALSE}
+tc <- setNames(rep(300L, 20L), colnames(sm_trust))
+infoval(sm_trust, noise_matrix, tc, iter = 1000L, seed = 1L)
+#> per-producer: median z = 0.35, range [-1.69, 2.30], n above 1.96 = 2/20
+
+# Group-mean CI (effective n_trials = 300 x 20 = 6000):
+group  <- matrix(rowMeans(sm_trust), ncol = 1,
+                 dimnames = list(NULL, "TRUST_group"))
+infoval(group, noise_matrix,
+        setNames(6000L, "TRUST_group"), iter = 1000L, seed = 1L)
+#> group-mean CI z = 11.39
+
+# Face-mask lift on per-producer z:
+infoval(sm_trust, noise_matrix, tc,
+        mask = face_mask(c(256L, 256L)), iter = 1000L, seed = 1L)
+#> masked median = 0.50  (vs unmasked median = 0.35; lift = +0.15)
+```
+
+This is exactly the pattern §6.5 describes: per-producer median z
+is 0.35 with only 2/20 producers individually above 1.96, *yet* the
+group-mean z is 11.39, unmistakable signal. The published
+Trust/Friendly correlation of .69 (Table 2 of the paper) and the
+trait dissociations visible in Figure 1 are consistent with the
+group-level z, not with reading the per-producer median as "weak
+signal". Recommended report: "the group-mean classification image
+showed strong informational value (z = 11.39, n_eff = 6000); 2 of
+20 producers individually exceeded z = 1.96."
+
+### 7.4 Where in the image do conditions disagree?
+
+The Dominant vs Competent contrast yields spatially-localized,
+FWE-controlled clusters:
+
+```{r demo-cluster-dc, eval = FALSE}
+rel_cluster_test(sm_dominant, sm_competent,
+                 img_dims          = c(256L, 256L),
+                 cluster_threshold = 2.0,
+                 n_permutations    = 1000L,
+                 seed              = 1L)
+```
+
+```{r demo-cluster-fig, echo = FALSE, out.width = "70%", fig.cap = "Cluster test, Dominant vs Competent group CIs (Oliveira et al., 2019, Study 1). Pixel-wise Welch t-map rendered as a translucent diverging overlay on the male base face (positive/red = Dominant larger, negative/blue = Competent larger). Significant clusters at FWE-corrected alpha = .05 are outlined in black."}
+knitr::include_graphics("figures/oliveira_2019/cluster_dominant_vs_competent.png")
+```
+
+### 7.5 How far apart are conditions overall?
+
+`rel_dissimilarity()` complements the spatial picture with a
+single-number magnitude. Comparing a "similar" trait pair against a
+"dissimilar" one:
+
+```{r demo-dissim, eval = FALSE}
+rel_dissimilarity(sm_trust,    sm_friendly,  n_boot = 500L, seed = 1L)
+#> Euclidean = 16.81, 95% CI [19.26, 24.86], normalised = 0.0657
+rel_dissimilarity(sm_dominant, sm_competent, n_boot = 500L, seed = 2L)
+#> Euclidean = 21.08, 95% CI [21.53, 30.75], normalised = 0.0823
+```
+
+Dominant-vs-Competent yields a substantially larger Euclidean
+distance than Trust-vs-Friendly, the same direction as the
+published group-CI Pearson correlations (.69 for Trust × Friendly,
+−.22 for Dominant × Competent in Table 2 of the paper). Pearson is
+the within-shape question; Euclidean is the how-far-apart question.
+
+### 7.6 Where on the face do producers agree, by region?
+
+Region-restricted ICC(3,1) on the same Trust signal matrix shows
+where producer agreement concentrates:
+
+```{r demo-region-icc, eval = FALSE}
+# rel_icc(sm_trust[face_mask(c(256L,256L), region = R), , drop = FALSE])
+#> region        n_pixels   ICC(3,1)   ICC(3,k)
+#> full           32,192     0.109      0.710
+#> eyes            1,022     0.069      0.595
+#> nose              770     0.028      0.363
+#> mouth             966     0.092      0.670
+#> upper_face     16,096     0.087      0.655
+#> lower_face     16,096     0.130      0.749
+```
+
+Agreement is strongest in the lower-face region (mouth + jaw),
+weakest in the nose. The pattern aligns with the visible features
+of the published Trust group CI (Figure 1 of the paper). Region-
+restricted infoVal works as a sensitivity check on the same data:
+
+```{r demo-region-infoval, eval = FALSE}
+# infoval(sm_trust, noise_matrix, tc, mask = face_mask(c(256L,256L), region = R), ...)
+#> region   median z   range          n above 1.96
+#> full     +0.51      [-1.81, +3.13]      4/20
+#> eyes     +0.55      [-0.98, +1.56]      0/20
+#> mouth    +0.52      [-0.76, +4.67]      3/20
+```
+
+Eye and mouth regions both replicate the full-face median; the
+eye region's per-producer range is narrower, suggesting producers
+agree on direction in the eye region but the energy is modest.
+
+Region-restricted **between-condition** clusters (Trustworthy vs
+Dominant), zero-filling outside each region so clusters can only
+form within it:
+
+```{r demo-region-cluster, eval = FALSE}
+img_dims <- c(256L, 256L)
+m_eyes   <- face_mask(img_dims, region = "eyes")
+m_mouth  <- face_mask(img_dims, region = "mouth")
+
+zero_fill <- function(sm, keep) {
+  out <- sm
+  out[!keep, ] <- 0
+  out
+}
+
+rel_cluster_test(zero_fill(sm_trust,    m_eyes),
+                 zero_fill(sm_dominant, m_eyes),
+                 img_dims = img_dims,
+                 cluster_threshold = 2.0,
+                 n_permutations    = 1000L,
+                 seed = 1L)
+
+rel_cluster_test(zero_fill(sm_trust,    m_mouth),
+                 zero_fill(sm_dominant, m_mouth),
+                 img_dims = img_dims,
+                 cluster_threshold = 2.0,
+                 n_permutations    = 1000L,
+                 seed = 2L)
+```
+
+```{r demo-region-fig, echo = FALSE, out.width = "95%", fig.cap = "Region-restricted cluster test, Trustworthy vs Dominant group CIs (Oliveira et al., 2019, Study 1). Pixel-wise Welch t-map rendered as a translucent diverging overlay on the male base face; positive/red = Trustworthy larger, negative/blue = Dominant larger. Eyes region (left panel) and mouth region (right panel). Significant clusters at FWE-corrected alpha = .05 are outlined in black."}
+knitr::include_graphics("figures/oliveira_2019/cluster_trust_vs_dominant_eyes_mouth.png")
+```
+
+## 8. Brief-RC end-to-end
 
 Schmitz, Rougier & Yzerbyt (2024) introduced Brief-RC 12: each trial
 shows 12 noisy faces (6 oriented, 6 inverted, drawn from a shared
@@ -1564,8 +1483,19 @@ id), `response` (`+1` if oriented, `-1` if inverted). `rcicrely`'s
 implementation is native (no rcicr `_brief` functions, which don't
 exist in the upstream rcicr v1.0.1).
 
+The Schmitz materials distribute the noise pool as a plain-text
+`noise_matrix.txt` (pixels × pool size, whitespace-delimited), so
+that's the typical entry point if you replicate from their OSF
+repo. If you generate the pool yourself with `rcicr`, the captured
+return value can be cached as `.rds` for fast reloads (see step 1
+below).
+
 ```{r briefrc-demo, eval = FALSE}
-# 1. Generate the noise pool (once per project) - heavy step.
+# 1a. Replicating Schmitz et al.: read the published noise_matrix.txt
+#     directly. read_noise_matrix() autodetects the format.
+noise <- read_noise_matrix("data/noise_matrix.txt")
+
+# 1b. Generating your own pool with rcicr (one-off, slow):
 rcicr::generateStimuli2IFC(
   base_face_files     = list(base = "data/base.jpg"),
   n_trials            = 600L,        # becomes the Brief-RC pool size
@@ -1573,19 +1503,19 @@ rcicr::generateStimuli2IFC(
   stimulus_path       = "data/stim",
   label               = "mystudy",
   ncores              = 1L,          # macOS-safe default
-  return_as_dataframe = TRUE,        # capture the noise matrix!
+  return_as_dataframe = TRUE,        # capture the noise matrix
   seed                = 1L
-) |> saveRDS("data/noise_matrix.rds")  # cache for fast loading
+) |> saveRDS("data/noise_matrix.rds")  # cache for fast reloads
 
 # 2. Collect Brief-RC responses in the per-trial format.
 
 # 3. Compute individual CIs.
 res <- ci_from_responses_briefrc(
   responses       = my_brief_rc_responses,
-  noise_matrix    = readRDS("data/noise_matrix.rds"),
+  noise_matrix    = noise,           # or readRDS("data/noise_matrix.rds")
   base_image_path = "data/base.jpg",
   method          = "briefrc12",
-  scaling         = "matched"   # also rendered for plotting
+  scaling         = "matched"        # also rendered for plotting
 )
 
 # 4. Reliability assessment.
@@ -1593,7 +1523,7 @@ within  <- run_within(res$signal_matrix, seed = 1L)
 between <- run_between(res_A$signal_matrix, res_B$signal_matrix,
                        seed = 1L)
 
-# 5. Save rendered CI to PNG (visualization only - DO NOT use for stats)
+# 5. Save rendered CIs to PNG (visualisation only; do not feed to rel_*).
 if (requireNamespace("png", quietly = TRUE)) {
   for (j in seq_along(res$participants)) {
     img <- matrix(res$rendered_ci[, j], res$img_dims[1], res$img_dims[2])
@@ -1627,7 +1557,7 @@ Treat absolute Brief-RC vs 2IFC z-score differences with caution;
 separability) are the right complements when pattern accuracy matters
 more than magnitude.
 
-## 8. Interpreting results and common pitfalls
+## 9. Interpreting results and common pitfalls
 
 **Sample size.** `rcicrely` aborts below 4 producers per condition
 and warns below 30; a sample of N >= 60 producers is recommended for
@@ -1652,21 +1582,10 @@ t-cutoff for forming clusters. Significance is decided by mass
 relative to the null. The default is roughly two-tailed p < 0.05 at
 large df, but at small N it under-rejects - inspect the t histogram.
 
-**Raw vs. rendered CIs.** This package's reliability math is correct
-**given** a raw signal matrix. Mode 1 (PNGs on disk) loads
-`scaling(mask)` instead of `mask`; results will differ from what raw
-responses would produce. The size of the difference depends on the
-scaling that was applied at PNG-write time. Mode 2 is the safe path.
+For raw-vs-rendered considerations and the `infoVal` scaling
+caveat, see §3.2.
 
-**`infoVal` correctness.** `rcicr::computeInfoVal2IFC()` extracts
-the raw `$ci` from its input CI-list internally, so the standard
-2IFC path is safe regardless of `scaling`. The pitfall is in
-hand-rolled `infoVal` implementations, for Brief-RC, or for any
-custom code that consumes a bare matrix, which must be fed the
-raw mask. Feeding rendered/scaled values silently distorts the
-reference comparison and produces wrong significance verdicts.
-
-## 9. References
+## 10. References
 
 - Brinkman, L., Todorov, A., & Dotsch, R. (2017). Visualising mental
   representations: A primer on noise-based reverse correlation in

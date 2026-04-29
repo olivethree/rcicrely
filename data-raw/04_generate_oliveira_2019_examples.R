@@ -8,7 +8,11 @@
 #
 # Heavy: noise reconstruction + cluster permutations on 65,536 pixels
 # x 1,000 permutations. Run once and commit the resulting PNGs under
-# `inst/extdata/oliveira_2019_examples/`.
+# `vignettes/figures/oliveira_2019/`. (Putting them inside vignettes/
+# is what makes pkgdown copy them into the deployed article: a path
+# returned by `system.file()` lives outside the article tree, and
+# pkgdown does not copy that. A relative `figures/...` reference, on
+# the other hand, gets picked up automatically.)
 #
 # Requires `temp/Study 1/` (developer-only). Not part of the
 # user-facing build; data-raw/ is .Rbuildignore-d.
@@ -23,7 +27,7 @@ paths <- list(
 )
 stopifnot(all(file.exists(unlist(paths))))
 
-out_dir <- file.path("inst", "extdata", "oliveira_2019_examples")
+out_dir <- file.path("vignettes", "figures", "oliveira_2019")
 if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
 # -------- Load -----------------------------------------------------

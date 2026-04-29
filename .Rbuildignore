@@ -12,3 +12,7 @@
 ^\.github$
 ^README\.Rmd$
 ^cran-comments\.md$
+^\.zenodo\.json$
+^CITATION\.cff$
+^codemeta\.json$
+^\.DS_Store$

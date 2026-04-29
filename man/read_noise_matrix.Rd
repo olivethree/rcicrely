@@ -68,16 +68,64 @@ from the rdata each run.
 \item Multiple stale \code{.rdata} accumulating in a directory because
 rcicr timestamps its filenames; pick the most recent by mtime if
 you have several.
+\item On macOS the file is saved with a lowercase \code{.Rdata} extension;
+\code{list.files(pattern = "\\\\.RData$")} will miss it (use
+\code{ignore.case = TRUE}).
 }
+}
+
+\section{What is in an rcicr \code{.Rdata}}{
+
+\code{load("rcic_stimuli.Rdata")} adds the following objects to your
+environment. Names are short and not self-explanatory:
+
+\describe{
+\item{\code{base_face_files}}{Named list of file paths to the original
+face images. The list names (e.g. \code{"base"}) are the labels you
+pass downstream as \code{baseimage = "..."}.}
+\item{\code{base_faces}}{Base images themselves, loaded as numeric
+matrices of grayscale pixels in \verb{[0, 1]}. One matrix per label;
+shape \verb{img_size x img_size}.}
+\item{\code{img_size}}{Side length of the (square) images in pixels.}
+\item{\code{n_trials}}{Number of stimulus pairs (and unique noise
+patterns) generated.}
+\item{\code{noise_type}}{Type of noise basis. The rcicr default and only
+well-tested option is \code{"sinusoid"}.}
+\item{\code{p}}{The noise basis. A list with \verb{$patches} (a stack of
+standard sinusoidal patterns at multiple scales, orientations,
+phases) and \verb{$patchIdx} (an index that maps positions in a
+parameter vector to entries in \verb{$patches}). Think of \verb{$patches}
+as a dictionary of sinusoidal "ingredients".}
+\item{\code{stimuli_params}}{The per-trial recipe for combining \code{p}'s
+ingredients. A named list of matrices, one per base face. Each
+row is one trial; each entry is a contrast weight.
+\code{rcicr::generateNoiseImage(stimuli_params[[base]][i, ], p)}
+reconstructs trial \code{i}.}
+\item{\code{seed}}{Random seed used at generation, for reproducibility.}
+\item{\code{label}, \code{stimulus_path}, \code{trial}, \code{generator_version},
+\code{use_same_parameters}}{Bookkeeping; not consumed by analysis.}
+\item{\code{reference_norms}}{Random-responder Frobenius norms. Not
+present at first; created and inserted in place the first time
+\code{rcicr::computeInfoVal2IFC()} is called on the file. Copy the
+rdata first if you want it untouched.}
+}
+
+The load-bearing objects for analysis are \code{base_faces},
+\code{stimuli_params}, \code{p}, and \code{img_size}. Trial-level noise images are
+not stored; this loader recomputes them on demand via
+\code{generateNoiseImage()}.
 }
 
 \examples{
 \dontrun{
-# From an rcicr rdata:
-nm <- read_noise_matrix("data/rcicr_stimuli.Rdata")
+# Plain text (Schmitz et al. 2024 OSF format):
+nm <- read_noise_matrix("data/noise_matrix.txt")
 
-# From a cached rds you saved earlier:
+# Cached .rds (from rcicr's return-as-dataframe output):
 nm <- read_noise_matrix("data/noise_matrix.rds")
+
+# rcicr .Rdata (reconstructs each trial; slow):
+nm <- read_noise_matrix("data/rcicr_stimuli.Rdata")
 }
 }
 \seealso{
