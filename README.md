@@ -51,6 +51,13 @@ remotes::install_github("rdotsch/rcicr")
 If you only run Brief-RC, you can skip `rcicr` — the Brief-RC code is
 fully native to `rcicrely`.
 
+## User's guide
+
+The **[full user guide](https://olivethree.github.io/rcicrely/articles/tutorial.html)**
+walks through every exported function with worked examples,
+including real-data examples from a published 2IFC reverse-
+correlation study ([Oliveira et al., 2019](https://doi.org/10.1002/ejsp.2569)).
+
 ## Quick start
 
 Suppose you ran a study with two conditions, *trustworthy* and
