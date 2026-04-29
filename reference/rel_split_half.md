@@ -23,6 +23,8 @@ percentile of the permutation distribution.
 rel_split_half(
   signal_matrix,
   n_permutations = 2000L,
+  null = c("none", "permutation", "random_responders"),
+  noise_matrix = NULL,
   mask = NULL,
   seed = NULL,
   progress = TRUE
@@ -39,6 +41,33 @@ rel_split_half(
 
   Integer number of random splits. Default 2000, cheap and keeps Monte
   Carlo error on tail probabilities below 0.01.
+
+- null:
+
+  One of `"none"` (default), `"permutation"`, or `"random_responders"`.
+
+  - `"none"` skips the empirical-null computation. Backwards- compatible
+    with v0.2.x; `$null_distribution` is `NULL`.
+
+  - `"permutation"`: at each iteration, randomly shuffle pixel values
+    within each producer column to break the spatial correlation
+    structure that gives any half-half pair a non-zero baseline `r_hh`
+    even on pure noise. Recompute `r_hh` per iteration; the empirical
+    distribution becomes the chance baseline.
+
+  - `"random_responders"`: simulate `ncol(signal_matrix)` producers
+    responding at chance using `simulate_reference_norms()`'s
+    `genMask()` machinery on the supplied `noise_matrix`. Recompute
+    `r_hh` per iteration. Closer to the empirical chance baseline of an
+    actual RC experiment than `"permutation"` because it preserves the
+    pixel correlation structure of real noise patterns.
+
+- noise_matrix:
+
+  Pixels x pool-size numeric matrix of noise patterns. Required when
+  `null = "random_responders"`; ignored otherwise. Same shape as the
+  matrix accepted by
+  [`infoval()`](https://olivethree.github.io/rcicrely/reference/infoval.md).
 
 - mask:
 
@@ -77,6 +106,20 @@ the result** above.
 - `$distribution`, the full per-permutation r vector for plotting or
   custom CIs.
 
+- `$null` (character), the null mode used.
+
+- `$null_distribution`, when `null != "none"`: numeric vector of
+  per-iteration `r_hh` under the chosen null. `NULL` otherwise.
+
+- `$r_hh_null_p95`, 95th percentile of the null distribution. `NA_real_`
+  when `null = "none"`.
+
+- `$r_hh_excess`, observed `r_hh` minus the null median. Headline
+  "above-chance" reliability number; `NA_real_` when `null = "none"`.
+
+- `$r_sb_excess`, the same excess applied to Spearman-Brown projected
+  `r_sb`. `NA_real_` when `null = "none"`.
+
 - `$n_participants`, `$n_permutations`, metadata.
 
 ## Common mistakes
@@ -96,10 +139,10 @@ chapter 3.
 
 ## References
 
-Brinkman, L., Goffin, S., van de Schoot, R., van Haren, N. E. M.,
-Dotsch, R., & Aarts, H. (2019). Quantifying the informational value of
-classification images. *Behavior Research Methods*, 51(5), 2059-2073.
-[doi:10.3758/s13428-019-01232-2](https://doi.org/10.3758/s13428-019-01232-2)
+Brinkman, L., Todorov, A., & Dotsch, R. (2017). Visualising mental
+representations: A primer on noise-based reverse correlation in social
+psychology. *European Review of Social Psychology*, 28(1), 333-361.
+[doi:10.1080/10463283.2017.1381469](https://doi.org/10.1080/10463283.2017.1381469)
 
 Shrout, P. E., & Fleiss, J. L. (1979). Intraclass correlations: uses in
 assessing rater reliability. *Psychological Bulletin*, 86(2), 420-428.

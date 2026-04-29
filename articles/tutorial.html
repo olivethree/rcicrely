@@ -57,20 +57,18 @@
                         <h4 data-toc-skip class="author">Manuel
 Oliveira</h4>
             
-            <h4 data-toc-skip class="date">2026-04-25</h4>
+            <h4 data-toc-skip class="date">2026-04-29</h4>
       
-      <small class="dont-index">Source: <a href="https://github.com/olivethree/rcicrely/blob/v0.2.2/vignettes/tutorial.Rmd" class="external-link"><code>vignettes/tutorial.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/olivethree/rcicrely/blob/main/vignettes/tutorial.Rmd" class="external-link"><code>vignettes/tutorial.Rmd</code></a></small>
       <div class="d-none name"><code>tutorial.Rmd</code></div>
     </div>
 
     
     
-<p>This guide is written for two readers in parallel: the researcher who
-wants to know “which function do I call for the question I have?”, and
-the methodologically-curious user who also wants to know “and why should
-I trust what it returns?”. Each function gets a short plain-language
-description, the actual signature, a worked example, how to read the
-output, and the specific footguns to avoid.</p>
+<p>This guide answers two questions side by side: which function to call
+for a given question, and why its output is trustworthy. Each function
+gets a plain-language description, the signature, a worked example, how
+to read the output, and the footguns to avoid.</p>
 <div class="section level2">
 <h2 id="what-rcicrely-is---and-isnt">1. What <code>rcicrely</code> is - and isn’t<a class="anchor" aria-label="anchor" href="#what-rcicrely-is---and-isnt"></a>
 </h2>
@@ -97,41 +95,14 @@ distinguishable from condition B’s?): vectorised Welch t per pixel,
 cluster-based permutation with max-statistic FWER, bootstrap
 representational dissimilarity.</li>
 </ul>
-<p>Critically, none of this requires a phase-2 trait-rating study. The
-metrics read directly from the pixel-level signal produced by the
-original producers, sidestepping the two-phase design Cone,
-Brown-Iannuzzi, Lei, and Dotsch (2021) showed inflates Type I error.</p>
-<div class="section level3">
-<h3 id="infoval-and-rcicrely-together">
-<code>infoVal</code> and <code>rcicrely</code> together<a class="anchor" aria-label="anchor" href="#infoval-and-rcicrely-together"></a>
-</h3>
-<p>Since v0.2 <code>rcicrely</code> ships its own <code><a href="../reference/infoval.html">infoval()</a></code>
-(see §6.5) that handles <strong>both 2IFC and Brief-RC</strong> with a
-single function. The reference distribution is keyed on each producer’s
-actual trial count rather than the full pool size — the calibration
-matters most for Brief-RC, where producers see only a subset of the
-pool, but the function works equivalently for 2IFC. The two checks
-remain complementary: <code><a href="../reference/infoval.html">infoval()</a></code> tests presence of signal;
-<code>rel_*()</code> tests reliability and discriminability of
-signal.</p>
-<p><code><a href="https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html" class="external-link">rcicr::computeInfoVal2IFC()</a></code> is still useful as an
-external cross- check for 2IFC data. It pulls the raw <code>$ci</code>
-element from the rcicr CI-list internally
-(<code>norm(matrix(target_ci[["ci"]]), "f")</code>), so the scaling
-settings used at CI generation do not affect its output.</p>
-<p>The scaling caveat applies when you compute <code>infoVal</code>
-outside that path:</p>
-<ul>
-<li>
-<strong>rcicrely’s <code><a href="../reference/infoval.html">infoval()</a></code></strong> expects raw
-masks. Pass <code>res$signal_matrix</code> from
-<code>ci_from_responses_*()</code> (Mode 2). Do not pass
-<code>res$rendered_ci</code> or anything PNG-derived.</li>
-<li>
-<strong>Hand-rolled infoVal</strong>: same rule. Use the raw mask,
-not the rendered PNG.</li>
-</ul>
-</div>
+<p>None of this requires a phase-2 trait-rating study. The metrics read
+directly from the pixel-level signal produced by the original producers,
+sidestepping the two-phase design Cone, Brown-Iannuzzi, Lei, and Dotsch
+(2021) showed inflates Type I error.</p>
+<p>Since v0.2 <code>rcicrely</code> also ships <a href="#section-infoval"><code>infoval()</code></a>, covering both 2IFC
+and Brief-RC with a single function. <code><a href="../reference/infoval.html">infoval()</a></code> tests
+presence of signal; <code>rel_*()</code> tests reliability and
+discriminability of signal; they are complementary.</p>
 </div>
 <div class="section level2">
 <h2 id="installation">2. Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -159,8 +130,8 @@ distinct meanings in RC work and in this package:</p>
 <li>
 <strong>Noise mask</strong> (often shortened to <em>mask</em> or
 <em>raw mask</em>): the participant’s <em>visual noise contribution</em>
-— the noise pattern that, when superimposed on the base face, produces
-their classification image. This is the core statistical object. Every
+(the noise pattern that, when superimposed on the base face, produces
+their classification image). This is the core statistical object. Every
 <code>rel_*()</code> function operates on a matrix of these.</li>
 <li>
 <strong>Region mask</strong> (or <em>pixel mask</em>): a logical
@@ -173,24 +144,57 @@ mask. Pixel selection is always called “region mask” or referenced
 through <code><a href="../reference/face_mask.html">face_mask()</a></code>.</p>
 </blockquote>
 <div class="section level3">
-<h3 id="raw-mask-vs--rendered-ci">3.1 Raw mask vs. rendered CI<a class="anchor" aria-label="anchor" href="#raw-mask-vs--rendered-ci"></a>
+<h3 id="two-paths-to-the-signal-matrix">3.1 Two paths to the signal matrix<a class="anchor" aria-label="anchor" href="#two-paths-to-the-signal-matrix"></a>
+</h3>
+<p>There are two ways to obtain the signal matrix, and the choice
+matters because they produce mathematically different objects.</p>
+<pre><code>Mode 1: PNGs on disk           Mode 2: raw responses
+          |                              |
+   read_cis()                    ci_from_responses_2ifc() / _briefrc()
+          |                              |
+   extract_signal()                      |
+          |                              |
+   scaling(mask)                       mask                    &lt;-- raw
+          |                              |
+          +---------&gt; rel_*() &lt;----------+</code></pre>
+<p>Mode 2 returns the <strong>raw mask</strong> (the participant’s noise
+contribution before any display transformation). Mode 1 cannot, because
+PNGs on disk have always been rendered with a display scaling step baked
+in; subtracting the base recovers <code>scaling(mask)</code>, not
+<code>mask</code>. §3.2 explains why this distinction is statistically
+load-bearing.</p>
+<p>Prefer Mode 2 when raw responses are available. If you must use Mode
+1, the package emits a one-time warning per session. To silence:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># acknowledge per-call:</span></span>
+<span><span class="va">signal</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/load_signal_matrix.html">load_signal_matrix</a></span><span class="op">(</span><span class="st">"data/cis/"</span>, <span class="st">"data/base.jpg"</span>,</span>
+<span>                             acknowledge_scaling <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># or silence for the whole session:</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>rcicrely.silence_scaling_warning <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<p>If you generated the PNGs yourself with
+<code>rcicr::generateCI2IFC(scaling = "none")</code>, the rendered
+output is effectively raw and the warning is a false positive.</p>
+</div>
+<div class="section level3">
+<h3 id="raw-mask-vs--rendered-ci">3.2 Raw mask vs. rendered CI<a class="anchor" aria-label="anchor" href="#raw-mask-vs--rendered-ci"></a>
 </h3>
 <p>A CI exists in two forms.</p>
 <p>A <strong>raw mask</strong> is the participant’s noise contribution
 before any display transformation. It is the object every reliability
-metric operates on. For Brief-RC, it is
+metric operates on. For Brief-RC it is
 <code>(noise_pool[, chosen_ids] %*% signed_responses) / n_unique</code>
-(Schmitz’s <code>genMask()</code>). For 2IFC, it is rcicr’s
+(Schmitz’s <code>genMask()</code>); for 2IFC it is rcicr’s
 <code>$ci</code> element. Values are typically in a narrow band around
-zero (~ +/- 0.05).</p>
+zero (roughly +/- 0.05).</p>
 <p>The <strong>rendered CI</strong> is what gets saved to PNG. It is
 <code>base + scaling(mask)</code>, where <code>scaling()</code> may
 stretch the mask to the base image’s range (“matched”), apply a constant
 gain, or do nothing. Scaling is a <em>display</em> transformation, not a
-statistical one.</p>
-<p>Subtracting the base from a rendered CI does <strong>not</strong>
-recover the raw mask:</p>
+statistical one. Subtracting the base from a rendered CI does
+<strong>not</strong> recover the raw mask:</p>
 <pre><code>PNG_pixels - base = scaling(mask)   (NOT  mask)</code></pre>
+<p>The metrics introduced in §5 and §6 react differently to scaling:</p>
 <table class="table">
 <colgroup>
 <col width="42%">
@@ -249,34 +253,6 @@ mask.</td>
 </table>
 </div>
 <div class="section level3">
-<h3 id="two-paths-to-the-signal-matrix">3.2 Two paths to the signal matrix<a class="anchor" aria-label="anchor" href="#two-paths-to-the-signal-matrix"></a>
-</h3>
-<pre><code>Mode 1: PNGs on disk           Mode 2: raw responses
-          |                              |
-   read_cis()                    ci_from_responses_2ifc() / _briefrc()
-          |                              |
-   extract_signal()                      |
-          |                              |
-   scaling(mask)                       mask                    &lt;-- raw
-          |                              |
-          +---------&gt; rel_*() &lt;----------+</code></pre>
-<p><strong>Mode 2 returns the raw mask</strong>; Mode 1 cannot, because
-PNGs on disk have always been rendered. Prefer Mode 2 when raw responses
-are available. If you must use Mode 1, the package emits a one-time
-warning per session reminding you of the caveat. To silence:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># acknowledge per-call:</span></span>
-<span><span class="va">signal</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/load_signal_matrix.html">load_signal_matrix</a></span><span class="op">(</span><span class="st">"data/cis/"</span>, <span class="st">"data/base.jpg"</span>,</span>
-<span>                             acknowledge_scaling <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># or silence for the whole session:</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>rcicrely.silence_scaling_warning <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p>If you generated the PNGs yourself with
-<code>rcicr::generateCI2IFC(scaling = "none")</code>, the rendered
-output is effectively raw, and the warning is genuinely a false
-positive.</p>
-</div>
-<div class="section level3">
 <h3 id="a-concrete-demonstration">3.3 A concrete demonstration<a class="anchor" aria-label="anchor" href="#a-concrete-demonstration"></a>
 </h3>
 <p>Here is what scaling does to the same underlying mask.</p>
@@ -286,7 +262,8 @@ positive.</p>
 <span><span class="va">n_p</span>   <span class="op">&lt;-</span> <span class="fl">20L</span></span>
 <span><span class="va">mask</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n_pix</span> <span class="op">*</span> <span class="va">n_p</span>, sd <span class="op">=</span> <span class="fl">0.02</span><span class="op">)</span>, <span class="va">n_pix</span>, <span class="va">n_p</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Render: stretch each column to [-0.5, 0.5] (Schmitz "matched")</span></span>
+<span><span class="co"># Render: stretch each column to [-0.5, 0.5] (rcicr's "matched" /</span></span>
+<span><span class="co"># auto-scale option; the rcicr default for visualisation)</span></span>
 <span><span class="va">rendered</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">mask</span>, <span class="fl">2L</span>, <span class="kw">function</span><span class="op">(</span><span class="va">m</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">rng</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/diff.html" class="external-link">diff</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span><span class="op">)</span>; <span class="kw">if</span> <span class="op">(</span><span class="va">rng</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span> <span class="va">m</span> <span class="kw">else</span> <span class="va">m</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">/</span> <span class="va">rng</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
@@ -326,7 +303,7 @@ follow are sensitive to how this image is prepared. Requirements:</p>
 <li>
 <strong>Square</strong> (e.g. 256x256, 512x512).</li>
 <li>
-<strong>Grayscale</strong> — single channel. RGB images error out of
+<strong>Grayscale</strong> (single channel). RGB images error out of
 rcicr with non-conformable-array messages.</li>
 <li>
 <strong>Pixel range <code>[0, 1]</code></strong> (the convention
@@ -367,38 +344,9 @@ single base photograph), prepare it by hand: any image editor will do
 (GIMP / Krita / Photoshop / PowerPoint export). Convert to grayscale,
 crop to a square that fits the face within the central ~70%, resize to
 the target dimension, save as PNG.</p>
-</div>
-<div class="section level3">
-<h3 id="a-recurring-real-world-example">3.5 A recurring real-world example<a class="anchor" aria-label="anchor" href="#a-recurring-real-world-example"></a>
-</h3>
-<p>The synthetic demos in the function-reference sections below are
-deliberately small so the vignette knits in seconds. To see what each
-function looks like on a published RC dataset, the sections that follow
-each include a short <strong>Real example</strong> callout drawn from
-one source:</p>
-<blockquote>
-<p>Oliveira, M., Garcia-Marques, T., Dotsch, R., &amp; Garcia-Marques,
-L. (2019). Dominance and competence face to face: Dissociations obtained
-with a reverse correlation approach. <em>European Journal of Social
-Psychology</em>. <a href="https://doi.org/10.1002/ejsp.2569" class="external-link uri">https://doi.org/10.1002/ejsp.2569</a></p>
-</blockquote>
-<p>In Study 1, 200 participants completed a 2IFC reverse-correlation
-task with <strong>300 trials each</strong> on a 256x256 male base face,
-across 10 trait conditions in a between-subjects design (20 producers
-per trait). Trait labels: <code>Dominant</code>,
-<code>Submissive</code>, <code>Trust</code>, <code>Untrust</code>,
-<code>Friendly</code>, <code>Unfriendly</code>,
-<code>Intelligent</code>, <code>Unintelligent</code>,
-<code>Competent</code>, <code>Incompetent</code>. The full data,
-parameter file, and analysis scripts are openly available on OSF: <a href="https://doi.org/10.17605/osf.io/hr5pd" class="external-link uri">https://doi.org/10.17605/osf.io/hr5pd</a>.</p>
-<p>The “Real example” callouts below show the exact call you would make
-against this data, plus the output captured from a complete replication
-run. The replication itself (including reconstructing the noise matrix
-from the legacy <code>rcicr</code> 0.3.0 parameter file) is in
-<code>study1_replication.Rmd</code> in the project’s <code>temp/</code>
-directory; the vignette chunks below are marked
-<code>eval = FALSE</code> because the data is not bundled with the
-package, but every output shown is real.</p>
+<p>The function-reference sections (§4–§6) work on small synthetic data
+so the vignette knits in seconds. For an end-to-end demonstration on a
+published RC dataset, see §7.</p>
 </div>
 </div>
 <div class="section level2">
@@ -406,8 +354,8 @@ package, but every output shown is real.</p>
 </h2>
 <p>The six functions in this section get your data into the package’s
 standard signal-matrix shape (<code>pixels x participants</code>). Two
-of them — <code><a href="../reference/ci_from_responses_2ifc.html">ci_from_responses_2ifc()</a></code> and
-<code><a href="../reference/ci_from_responses_briefrc.html">ci_from_responses_briefrc()</a></code> — take <strong>trial-level
+of them (<code><a href="../reference/ci_from_responses_2ifc.html">ci_from_responses_2ifc()</a></code> and
+<code><a href="../reference/ci_from_responses_briefrc.html">ci_from_responses_briefrc()</a></code>) take <strong>trial-level
 response data</strong>; before diving into them the shape and coding
 conventions for that data deserve a quick callout.</p>
 <div class="section level3">
@@ -474,7 +422,7 @@ experiment software sometimes records “left” / “right” or “first” /
 “second” as <code>0</code> / <code>1</code>, and the analyst forgets to
 recode. Pass <code>{0, 1}</code> responses to
 <code>ci_from_responses_*()</code> and the resulting CI is approximately
-blank — the math leans heavily on the sign. Both functions error out at
+blank (the math leans heavily on the sign). Both functions error out at
 the input boundary if responses are not in <code>{-1, +1}</code>. If you
 see that error, the fix is one line:
 <code>responses$response &lt;- 2 * responses$response - 1</code>.</p>
@@ -495,206 +443,87 @@ absence <em>is</em> the zero.</p>
 </blockquote>
 </div>
 <div class="section level3">
-<h3 id="read_cis">4.1 <code>read_cis()</code><a class="anchor" aria-label="anchor" href="#read_cis"></a>
+<h3 id="section-load-signal-matrix">4.1 <code>load_signal_matrix()</code><a class="anchor" aria-label="anchor" href="#section-load-signal-matrix"></a>
 </h3>
 <p><strong>What it does.</strong> Reads every PNG/JPEG in a directory,
-converts each to grayscale, returns a pixels by participants numeric
-matrix.</p>
+subtracts the base image, and returns a pixels-by-participants signal
+matrix in one call. The end product is <code>scaling(mask)</code> (Mode
+1; see §3.2).</p>
 <p><strong>When to use it.</strong> You have one CI image per producer
-already saved on disk and you want to load them into R as a numeric
-matrix. Pair with <a href="#section-extract-signal"><code>extract_signal()</code></a> to get
-a base-subtracted signal matrix.</p>
+on disk.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Make a tiny synthetic dataset on disk to demonstrate against.</span></span>
-<span><span class="va">demo_dir</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="st">"ci_demo_"</span><span class="op">)</span>; <span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">demo_dir</span><span class="op">)</span></span>
-<span><span class="va">base_img</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">32L</span>, <span class="fl">32L</span><span class="op">)</span></span>
-<span><span class="va">png_path</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">demo_dir</span>, <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"p%02d.png"</span>, <span class="va">i</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"png"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">6</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="va">img</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">pmin</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">pmax</a></span><span class="op">(</span><span class="va">base_img</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">32</span> <span class="op">*</span> <span class="fl">32</span>, sd <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span>, <span class="fl">32</span>, <span class="fl">32</span><span class="op">)</span>,</span>
-<span>                     <span class="fl">0</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span></span>
-<span>    <span class="fu">png</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/png/man/writePNG.html" class="external-link">writePNG</a></span><span class="op">(</span><span class="va">img</span>, <span class="fu">png_path</span><span class="op">(</span><span class="va">i</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="op">}</span></span>
-<span><span class="op">}</span></span></code></pre></div>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">cis</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_cis.html">read_cis</a></span><span class="op">(</span><span class="va">demo_dir</span>, acknowledge_scaling <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">cis</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 1024    6</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">cis</span>, <span class="st">"img_dims"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 32 32</span></span></code></pre></div>
-<p><strong>Reading the result.</strong> <code>nrow = n_pixels</code>,
-<code>ncol = n_files</code>. The <code>img_dims</code> attribute carries
-<code>c(nrow, ncol)</code> of the original image so plotting helpers
-know how to reshape.</p>
-<p><strong>Common mistakes.</strong> Forgetting to subtract the base
-before passing to a <code>rel_*</code> function (use <a href="#section-extract-signal"><code>extract_signal()</code></a> or the
-convenience wrapper <a href="#section-load-signal-matrix"><code>load_signal_matrix()</code></a>).
-Mixing CIs of different sizes - aborts loudly. Trusting reliability
-numbers without reading the raw vs. rendered note (chapter 3).</p>
-</div>
-<div class="section level3">
-<h3 id="section-extract-signal">4.2 <code>extract_signal()</code><a class="anchor" aria-label="anchor" href="#section-extract-signal"></a>
-</h3>
-<p><strong>What it does.</strong> Subtracts the base image from each
-column of a CI matrix, so reliability metrics see only the
-participant-specific contribution.</p>
-<p><strong>When to use it.</strong> You have the output of <a href="#read_cis"><code>read_cis()</code></a> and you want a
-base-subtracted signal matrix.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">base_path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">demo_dir</span>, <span class="st">"_base.png"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># Tiny synthetic dataset on disk to demonstrate against:</span></span>
+<span><span class="va">demo_dir</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="st">"ci_demo_"</span><span class="op">)</span>; <span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">demo_dir</span><span class="op">)</span></span>
+<span><span class="va">base_img</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">32L</span>, <span class="fl">32L</span><span class="op">)</span></span>
+<span><span class="va">base_path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">demo_dir</span>, <span class="st">"_base.png"</span><span class="op">)</span></span>
 <span><span class="fu">png</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/png/man/writePNG.html" class="external-link">writePNG</a></span><span class="op">(</span><span class="va">base_img</span>, <span class="va">base_path</span><span class="op">)</span></span>
-<span><span class="va">signal</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extract_signal.html">extract_signal</a></span><span class="op">(</span><span class="va">cis</span>, base_image_path <span class="op">=</span> <span class="va">base_path</span>,</span>
-<span>                         acknowledge_scaling <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">signal</span><span class="op">)</span>; <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">signal</span>, <span class="st">"img_dims"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 1024    6</span></span>
-<span><span class="co">#&gt; [1] 32 32</span></span></code></pre></div>
-<p><strong>Reading the result.</strong> Same shape as <code>cis</code>,
-with the <code>img_dims</code> attribute preserved. Column names
-propagate.</p>
-<p><strong>Common mistakes.</strong> Pointing at the wrong base (a
-generated CI PNG of the right size will pass the dimension check).
-Treating the result as the raw mask; it is <code>scaling(mask)</code> if
-PNGs were rendered with any scaling. See chapter 3.</p>
-</div>
-<div class="section level3">
-<h3 id="section-load-signal-matrix">4.3 <code>load_signal_matrix()</code><a class="anchor" aria-label="anchor" href="#section-load-signal-matrix"></a>
-</h3>
-<p><strong>What it does.</strong> Convenience wrapper that calls <a href="#read_cis"><code>read_cis()</code></a> and <a href="#section-extract-signal"><code>extract_signal()</code></a> in one
-go.</p>
-<p><strong>When to use it.</strong> Most of the time, when you don’t
-need to do anything between reading and subtracting (e.g. masking
-pixels, swapping the base).</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">signal</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/load_signal_matrix.html">load_signal_matrix</a></span><span class="op">(</span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">6</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">img</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">pmin</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">pmax</a></span><span class="op">(</span><span class="va">base_img</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">32</span> <span class="op">*</span> <span class="fl">32</span>, sd <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span>, <span class="fl">32</span>, <span class="fl">32</span><span class="op">)</span>,</span>
+<span>                   <span class="fl">0</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span></span>
+<span>  <span class="fu">png</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/png/man/writePNG.html" class="external-link">writePNG</a></span><span class="op">(</span><span class="va">img</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">demo_dir</span>, <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"p%02d.png"</span>, <span class="va">i</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">signal</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/load_signal_matrix.html">load_signal_matrix</a></span><span class="op">(</span></span>
 <span>  dir                 <span class="op">=</span> <span class="va">demo_dir</span>,</span>
 <span>  base_image_path     <span class="op">=</span> <span class="va">base_path</span>,</span>
 <span>  pattern             <span class="op">=</span> <span class="st">"^p[0-9]+\\.png$"</span>,  <span class="co"># exclude _base.png</span></span>
 <span>  acknowledge_scaling <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">signal</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 1024    6</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">signal</span><span class="op">)</span>; <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">signal</span>, <span class="st">"img_dims"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 1024    6</span></span>
+<span><span class="co">#&gt; [1] 32 32</span></span></code></pre></div>
+<p><strong>Reading the result.</strong> <code>nrow = n_pixels</code>,
+<code>ncol = n_files</code>; the <code>img_dims</code> attribute carries
+<code>c(nrow, ncol)</code> of the original image so plot helpers know
+how to reshape.</p>
+<p><strong>Common mistakes.</strong> Pointing at the wrong base (a
+generated CI PNG of the right size will pass the dimension check).
+Mixing CIs of different sizes (aborts loudly). Treating this as the raw
+mask (it isn’t; see §3.2).</p>
+<p><strong>Granular API.</strong> If you need to intervene between
+reading and subtracting (custom masking, swap the base), the two
+underlying functions are exported: <code>read_cis(dir)</code> returns
+the raw pixel matrix, then
+<code>extract_signal(cis, base_image_path)</code> does the subtraction.
+<code><a href="../reference/load_signal_matrix.html">load_signal_matrix()</a></code> is exactly the composition of those
+two.</p>
 </div>
 <div class="section level3">
-<h3 id="read_noise_matrix">4.4 <code>read_noise_matrix()</code><a class="anchor" aria-label="anchor" href="#read_noise_matrix"></a>
+<h3 id="read_noise_matrix">4.2 <code>read_noise_matrix()</code><a class="anchor" aria-label="anchor" href="#read_noise_matrix"></a>
 </h3>
 <p><strong>What it does.</strong> Loads the pixels by trials noise pool
-used at stimulus generation. Three formats: rcicr <code>.Rdata</code>
-(reconstructs from <code>stimuli_params</code> + <code>p</code>), saved
-<code>.rds</code>, or whitespace-delimited text.</p>
+used at stimulus generation. Autodetects three formats:
+whitespace-delimited text (<code>.txt</code>, the format Schmitz et
+al. distribute on OSF), saved R <code>.rds</code>, or an rcicr
+<code>.Rdata</code> (reconstructs from <code>stimuli_params</code> +
+<code>p</code>).</p>
 <p><strong>When to use it.</strong> You are computing Brief-RC CIs and
 want to load the noise pool once, then reuse it across multiple <a href="#section-cifr-briefrc"><code>ci_from_responses_briefrc()</code></a>
 calls.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># from the rcicr rdata (slow - reconstructs each trial via</span></span>
-<span><span class="co"># rcicr::generateNoiseImage):</span></span>
-<span><span class="va">noise</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_noise_matrix.html">read_noise_matrix</a></span><span class="op">(</span><span class="st">"data/rcicr_stimuli.Rdata"</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Plain text (the Schmitz et al. 2024 OSF format):</span></span>
+<span><span class="va">noise</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_noise_matrix.html">read_noise_matrix</a></span><span class="op">(</span><span class="st">"data/noise_matrix.txt"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># from a cached rds you saved from the rcicr return value (fast):</span></span>
-<span><span class="va">noise</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_noise_matrix.html">read_noise_matrix</a></span><span class="op">(</span><span class="st">"data/noise_matrix.rds"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="co"># Cached .rds saved from rcicr's return-as-dataframe output (fast):</span></span>
+<span><span class="va">noise</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_noise_matrix.html">read_noise_matrix</a></span><span class="op">(</span><span class="st">"data/noise_matrix.rds"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># rcicr .Rdata (slow; reconstructs each trial via</span></span>
+<span><span class="co"># rcicr::generateNoiseImage):</span></span>
+<span><span class="va">noise</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_noise_matrix.html">read_noise_matrix</a></span><span class="op">(</span><span class="st">"data/rcicr_stimuli.Rdata"</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Common mistakes.</strong> Assuming the rcicr
-<code>.Rdata</code> contains a <code>stimuli</code> object (it does not
-- the pixels-by-trials matrix is the <em>return value</em> of
+<code>.Rdata</code> contains a <code>stimuli</code> object (it does not;
+the pixels-by-trials matrix is the <em>return value</em> of
 <code>generateStimuli2IFC(return_as_dataframe = TRUE)</code>, never
 saved to the file). Cache to <code>.rds</code> once and load from there.
-Multiple stale <code>.rdata</code> files in one directory: rcicr
+Multiple stale <code>.rdata</code> files in one directory (rcicr
 timestamps filenames; pick the most recent by mtime if you have
-several.</p>
-<div class="section level4">
-<h4 id="what-is-in-an-rcicr--rdata">What is in an rcicr <code>.RData</code><a class="anchor" aria-label="anchor" href="#what-is-in-an-rcicr--rdata"></a>
-</h4>
-<p><code>load("rcic_stimuli.Rdata")</code> adds the following objects to
-your environment. Names are short and not self-explanatory; the table
-below is the field guide.</p>
-<table class="table">
-<colgroup>
-<col width="7%">
-<col width="92%">
-</colgroup>
-<thead><tr class="header">
-<th>Object</th>
-<th>Plain-language description</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td><code>base_face_files</code></td>
-<td>Named list of file paths to the original face images. The list names
-(e.g. <code>"base"</code>) are the labels you pass downstream as
-<code>baseimage = "..."</code>.</td>
-</tr>
-<tr class="even">
-<td><code>base_faces</code></td>
-<td>Base images themselves, loaded as numeric matrices of grayscale
-pixels in <code>[0, 1]</code>. One matrix per label; shape
-<code>img_size x img_size</code>.</td>
-</tr>
-<tr class="odd">
-<td><code>img_size</code></td>
-<td>Side length of the (square) images in pixels.</td>
-</tr>
-<tr class="even">
-<td><code>n_trials</code></td>
-<td>Number of stimulus pairs (and unique noise patterns) generated.</td>
-</tr>
-<tr class="odd">
-<td><code>noise_type</code></td>
-<td>Type of noise basis. The rcicr default and only well-tested option
-is <code>"sinusoid"</code>.</td>
-</tr>
-<tr class="even">
-<td><code>p</code></td>
-<td>The <strong>noise basis</strong>. A list with <code>$patches</code>
-(a stack of standard sinusoidal patterns at multiple scales,
-orientations, phases) and <code>$patchIdx</code> (an index that maps
-positions in a parameter vector to entries in <code>$patches</code>).
-Think of <code>$patches</code> as a dictionary of sinusoidal
-“ingredients”.</td>
-</tr>
-<tr class="odd">
-<td><code>stimuli_params</code></td>
-<td>The <strong>per-trial recipe</strong> for combining <code>p</code>’s
-ingredients. A named list of matrices, one per base face. Each row is
-one trial; each entry is a contrast weight.
-<code>rcicr::generateNoiseImage(stimuli_params[[base]][i, ], p)</code>
-reconstructs trial <code>i</code>.</td>
-</tr>
-<tr class="even">
-<td><code>seed</code></td>
-<td>Random seed used at generation, for reproducibility.</td>
-</tr>
-<tr class="odd">
-<td>
-<code>label</code>, <code>stimulus_path</code>, <code>trial</code>,
-<code>generator_version</code>, <code>use_same_parameters</code>
-</td>
-<td>Bookkeeping; not consumed by analysis.</td>
-</tr>
-<tr class="even">
-<td><code>reference_norms</code></td>
-<td>A vector of random-responder Frobenius norms. <strong>Not present at
-first.</strong> Created and inserted in place the first time
-<code><a href="https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html" class="external-link">rcicr::computeInfoVal2IFC()</a></code> is called on the file. Copy the
-rdata first if you want it untouched.</td>
-</tr>
-</tbody>
-</table>
-<p>The load-bearing objects for analysis are <code>base_faces</code>,
-<code>stimuli_params</code>, <code>p</code>, and <code>img_size</code>.
-The full set of trial-level noise images is <strong>not stored</strong>;
-it is recomputed on demand via <code>generateNoiseImage()</code> (which
-<code><a href="../reference/read_noise_matrix.html">read_noise_matrix()</a></code> calls in a loop). For 256x256 images
-and <code>n_trials = 770</code> (rcicr default) this takes a few
-seconds; cache the result with <code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS()</a></code> to skip it on
-subsequent runs.</p>
-<blockquote>
-<p><strong>Filename note.</strong> On macOS the file is saved with a
-lowercase <code>.Rdata</code> extension.
-<code>list.files(pattern = "\\.RData$")</code> will miss it; use
-<code>ignore.case = TRUE</code>.</p>
-</blockquote>
-</div>
+several).</p>
+<p>For a field guide to which objects live in the rcicr
+<code>.Rdata</code> and what each one means, see
+<code><a href="../reference/read_noise_matrix.html">?read_noise_matrix</a></code>.</p>
 </div>
 <div class="section level3">
-<h3 id="section-cifr-2ifc">4.5 <code>ci_from_responses_2ifc()</code><a class="anchor" aria-label="anchor" href="#section-cifr-2ifc"></a>
+<h3 id="section-cifr-2ifc">4.3 <code>ci_from_responses_2ifc()</code><a class="anchor" aria-label="anchor" href="#section-cifr-2ifc"></a>
 </h3>
 <p><strong>What it does.</strong> Wraps
 <code><a href="https://rdrr.io/pkg/rcicr/man/batchGenerateCI2IFC.html" class="external-link">rcicr::batchGenerateCI2IFC()</a></code> with all known gotchas
@@ -702,7 +531,7 @@ pre-handled, returns a uniform result list.</p>
 <p><strong>When to use it.</strong> You have 2IFC trial-level responses
 and want per-producer CIs in one call. Requires <code>rcicr</code>
 installed.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ci_from_responses_2ifc.html">ci_from_responses_2ifc</a></span><span class="op">(</span></span>
 <span>  responses       <span class="op">=</span> <span class="va">my_responses</span>,</span>
 <span>  rdata_path      <span class="op">=</span> <span class="st">"data/rcicr_stimuli.Rdata"</span>,</span>
@@ -728,14 +557,14 @@ via <code>baseimage</code> <em>label</em>, not a path. Passing
 scaled even when the signal_matrix isn’t.</p>
 </div>
 <div class="section level3">
-<h3 id="section-cifr-briefrc">4.6 <code>ci_from_responses_briefrc()</code><a class="anchor" aria-label="anchor" href="#section-cifr-briefrc"></a>
+<h3 id="section-cifr-briefrc">4.4 <code>ci_from_responses_briefrc()</code><a class="anchor" aria-label="anchor" href="#section-cifr-briefrc"></a>
 </h3>
 <p><strong>What it does.</strong> Native Brief-RC 12 implementation of
 Schmitz’s <code>genMask()</code> formula. No <code>rcicr::*_brief</code>
 calls (those don’t exist in the upstream rcicr v1.0.1).</p>
 <p><strong>When to use it.</strong> You have Brief-RC 12 trial-level
 responses and the noise pool used at stimulus generation.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ci_from_responses_briefrc.html">ci_from_responses_briefrc</a></span><span class="op">(</span></span>
 <span>  responses       <span class="op">=</span> <span class="va">my_responses</span>,    <span class="co"># one row per trial</span></span>
 <span>  rdata_path      <span class="op">=</span> <span class="st">"data/rcicr_stimuli.Rdata"</span>,</span>
@@ -745,12 +574,14 @@ responses and the noise pool used at stimulus generation.</p>
 <span><span class="op">)</span></span>
 <span><span class="va">signal</span> <span class="op">&lt;-</span> <span class="va">res</span><span class="op">$</span><span class="va">signal_matrix</span></span></code></pre></div>
 <p>To also get the rendered CI for plotting:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ci_from_responses_briefrc.html">ci_from_responses_briefrc</a></span><span class="op">(</span></span>
 <span>  responses       <span class="op">=</span> <span class="va">my_responses</span>,</span>
 <span>  noise_matrix    <span class="op">=</span> <span class="va">my_noise</span>,</span>
 <span>  base_image_path <span class="op">=</span> <span class="st">"data/base.jpg"</span>,</span>
-<span>  scaling         <span class="op">=</span> <span class="st">"matched"</span>        <span class="co"># Schmitz default for visualisation</span></span>
+<span>  scaling         <span class="op">=</span> <span class="st">"matched"</span>        <span class="co"># rcicr auto-scale (used for</span></span>
+<span>                                     <span class="co"># visualisation by Schmitz et al.</span></span>
+<span>                                     <span class="co"># 2024 in Experiment 2)</span></span>
 <span><span class="op">)</span></span>
 <span><span class="co"># res$signal_matrix is the raw mask, feed to rel_*</span></span>
 <span><span class="co"># res$rendered_ci is base + matched(mask), for PNG / plotting only</span></span></code></pre></div>
@@ -764,47 +595,13 @@ responses and the noise pool used at stimulus generation.</p>
 face), not 12. Asking for <code>method = "briefrc20"</code> (deferred).
 Using <code>$rendered_ci</code> for downstream stats.</p>
 </div>
-<div class="section level3">
-<h3 id="section-load-face-mask">4.7 <code>load_face_mask()</code><a class="anchor" aria-label="anchor" href="#section-load-face-mask"></a>
-</h3>
-<p><strong>What it does.</strong> Reads a binary mask image from disk
-(PNG or JPEG) and returns a logical vector of length
-<code>prod(img_dims)</code> in column-major order — the format the rest
-of the package’s mask arguments expect. Companion to <a href="#section-face-mask"><code>face_mask()</code></a> (parametric /
-programmatic) for users who want to work with hand-painted,
-webmorphR-generated, or otherwise externally-produced masks.</p>
-<p><strong>When to use it.</strong> You have a binary mask image (e.g.,
-<code>webmorphR::mask_oval()</code> output saved with
-<code>write_stim()</code>, a hand-painted GIMP / PowerPoint mask, or any
-other source). You want to apply it via <code><a href="../reference/infoval.html">infoval()</a></code>’s
-<code>mask</code> argument, via <code><a href="../reference/plot_agreement_map.html">plot_agreement_map()</a></code>’s
-<code>mask</code> argument, or via row-subsetting on a signal
-matrix.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/load_face_mask.html">load_face_mask</a></span><span class="op">(</span><span class="st">"masks/oval_256.png"</span>,</span>
-<span>                     threshold     <span class="op">=</span> <span class="fl">0.5</span>,</span>
-<span>                     expected_dims <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">256L</span>, <span class="fl">256L</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">fm</span><span class="op">)</span>               <span class="co"># fraction of pixels included</span></span>
-<span><span class="fu"><a href="../reference/infoval.html">infoval</a></span><span class="op">(</span><span class="va">signal_matrix</span>, <span class="va">noise_matrix</span>, <span class="va">trial_counts</span>,</span>
-<span>        mask <span class="op">=</span> <span class="va">fm</span>, iter <span class="op">=</span> <span class="fl">1000L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></code></pre></div>
-<p><strong>Reading the result.</strong> A logical vector. White / light
-pixels (luminance above <code>threshold</code>, default 0.5) become
-<code>TRUE</code>; dark pixels become <code>FALSE</code>. RGB images are
-converted to luminance via ITU-R BT.709 weights.</p>
-<p><strong>Common mistakes.</strong> Mask dimensions different from the
-analysis image: pass <code>expected_dims = c(nrow, ncol)</code> to catch
-this at the input boundary instead of having the math go silently wrong
-downstream. Mask saved with the <em>opposite</em> convention (black =
-include, white = exclude): the easy fix is
-<code>!load_face_mask(...)</code> to invert the logical vector.</p>
-</div>
 </div>
 <div class="section level2">
 <h2 id="function-reference-within-condition-reliability">5. Function reference: within-condition reliability<a class="anchor" aria-label="anchor" href="#function-reference-within-condition-reliability"></a>
 </h2>
 <p>For the rest of this guide we’ll work with a small synthetic dataset
 where two conditions have different latent signals.</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">make_condition</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">region_top</span>, <span class="va">n_pix</span> <span class="op">=</span> <span class="fl">32L</span> <span class="op">*</span> <span class="fl">32L</span>,</span>
 <span>                           <span class="va">n_p</span> <span class="op">=</span> <span class="fl">30L</span>, <span class="va">snr</span> <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">{</span></span>
@@ -830,7 +627,7 @@ projection to the full sample.</p>
 <p><strong>When to use it.</strong> You want to answer “would I get the
 same group CI if I’d run a different half of my participants?”.
 <code>r_SB</code> is usually the headline number.</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">r_sh</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rel_split_half.html">rel_split_half</a></span><span class="op">(</span><span class="va">sig_A</span>, n_permutations <span class="op">=</span> <span class="fl">500L</span>, seed <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>                       progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">r_sh</span><span class="op">)</span></span>
@@ -839,7 +636,7 @@ same group CI if I’d run a different half of my participants?”.
 <span><span class="co">#&gt;   n_permutations:       500</span></span>
 <span><span class="co">#&gt;   mean per-split r:     0.993  [0.992, 0.993]</span></span>
 <span><span class="co">#&gt;   Spearman-Brown r_SB:  0.996  [0.996, 0.997]</span></span></code></pre></div>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">r_sh</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
 <img src="tutorial_files/figure-html/plot-split-half-1.png" class="r-plt" alt="Permutation distribution of split-half r." width="672"><p class="caption">
@@ -855,19 +652,6 @@ of the full sample (report this unless asked otherwise).
 instead of <code>$r_sb</code> when the audience cares about the
 full-sample CI. Running with <code>n_permutations &lt; 200</code> and
 trusting the CIs.</p>
-<p><strong>Real example (Oliveira et al., 2019, Study 1).</strong>
-Per-trait group-CI reliability for the Trust and Dominant conditions (20
-producers each, 300 trials, 256x256 image):</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># sm_trust, sm_dominant: pixels x 20 producer signal matrices</span></span>
-<span><span class="co"># (built from the response data; see study1_replication.Rmd)</span></span>
-<span><span class="fu"><a href="../reference/rel_split_half.html">rel_split_half</a></span><span class="op">(</span><span class="va">sm_trust</span>,    n_permutations <span class="op">=</span> <span class="fl">500L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Trust:    r_hh = 0.405, r_sb = 0.577, 95% CI on r_sb = [0.539, 0.616]</span></span>
-<span><span class="fu"><a href="../reference/rel_split_half.html">rel_split_half</a></span><span class="op">(</span><span class="va">sm_dominant</span>, n_permutations <span class="op">=</span> <span class="fl">500L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Dominant: r_hh = 0.262, r_sb = 0.415, 95% CI on r_sb = [0.380, 0.450]</span></span></code></pre></div>
-<p>The Trust CI replicates with a clearly higher group-level reliability
-than the Dominant CI, consistent with the inter-rater agreement ordering
-reported in Table 1 of Oliveira et al. (2019).</p>
 </div>
 <div class="section level3">
 <h3 id="section-rel-loo">5.2 <code>rel_loo()</code> - influence screening (not a reliability
@@ -883,8 +667,14 @@ individual CI is far from the group pattern - often a sign of response
 miscoding, fatigue, or a genuinely atypical mental representation. This
 is a diagnostic; it is <em>not</em> a reliability statistic (see the
 note at the end of this section).</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">r_loo</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rel_loo.html">rel_loo</a></span><span class="op">(</span><span class="va">sig_A</span>, flag_threshold <span class="op">=</span> <span class="fl">2.5</span>, flag_method <span class="op">=</span> <span class="st">"sd"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Warning: `rel_loo(flag_method = "sd")` is deprecated since v0.3 and will be removed in</span></span>
+<span><span class="co">#&gt; v0.4.</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> The MAD/median rule (the new default) is robust to the influential producers</span></span>
+<span><span class="co">#&gt;   LOO is designed to flag.</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> Drop the `flag_method` argument or pass `flag_method = "mad"` explicitly.</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Silence: `options(rcicrely.silence_loo_deprecation = TRUE)`.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">r_loo</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;rcicrely leave-one-out influence screening&gt;</span></span>
 <span><span class="co">#&gt;   N producers:        30</span></span>
@@ -908,12 +698,12 @@ note at the end of this section).</p>
 <p>The default is mean +/- SD; use <code>flag_method = "mad"</code> for
 a median +/- MAD rule that doesn’t get pulled around by the very
 outliers it tries to detect:</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">r_loo_mad</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rel_loo.html">rel_loo</a></span><span class="op">(</span><span class="va">sig_A</span>, flag_threshold <span class="op">=</span> <span class="fl">2.5</span>, flag_method <span class="op">=</span> <span class="st">"mad"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sd_threshold <span class="op">=</span> <span class="va">r_loo</span><span class="op">$</span><span class="va">threshold</span>, mad_threshold <span class="op">=</span> <span class="va">r_loo_mad</span><span class="op">$</span><span class="va">threshold</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  sd_threshold mad_threshold </span></span>
 <span><span class="co">#&gt;     0.9999303     0.9999308</span></span></code></pre></div>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">r_loo</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
 <img src="tutorial_files/figure-html/plot-loo-1.png" class="r-plt" alt="z-scored LOO influence per producer." width="672"><p class="caption">
@@ -922,47 +712,29 @@ z-scored LOO influence per producer.
 </div>
 <p>For a tidy ordered table of producers by influence, use
 <code><a href="../reference/rel_loo_z.html">rel_loo_z()</a></code>:</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="../reference/rel_loo_z.html">rel_loo_z</a></span><span class="op">(</span><span class="va">r_loo</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#   participant_id  correlation  z_score  flag</span></span>
 <span><span class="co"># 1     outlier01        0.9714    -3.12  TRUE</span></span>
 <span><span class="co"># 2           p07        0.9942    -0.84  FALSE</span></span>
 <span><span class="co"># ...</span></span></code></pre></div>
 <p><strong>Reading the result.</strong> <code>$z_scores</code> is the
-informative quantity - plot / report it directly.
-<code>$correlations</code> is retained for transparency (values near 1
-by construction because the full-sample mean and the leave-one-out mean
-share <code>(N - 1) / N</code> of their data). <code>$flagged</code>
-lists ids below threshold. <code>$summary_df</code> is a tidy table
-sorted by <code>z_score</code>.</p>
-<p><strong>Why you should not read <code>$correlations</code> as
-reliability.</strong> <code>r_loo</code> values are almost always in
-<code>[0.95, 0.999]</code> at N = 30, even on very noisy CIs, because
-the two vectors being correlated overlap in <code>(N - 1) / N</code> of
-their data. A naive reader can misinterpret “LOO r = 0.98” as “the CIs
-are 98% reliable”; this is wrong. Report reliability via
-<code><a href="../reference/rel_split_half.html">rel_split_half()</a></code> or <code><a href="../reference/rel_icc.html">rel_icc()</a></code> (§5.1,
-§5.3).</p>
+informative quantity; plot or report it directly.
+<code>$correlations</code> is retained for transparency, but <strong>do
+not read it as reliability</strong>: <code>r_loo</code> is almost always
+in <code>[0.95, 0.999]</code> at N = 30 even on very noisy CIs because
+the full-sample mean and the leave-one-out mean share
+<code>(N-1)/N</code> of their data. A naive reader can mistake “LOO r =
+0.98” for “the CIs are 98% reliable”; that is wrong. For reliability use
+<code><a href="../reference/rel_split_half.html">rel_split_half()</a></code> or <code><a href="../reference/rel_icc.html">rel_icc()</a></code> (§5.1, §5.3).
+<code>$flagged</code> lists ids below threshold;
+<code>$summary_df</code> is a tidy table sorted by
+<code>z_score</code>.</p>
 <p><strong>Common mistakes.</strong> Treating <code>$flagged</code> as
-“drop these producers” - investigate first. A flagged producer may have
-a genuinely atypical mental representation rather than bad data.
+“drop these producers”; investigate first. A flagged producer may have a
+genuinely atypical mental representation rather than bad data.
 Cross-check with <code>rcicrdiagnostics</code> to rule out
 response-coding errors.</p>
-<p><strong>Real example (Oliveira et al., 2019, Study 1, Trust
-condition).</strong> Median raw <code>r_loo</code> is .992 (MAD = .001)
-— illustrating the near-1 absolute value structurally. Zero producers
-cleared the default MAD-based flag threshold, but the z-scored ordering
-is still informative for inspection priority:</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">loo</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rel_loo.html">rel_loo</a></span><span class="op">(</span><span class="va">sm_trust</span>, flag_method <span class="op">=</span> <span class="st">"mad"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="../reference/rel_loo_z.html">rel_loo_z</a></span><span class="op">(</span><span class="va">loo</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
-<span><span class="co">#&gt;   participant_id  correlation  z_score  flag</span></span>
-<span><span class="co">#&gt; 1          18043       0.9905    -1.68  FALSE</span></span>
-<span><span class="co">#&gt; 2          18051       0.9911    -0.99  FALSE</span></span>
-<span><span class="co">#&gt; 3          18131       0.9913    -0.79  FALSE</span></span></code></pre></div>
-<p>The producers at the top of the z-ordering are the ones whose removal
-moves the group CI most relative to the rest — even when none clear the
-flag threshold, this is the inspection order.</p>
 </div>
 <div class="section level3">
 <h3 id="section-rel-icc">5.3 <code>rel_icc()</code><a class="anchor" aria-label="anchor" href="#section-rel-icc"></a>
@@ -974,7 +746,7 @@ population).</p>
 <p><strong>When to use it.</strong> Single-scalar reliability summary.
 ICC(3,k) is “how stable is the group-mean CI?”, ICC(3,1) is “how
 informative is one producer’s CI?”.</p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">r_icc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rel_icc.html">rel_icc</a></span><span class="op">(</span><span class="va">sig_A</span>, variants <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"3_1"</span>, <span class="st">"3_k"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">r_icc</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;rcicrely ICC&gt;</span></span>
@@ -987,8 +759,8 @@ informative is one producer’s CI?”.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;   Secondary: ICC(3,k) (group-mean reliability)</span></span>
 <span><span class="co">#&gt;   ICC(3,k):      0.9954</span></span></code></pre></div>
-<p>To also report ICC(2,*) for a reviewer who expects it:</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<p>To also report ICC(2,*):</p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">r_icc_full</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rel_icc.html">rel_icc</a></span><span class="op">(</span><span class="va">sig_A</span>, variants <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"3_1"</span>, <span class="st">"3_k"</span>, <span class="st">"2_1"</span>, <span class="st">"2_k"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">r_icc_full</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;rcicrely ICC&gt;</span></span>
@@ -1011,35 +783,22 @@ latter two NA unless requested). <code>$ms_rows</code>,
 <code>$ms_cols</code>, <code>$ms_error</code> are the underlying ANOVA
 mean squares for transparency. <code>$model</code> is a description
 string the print method shows.</p>
-<p><strong>Common mistakes.</strong> Asking for ICC(2,<em>) because a
-reviewer expects it. ICC(2,</em>) treats pixels as a random sample from
-a pixel population, which they aren’t. The numbers are usually close to
-ICC(3,*) at high pixel counts but the model is mis-specified - report
-both with <code>variants = c("3_1", "3_k", "2_1", "2_k")</code> if
-asked.</p>
+<p><strong>Common mistakes.</strong> Reporting ICC(2,<em>) without need.
+ICC(2,</em>) treats pixels as a random sample from a pixel population;
+in RC studies pixels are a fixed image grid, so ICC(3,<em>) is the
+correctly-specified model. The numbers are usually close at high pixel
+counts, but ICC(3,</em>) is the defensible choice. Use
+<code>variants = c("3_1", "3_k", "2_1", "2_k")</code> when both are
+needed.</p>
 <p>ICC is <strong>strongly</strong> scale-sensitive. Use the raw mask
 only.</p>
-<p><strong>Real example (Oliveira et al., 2019, Study 1).</strong>
-Two-way mixed ICC on 65,536-pixel raw masks, 20 producers per
-condition:</p>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/rel_icc.html">rel_icc</a></span><span class="op">(</span><span class="va">sm_trust</span><span class="op">)</span></span>
-<span><span class="co">#&gt; ICC(3,1) = 0.1008,  ICC(3,k) = 0.6917</span></span>
-<span><span class="fu"><a href="../reference/rel_icc.html">rel_icc</a></span><span class="op">(</span><span class="va">sm_dominant</span><span class="op">)</span></span>
-<span><span class="co">#&gt; ICC(3,1) = 0.0489,  ICC(3,k) = 0.5068</span></span></code></pre></div>
-<p>ICC(3,1) — the resolution-comparable single-producer reliability — is
-clearly higher for Trust than for Dominant, matching the reliability
-ordering reported in the original paper. ICC(3,k) is high in absolute
-terms but the resolution asymptote is a known property of ICC(*,k) at
-large pixel counts; report ICC(3,1) as the primary cross-study
-comparable number.</p>
 </div>
 <div class="section level3">
 <h3 id="section-run-within">5.4 <code>run_within()</code><a class="anchor" aria-label="anchor" href="#section-run-within"></a>
 </h3>
 <p><strong>What it does.</strong> Calls all three within-condition
 metrics and bundles the result for joint printing/plotting.</p>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">within_A</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_within.html">run_within</a></span><span class="op">(</span></span>
 <span>  <span class="va">sig_A</span>,</span>
 <span>  n_permutations <span class="op">=</span> <span class="fl">500L</span>,</span>
@@ -1070,23 +829,23 @@ metrics and bundles the result for joint printing/plotting.</p>
 <p><code>$results$split_half</code> and <code>$results$icc</code> are
 the two reliability result objects. <code>plot(within_A)</code> lays
 them out side by side. Leave-one-out influence screening is run
-separately with <code><a href="../reference/rel_loo.html">rel_loo()</a></code> — it is an influence diagnostic,
-not a reliability statistic (see §5.2).</p>
+separately with <code><a href="../reference/rel_loo.html">rel_loo()</a></code> (it is an influence diagnostic,
+not a reliability statistic; see §5.2).</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="function-reference-between-condition-inference">6. Function reference: between-condition inference<a class="anchor" aria-label="anchor" href="#function-reference-between-condition-inference"></a>
 </h2>
 <p>The two examples in §5 (<code>sig_A</code>, <code>sig_B</code>) use a
-half-image signal, which produces <em>very</em> strong contrasts —
-useful for demonstrating that within-condition reliability metrics work,
-but it makes the between-condition cluster figures look like two solid
-blobs rather than realistic localized clusters. For §6.1–§6.2 we
+half-image signal, which produces <em>very</em> strong contrasts (useful
+for demonstrating that within-condition reliability metrics work, but
+the between-condition cluster figures end up looking like two solid
+blobs rather than realistic localized clusters). For §6.1–§6.2 we
 therefore use a small additional fixture with <strong>localized circular
 signal</strong>: two small “patches” at different positions on a 32 x 32
 grid, mimicking how real RC signal tends to cluster around face features
 rather than fill the whole image.</p>
-<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">7</span><span class="op">)</span></span>
 <span><span class="va">make_localized</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">centre</span>, <span class="va">n_p</span> <span class="op">=</span> <span class="fl">30L</span>, <span class="va">n_side</span> <span class="op">=</span> <span class="fl">32L</span>,</span>
 <span>                           <span class="va">snr</span> <span class="op">=</span> <span class="fl">0.20</span>, <span class="va">radius</span> <span class="op">=</span> <span class="fl">0.18</span>, <span class="va">seed</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span></span>
@@ -1104,7 +863,7 @@ rather than fill the whole image.</p>
 <span><span class="va">sig_A_loc</span> <span class="op">&lt;-</span> <span class="fu">make_localized</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.30</span>, <span class="fl">0.30</span><span class="op">)</span>, n_p <span class="op">=</span> <span class="fl">30L</span>, seed <span class="op">=</span> <span class="fl">11L</span><span class="op">)</span></span>
 <span><span class="va">sig_B_loc</span> <span class="op">&lt;-</span> <span class="fu">make_localized</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.70</span>, <span class="fl">0.70</span><span class="op">)</span>, n_p <span class="op">=</span> <span class="fl">30L</span>, seed <span class="op">=</span> <span class="fl">12L</span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
-<h3 id="section-pixel-t">6.1 <code>pixel_t_test()</code> — building block, not standalone
+<h3 id="section-pixel-t">6.1 <code>pixel_t_test()</code>: building block, not standalone
 test<a class="anchor" aria-label="anchor" href="#section-pixel-t"></a>
 </h3>
 <p><strong>What it does.</strong> Computes a Welch’s t-statistic per
@@ -1112,34 +871,31 @@ pixel between two condition signal matrices. Welch (unequal variances)
 is the correct choice because conditions can differ in both N and
 per-pixel variance. With <code>paired = TRUE</code>, computes a paired t
 on the per-producer difference instead.</p>
-<p><strong>Why this function exists, given that 65,000 simultaneous
-t-tests is statistically meaningless.</strong> It is a <em>building
-block</em>, not an inferential test. There are three legitimate
+<p><strong>Why this function exists.</strong> 65,000 simultaneous
+t-tests are statistically meaningless on their own; this is a
+<em>building block</em>, not an inferential test. Three legitimate
 uses:</p>
 <ol style="list-style-type: decimal">
 <li>
 <strong>Internal use by <code><a href="../reference/rel_cluster_test.html">rel_cluster_test()</a></code></strong>:
 every permutation of the cluster test recomputes a t-map;
-<code><a href="../reference/pixel_t_test.html">pixel_t_test()</a></code> exposes that computation. Calling it
-directly is what the cluster test itself calls under the hood.</li>
+<code><a href="../reference/pixel_t_test.html">pixel_t_test()</a></code> exposes that computation.</li>
 <li>
 <strong>Diagnostic visualisation</strong>: inspecting the raw t-map
 <em>before</em> running the cluster test helps you pick a sensible
-cluster- forming threshold and see whether any spatially-coherent
+cluster- forming threshold and check whether any spatially-coherent
 structure is even there to test.</li>
 <li>
-<strong>Custom inference pipelines</strong>: if you want to
-implement threshold-free cluster enhancement by hand, define
-non-standard cluster geometries, or apply a different
-multiple-comparison correction (FDR, max-T, etc.), this is the
-input.</li>
+<strong>Custom inference pipelines</strong>: implementing TFCE by
+hand, defining non-standard cluster geometries, or applying a different
+multiple-comparison correction (FDR, max-T, etc.).</li>
 </ol>
 <p><strong>Do not</strong> threshold the returned vector at
 <code>|t| &gt; 1.96</code> and report “significant pixels”. At 65,536
 pixels you would get ~3,300 false positives by chance under H0 (any α),
-and the spatial clustering in real CI data makes that even worse. Use
+and spatial clustering in real CI data makes that worse. Use
 <code><a href="../reference/rel_cluster_test.html">rel_cluster_test()</a></code> for inference.</p>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">t_vec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pixel_t_test.html">pixel_t_test</a></span><span class="op">(</span><span class="va">sig_A_loc</span>, <span class="va">sig_B_loc</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">t_vec</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] -13.16874  12.78800</span></span></code></pre></div>
@@ -1147,8 +903,8 @@ and the spatial clustering in real CI data makes that even worse. Use
 (red) regions indicate where condition A’s signal is stronger than B’s;
 negative (blue) regions where B’s is stronger than A’s; near- white
 pixels carry no consistent difference. <strong>This is descriptive
-only</strong> — there is no inference yet:</p>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+only</strong> (there is no inference yet):</p>
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/eval.html" class="external-link">local</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="va">op</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">3</span>, <span class="fl">6</span><span class="op">)</span> <span class="op">+</span> <span class="fl">0.1</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/on.exit.html" class="external-link">on.exit</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span><span class="va">op</span><span class="op">)</span><span class="op">)</span></span>
@@ -1167,13 +923,13 @@ only</strong> — there is no inference yet:</p>
 <span>  <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/box.html" class="external-link">box</a></span><span class="op">(</span>col <span class="op">=</span> <span class="st">"grey80"</span>, lwd <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="tutorial_files/figure-html/pixel-t-viz-1.png" class="r-plt" alt="Raw pixel-wise Welch t-map between two conditions with localized signal patches. Positive (red) = condition A larger; negative (blue) = condition B larger. Note the two distinct hot regions corresponding to the injected signal locations; the rest of the image is dominated by noise. This map is descriptive only — significance comes from rel_cluster_test()." width="672"><p class="caption">
+<img src="tutorial_files/figure-html/pixel-t-viz-1.png" class="r-plt" alt="Raw pixel-wise Welch t-map between two conditions with localized signal patches. Positive (red) = condition A larger; negative (blue) = condition B larger. Note the two distinct hot regions corresponding to the injected signal locations; the rest of the image is dominated by noise. This map is descriptive only (significance comes from rel_cluster_test())." width="672"><p class="caption">
 Raw pixel-wise Welch t-map between two conditions with localized signal
 patches. Positive (red) = condition A larger; negative (blue) =
 condition B larger. Note the two distinct hot regions corresponding to
 the injected signal locations; the rest of the image is dominated by
-noise. This map is descriptive only — significance comes from
-rel_cluster_test().
+noise. This map is descriptive only (significance comes from
+rel_cluster_test()).
 </p>
 </div>
 <p>The hot blue/red regions are exactly where the two conditions differ;
@@ -1182,7 +938,7 @@ about <em>which</em> differences are reliable, we move on to the cluster
 test.</p>
 </div>
 <div class="section level3">
-<h3 id="section-cluster">6.2 <code>rel_cluster_test()</code> — spatially-localized inference
+<h3 id="section-cluster">6.2 <code>rel_cluster_test()</code>: spatially-localized inference
 with FWER control<a class="anchor" aria-label="anchor" href="#section-cluster"></a>
 </h3>
 <p><strong>What it does.</strong> Identifies <em>spatially contiguous
@@ -1197,7 +953,7 @@ what each one means in plain language.</p>
 (<code>cluster_threshold</code>, default <code>2.0</code>). A t-value
 cutoff used at the <em>first</em> step: any pixel with
 <code>|t| &gt; 2.0</code> is “in”, everything else is “out”. This is
-<em>not</em> a significance threshold — it is the cutoff for deciding
+<em>not</em> a significance threshold; it is the cutoff for deciding
 which pixels are even candidates for being part of a cluster.
 Significance is decided afterwards. Lower thresholds catch more diffuse
 signal; higher thresholds isolate sharper peaks.</p></li>
@@ -1205,7 +961,7 @@ signal; higher thresholds isolate sharper peaks.</p></li>
 <p><strong>4-connectivity</strong>. Once we have a binary “in / out”
 image, we group adjacent “in” pixels into clusters.
 <em>4-connectivity</em> treats two pixels as adjacent only if they share
-an edge (up / down / left / right) — the four orthogonal neighbours.
+an edge (up / down / left / right), i.e. the four orthogonal neighbours.
 <em>8-connectivity</em>, the alternative, also counts diagonals.
 4-connectivity is the more conservative choice: a one-pixel-wide
 diagonal stripe is split into isolated pixels and forms no cluster,
@@ -1220,7 +976,7 @@ tends to be contiguous in orthogonal directions.</p>
 <li><p><strong>Cluster mass</strong> (<code>mass</code>). For each
 candidate cluster, mass is the <em>sum of t-values within it</em>. Not
 pixel count. This means a small cluster with very strong t-values can
-have the same mass as a large cluster with weak t-values — the metric
+have the same mass as a large cluster with weak t-values; the metric
 mixes <em>extent</em> (how big) and <em>magnitude</em> (how strong).
 Cluster mass was introduced by Maris &amp; Oostenveld (2007) and is the
 dominant choice in EEG / MEG / fMRI cluster-permutation work.</p></li>
@@ -1242,7 +998,7 @@ FWE-corrected.</p></li>
 <p><strong>When to use it.</strong> “Where in the image do these two
 conditions differ, and how confident am I that the differences are not
 noise?”</p>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">clust</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rel_cluster_test.html">rel_cluster_test</a></span><span class="op">(</span></span>
 <span>  <span class="va">sig_A_loc</span>, <span class="va">sig_B_loc</span>,</span>
 <span>  img_dims          <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">32L</span>, <span class="fl">32L</span><span class="op">)</span>,</span>
@@ -1308,7 +1064,7 @@ noise?”</p>
 <span><span class="co">#&gt;           9       pos    2.02    1   1.000       FALSE</span></span>
 <span><span class="co">#&gt;          13       pos    2.00    1   1.000       FALSE</span></span>
 <span><span class="co">#&gt;          12       pos    2.00    1   1.000       FALSE</span></span></code></pre></div>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">clust</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
 <img src="tutorial_files/figure-html/plot-cluster-1.png" class="r-plt" alt="Pixel-wise Welch t-map (red = condition A larger, blue = condition B larger) with significant cluster contours overlaid in black. The two clusters correspond to the two injected signal patches, and only those clusters are FWE-corrected significant at alpha = 0.05; the surrounding noise does not produce false-positive clusters thanks to the max-statistic correction." width="672"><p class="caption">
@@ -1328,15 +1084,14 @@ candidate cluster, columns: <code>cluster_id</code>,
 <code>p_value</code> (mass percentile against the null),
 <code>significant</code> (logical). <code>$pos_labels</code> /
 <code>$neg_labels</code> are integer matrices the same shape as the
-image, where each non-zero value tags a cluster — useful for custom
-plotting overlays. <code>$null_distribution</code> exposes the
+image, where each non-zero value tags a cluster (useful for custom
+plotting overlays). <code>$null_distribution</code> exposes the
 per-permutation max masses.</p>
 <p><strong>TFCE alternative.</strong> For threshold-free cluster
 enhancement, which integrates across many cluster-forming thresholds and
 removes the arbitrary cutoff choice, set <code>method = "tfce"</code>.
-See §6.5 of the <em>deep-dive tutorial</em> for the full mathematical
-detail and §6.7 below for the agreement-map relative.</p>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+See §6.7 below for the agreement-map relative.</p>
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">clust_tfce</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rel_cluster_test.html">rel_cluster_test</a></span><span class="op">(</span></span>
 <span>  <span class="va">sig_A_loc</span>, <span class="va">sig_B_loc</span>,</span>
 <span>  img_dims        <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">32L</span>, <span class="fl">32L</span><span class="op">)</span>,</span>
@@ -1349,11 +1104,11 @@ detail and §6.7 below for the agreement-map relative.</p>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">clust_tfce</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="tutorial_files/figure-html/rel-cluster-tfce-1.png" class="r-plt" alt="TFCE-enhanced map (no cluster-forming threshold to choose). Significant pixels are outlined in black. Compare against the threshold-based version above — TFCE generally has more power for diffuse, low-amplitude signal because it integrates evidence across many thresholds rather than committing to one." width="672"><p class="caption">
+<img src="tutorial_files/figure-html/rel-cluster-tfce-1.png" class="r-plt" alt="TFCE-enhanced map (no cluster-forming threshold to choose). Significant pixels are outlined in black. Compared with the threshold-based version above, TFCE generally has more power for diffuse, low-amplitude signal because it integrates evidence across many thresholds rather than committing to one." width="672"><p class="caption">
 TFCE-enhanced map (no cluster-forming threshold to choose). Significant
-pixels are outlined in black. Compare against the threshold-based
-version above — TFCE generally has more power for diffuse, low-amplitude
-signal because it integrates evidence across many thresholds rather than
+pixels are outlined in black. Compared with the threshold-based version
+above, TFCE generally has more power for diffuse, low-amplitude signal
+because it integrates evidence across many thresholds rather than
 committing to one.
 </p>
 </div>
@@ -1368,22 +1123,6 @@ permutations than that.</li>
 <li>Using <code><a href="../reference/pixel_t_test.html">pixel_t_test()</a></code> standalone for inference
 (§6.1).</li>
 </ul>
-<p><strong>Real example (Oliveira et al., 2019, Study 1).</strong> A
-central claim of the original paper was that the Trust and Friendly CIs
-overlap strongly while the Dominant and Competent CIs do not. Both
-threshold and TFCE versions of the cluster test, run on the per-producer
-signal matrices for the relevant pairs, support this in
-spatially-localized terms (FWER-controlled). The full output is in
-<code>temp/study1_replication.Rmd</code>; the runnable form is:</p>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/rel_cluster_test.html">rel_cluster_test</a></span><span class="op">(</span><span class="va">sm_dominant</span>, <span class="va">sm_competent</span>,</span>
-<span>                 img_dims <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">256L</span>, <span class="fl">256L</span><span class="op">)</span>,</span>
-<span>                 method   <span class="op">=</span> <span class="st">"tfce"</span>,</span>
-<span>                 n_permutations <span class="op">=</span> <span class="fl">500L</span>,</span>
-<span>                 tfce_n_steps   <span class="op">=</span> <span class="fl">50L</span>,</span>
-<span>                 seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></code></pre></div>
-<p>Pair this with <code><a href="../reference/rel_dissimilarity.html">rel_dissimilarity()</a></code> (next section) for
-the overall-magnitude part of the same claim.</p>
 </div>
 <div class="section level3">
 <h3 id="section-dissim">6.3 <code>rel_dissimilarity()</code><a class="anchor" aria-label="anchor" href="#section-dissim"></a>
@@ -1394,7 +1133,7 @@ Euclidean distance - each with percentile bootstrap CIs.</p>
 <p><strong>When to use it.</strong> “How different are these two
 conditions overall?” with uncertainty. Pair with
 <code><a href="../reference/rel_cluster_test.html">rel_cluster_test()</a></code> for spatial information.</p>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">diss</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rel_dissimilarity.html">rel_dissimilarity</a></span><span class="op">(</span></span>
 <span>  <span class="va">sig_A</span>, <span class="va">sig_B</span>,</span>
 <span>  n_boot   <span class="op">=</span> <span class="fl">500L</span>,</span>
@@ -1417,7 +1156,7 @@ conditions overall?” with uncertainty. Pair with
 <span><span class="co">#&gt;     Note: correlation between two base-subtracted CIs has a</span></span>
 <span><span class="co">#&gt;     positive baseline from shared image-domain structure and is</span></span>
 <span><span class="co">#&gt;     not a clean similarity score. Prefer Euclidean distance.</span></span></code></pre></div>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">diss</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
 <img src="tutorial_files/figure-html/plot-dissim-1.png" class="r-plt" alt="Bootstrap distributions for Pearson r and Euclidean distance." width="672"><p class="caption">
@@ -1434,20 +1173,6 @@ with different magnitudes give r ~ 1; the magnitude difference shows up
 in <code>$euclidean</code>. <code>$euclidean</code> scales with
 sqrt(n_pixels) so it is a within-study metric, not comparable across
 resolutions.</p>
-<p><strong>Real example (Oliveira et al., 2019, Study 1).</strong>
-Euclidean distances between group-mean CIs on 256x256 raw masks, 500
-bootstrap replicates each:</p>
-<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/rel_dissimilarity.html">rel_dissimilarity</a></span><span class="op">(</span><span class="va">sm_trust</span>,    <span class="va">sm_friendly</span>, n_boot <span class="op">=</span> <span class="fl">500L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Euclidean = 16.81, 95% CI [19.26, 24.86], normalised = 0.0657</span></span>
-<span><span class="fu"><a href="../reference/rel_dissimilarity.html">rel_dissimilarity</a></span><span class="op">(</span><span class="va">sm_dominant</span>, <span class="va">sm_competent</span>, n_boot <span class="op">=</span> <span class="fl">500L</span>, seed <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Euclidean = 21.08, 95% CI [21.53, 30.75], normalised = 0.0823</span></span></code></pre></div>
-<p>The Dominant-vs-Competent contrast yields a substantially larger
-Euclidean distance than Trust-vs-Friendly, the same direction as the
-published group-CI Pearson correlations (.69 for Trust x Friendly, -.22
-for Dominant x Competent in Table 2 of the paper). The two metrics
-report the same pattern from different angles — Pearson is the
-within-shape question, Euclidean is the how-far-apart question.</p>
 <p><strong>Comparing multiple contrasts side-by-side.</strong> When you
 have several <code><a href="../reference/rel_dissimilarity.html">rel_dissimilarity()</a></code> results and want one
 figure that shows whether their CIs overlap, use
@@ -1455,12 +1180,12 @@ figure that shows whether their CIs overlap, use
 horizontal point with its 95% CI and the underlying bootstrap density,
 so the reader can read overlap (or non-overlap) at a glance. Useful for
 paper figures.</p>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">d_TF</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rel_dissimilarity.html">rel_dissimilarity</a></span><span class="op">(</span><span class="va">sm_trust</span>,    <span class="va">sm_friendly</span>, n_boot <span class="op">=</span> <span class="fl">500L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
-<span><span class="va">d_DC</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rel_dissimilarity.html">rel_dissimilarity</a></span><span class="op">(</span><span class="va">sm_dominant</span>, <span class="va">sm_competent</span>, n_boot <span class="op">=</span> <span class="fl">500L</span>, seed <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d_AB</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rel_dissimilarity.html">rel_dissimilarity</a></span><span class="op">(</span><span class="va">sm_A</span>, <span class="va">sm_B</span>, n_boot <span class="op">=</span> <span class="fl">500L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span><span class="va">d_CD</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rel_dissimilarity.html">rel_dissimilarity</a></span><span class="op">(</span><span class="va">sm_C</span>, <span class="va">sm_D</span>, n_boot <span class="op">=</span> <span class="fl">500L</span>, seed <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/compare_dissimilarity.html">compare_dissimilarity</a></span><span class="op">(</span></span>
-<span>  <span class="st">"Trust vs Friendly"</span>     <span class="op">=</span> <span class="va">d_TF</span>,</span>
-<span>  <span class="st">"Dominant vs Competent"</span> <span class="op">=</span> <span class="va">d_DC</span></span>
+<span>  <span class="st">"A vs B"</span> <span class="op">=</span> <span class="va">d_AB</span>,</span>
+<span>  <span class="st">"C vs D"</span> <span class="op">=</span> <span class="va">d_CD</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
@@ -1468,7 +1193,7 @@ paper figures.</p>
 </h3>
 <p><strong>What it does.</strong> Calls both between-condition metrics
 and bundles the result.</p>
-<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">between_AB</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_between.html">run_between</a></span><span class="op">(</span></span>
 <span>  <span class="va">sig_A</span>, <span class="va">sig_B</span>,</span>
 <span>  img_dims        <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">32L</span>, <span class="fl">32L</span><span class="op">)</span>,</span>
@@ -1526,7 +1251,7 @@ difference lives entirely in what you pass as
 <code>rel_*()</code> answers <em>how reliable / how distinguishable is
 the group-level pattern?</em>. They report different things and a study
 should usually carry both.</p>
-<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Brief-RC route: infoval() takes the raw signal_matrix from</span></span>
 <span><span class="co"># ci_from_responses_briefrc() and the noise_matrix used to generate</span></span>
 <span><span class="co"># the trials.</span></span>
@@ -1551,19 +1276,19 @@ the centre / spread used for z computation.</p>
 <h4 id="troubleshooting-low-or-negative-infoval-z-scores">Troubleshooting low or negative <code>infoval</code> z-scores<a class="anchor" aria-label="anchor" href="#troubleshooting-low-or-negative-infoval-z-scores"></a>
 </h4>
 <p>If you compute <code><a href="../reference/infoval.html">infoval()</a></code> and find that <em>most</em> or
-<em>all</em> per-producer z-scores sit well below 1.96 — sometimes
-negative — even though spot checks suggest producers are doing the task
+<em>all</em> per-producer z-scores sit well below 1.96 (sometimes
+negative) even though spot checks suggest producers are doing the task
 seriously, that is a common pattern, not a sign the data is bad. Five
 reasons in order of how often they apply:</p>
 <ol style="list-style-type: decimal">
 <li><p><strong>Frobenius norm is a global energy statistic.</strong> It
 sums squared pixel deviations across the <em>entire</em> image. Real
-internal representations are usually spatially sparse (eyes, mouth, jaw
-— maybe 10-30% of pixels), so the 70-90% of “background” pixels
-contribute noise of similar magnitude to the chance reference and dilute
-the signal-bearing region. A producer with strong, visually-obvious
-signal in the eyes can have a Frobenius norm only marginally above the
-random reference.</p></li>
+internal representations are usually spatially sparse (eyes, mouth, jaw,
+maybe 10-30% of pixels), so the 70-90% of “background” pixels contribute
+noise of similar magnitude to the chance reference and dilute the
+signal-bearing region. A producer with strong, visually-obvious signal
+in the eyes can have a Frobenius norm only marginally above the random
+reference.</p></li>
 <li><p><strong>The reference is strict because it lives in the same
 subspace.</strong> Both the observed mask and the reference are
 projections onto the same low-dimensional sinusoidal noise basis. The
@@ -1587,14 +1312,22 @@ so the group-mean CI’s effective trial count is
 <code>300 × 20 = 6000</code> for a 20-producer condition. The infoVal of
 the group-mean CI (with
 <code>trial_counts = setNames(300L * n_producers, "group")</code>) is
-usually 5-10× the per-producer median. <strong>This is what Brinkman et
-al. (2019) reported.</strong> Per-producer infoVal is noisier and lower;
-this is structural, not a defect.</p></li>
+usually 5-10× the per-producer median; this is a structural √N
+consequence of averaging, not a defect of the per-producer metric.
+Brinkman et al. (2019) themselves only ever computed infoVal on
+<em>individual</em> CIs (mean per-producer infoVal in their empirical
+2IFC data was 3.9 lab / 2.9 online, with 68% / 54% of producers
+individually exceeding 1.96). For group-level reporting they recommended
+inspecting <em>the distribution of per-producer infoVals contributing to
+the group CI</em> rather than computing one infoVal on the group-mean
+CI. Either choice is defensible; we show the group-mean CI z below as
+the simplest single number, but the distributional view is what the 2019
+paper endorses.</p></li>
 </ol>
 <div class="section level5">
 <h5 id="diagnostic-recipe">Diagnostic recipe<a class="anchor" aria-label="anchor" href="#diagnostic-recipe"></a>
 </h5>
-<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sm</span>     <span class="op">&lt;-</span> <span class="va">res</span><span class="op">$</span><span class="va">signal_matrix</span></span>
 <span><span class="va">tc</span>     <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">300L</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">sm</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">sm</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -1632,7 +1365,7 @@ this is structural, not a defect.</p></li>
 <span><span class="va">iv_rand</span><span class="op">$</span><span class="va">infoval</span>                  <span class="co"># should be ~ 0 within MAD noise</span></span></code></pre></div>
 <p><strong>Negative z values</strong> mean the observed mask has
 <em>less</em> total Frobenius energy than the chance reference. This is
-not “negative signal” — it is consistent with a producer whose responses
+not “negative signal”; it is consistent with a producer whose responses
 align with a structured low-rank template, since aligning consistently
 with one template can reduce the effective dimensionality of the mask
 and shrink its overall norm. A negative z is therefore informative: a
@@ -1642,63 +1375,28 @@ behaviour usually points to one of:</p>
 <li>The producer responded coherently but to a <em>different</em>
 feature than the trait you intended (idiosyncratic representation).</li>
 <li>The reference distribution is mis-calibrated for your design (see
-the v0.2.1 calibration note in the <code><a href="../reference/infoval.html">?infoval</a></code> help page —
+the v0.2.1 calibration note in the <code><a href="../reference/infoval.html">?infoval</a></code> help page;
 early v0.2.0 versions sampled stim ids with replacement and inflated
 reference norms, biasing per-producer z below zero on cooperative
 producers).</li>
 <li>Per-producer trial count is too low to beat chance for any
-meaningful statistic, even with real signal — fall back to the
-group-mean infoVal as the publishable number.</li>
+meaningful statistic, even with real signal; fall back to the group-mean
+infoVal as the publishable number.</li>
 </ul>
 <p><strong>Reporting recommendation.</strong> Report
 <strong>(i)</strong> the group-mean infoVal z and <strong>(ii)</strong>
 the proportion of producers whose <em>individual</em> z clears 1.96
 (with the face mask). Do not report only the median per-producer z and
-treat values &lt; 1.96 as evidence of “no signal” — that conflates the
+treat values &lt; 1.96 as evidence of “no signal”; that conflates the
 per-producer noisiness of the metric with the group-level question of
 whether the CI carries information.</p>
-<p><strong>Real example (Oliveira et al., 2019, Study 1, Trust
-condition).</strong> The same diagnostic recipe above, run on real
-published data. The 20 individual producers were each shown 300 trials
-(so the trial-count-matched reference is simulated at 300):</p>
-<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Per-producer infoVal</span></span>
-<span><span class="va">tc</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">300L</span>, <span class="fl">20L</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">sm_trust</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">iv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/infoval.html">infoval</a></span><span class="op">(</span><span class="va">sm_trust</span>, <span class="va">noise_matrix</span>, <span class="va">tc</span>, iter <span class="op">=</span> <span class="fl">1000L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
-<span><span class="co">#&gt; per-producer: median z = 0.35, range [-1.69, 2.30], n above 1.96 = 2/20</span></span>
-<span></span>
-<span><span class="co"># Group-mean CI infoVal (effective n_trials = 300 x 20 = 6000)</span></span>
-<span><span class="va">group</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">rowMeans</a></span><span class="op">(</span><span class="va">sm_trust</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fl">1</span>,</span>
-<span>                 dimnames <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="cn">NULL</span>, <span class="st">"TRUST_group"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">iv_grp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/infoval.html">infoval</a></span><span class="op">(</span><span class="va">group</span>, <span class="va">noise_matrix</span>,</span>
-<span>                  <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fl">6000L</span>, <span class="st">"TRUST_group"</span><span class="op">)</span>,</span>
-<span>                  iter <span class="op">=</span> <span class="fl">1000L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
-<span><span class="co">#&gt; group-mean CI z = 11.39</span></span>
-<span></span>
-<span><span class="co"># Face-mask lift on per-producer z</span></span>
-<span><span class="va">iv_masked</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/infoval.html">infoval</a></span><span class="op">(</span><span class="va">sm_trust</span>, <span class="va">noise_matrix</span>, <span class="va">tc</span>,</span>
-<span>                     mask <span class="op">=</span> <span class="fu"><a href="../reference/face_mask.html">face_mask</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">256L</span>, <span class="fl">256L</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>                     iter <span class="op">=</span> <span class="fl">1000L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
-<span><span class="co">#&gt; masked median = 0.50  (vs unmasked median = 0.35; lift = +0.15)</span></span></code></pre></div>
-<p>This is exactly the pattern described in the troubleshooting list
-above: per-producer z is centred around 0.35 with only 2 of 20 producers
-individually above the 1.96 threshold — and yet the group-mean CI z is
-11.39, <em>unmistakable</em> signal. The published Trust/Friendly
-correlation of .69 (Table 2 of the paper) and the observable trait
-dissociations in the group CIs (Figure 1 of the paper) are both
-consistent with the group-level z, not with reading the per-producer
-median as a “weak signal” verdict. Reporting recommendation in practice:
-“the group-mean classification image showed strong informational value
-(z = 11.39, n_eff = 6000); 2 of 20 producers individually exceeded z =
-1.96.”</p>
 <blockquote>
-<p><strong>Calibration note.</strong> This output reflects the v0.2.1
-fix in <code>simulate_reference_norms()</code> (sample stim ids without
-replacement when <code>n_trials &lt;= n_pool</code>). v0.2.0
-over-inflated the reference norm and gave <code>median z = -1.54</code>
-for the same data — a bug uncovered while replicating Oliveira et
-al. (2019), Study 1. If you computed infoVal under v0.2.0 and got
-systematically negative z-scores, re-run after upgrading.</p>
+<p><strong>Calibration note.</strong> Since v0.2.1,
+<code>simulate_reference_norms()</code> samples stim ids
+<em>without</em> replacement when <code>n_trials &lt;= n_pool</code>.
+v0.2.0 over-inflated the reference norm and biased per-producer z-scores
+systematically below zero. If you computed infoVal under v0.2.0 and got
+negative z-scores on cooperative producers, re-run after upgrading.</p>
 </blockquote>
 </div>
 </div>
@@ -1731,57 +1429,50 @@ Mixing a masked observed value with an unmasked reference (or two
 conditions masked differently) yields a number with no defensible
 interpretation.</p>
 </blockquote>
-<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">img</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">256L</span>, <span class="fl">256L</span><span class="op">)</span></span>
 <span><span class="va">m_full</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/face_mask.html">face_mask</a></span><span class="op">(</span><span class="va">img</span>, region <span class="op">=</span> <span class="st">"full"</span><span class="op">)</span></span>
 <span><span class="va">m_eyes</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/face_mask.html">face_mask</a></span><span class="op">(</span><span class="va">img</span>, region <span class="op">=</span> <span class="st">"eyes"</span><span class="op">)</span></span>
 <span><span class="va">m_mouth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/face_mask.html">face_mask</a></span><span class="op">(</span><span class="va">img</span>, region <span class="op">=</span> <span class="st">"mouth"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Region-restricted ICC: pass the masked rows of the signal matrix</span></span>
-<span><span class="fu"><a href="../reference/rel_icc.html">rel_icc</a></span><span class="op">(</span><span class="va">sm_trust</span><span class="op">[</span><span class="va">m_eyes</span>,  , drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/rel_icc.html">rel_icc</a></span><span class="op">(</span><span class="va">sm_trust</span><span class="op">[</span><span class="va">m_mouth</span>, , drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/rel_icc.html">rel_icc</a></span><span class="op">(</span><span class="va">signal_matrix</span><span class="op">[</span><span class="va">m_eyes</span>,  , drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/rel_icc.html">rel_icc</a></span><span class="op">(</span><span class="va">signal_matrix</span><span class="op">[</span><span class="va">m_mouth</span>, , drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Region-restricted infoVal: pass the mask directly</span></span>
-<span><span class="fu"><a href="../reference/infoval.html">infoval</a></span><span class="op">(</span><span class="va">sm_trust</span>, <span class="va">noise_matrix</span>,</span>
-<span>        trial_counts <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">300L</span>, <span class="fl">20L</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">sm_trust</span><span class="op">)</span><span class="op">)</span>,</span>
+<span><span class="fu"><a href="../reference/infoval.html">infoval</a></span><span class="op">(</span><span class="va">signal_matrix</span>, <span class="va">noise_matrix</span>, <span class="va">trial_counts</span>,</span>
 <span>        iter <span class="op">=</span> <span class="fl">1000L</span>, mask <span class="op">=</span> <span class="va">m_eyes</span>,  seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/infoval.html">infoval</a></span><span class="op">(</span><span class="va">sm_trust</span>, <span class="va">noise_matrix</span>,</span>
-<span>        trial_counts <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">300L</span>, <span class="fl">20L</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">sm_trust</span><span class="op">)</span><span class="op">)</span>,</span>
+<span><span class="fu"><a href="../reference/infoval.html">infoval</a></span><span class="op">(</span><span class="va">signal_matrix</span>, <span class="va">noise_matrix</span>, <span class="va">trial_counts</span>,</span>
 <span>        iter <span class="op">=</span> <span class="fl">1000L</span>, mask <span class="op">=</span> <span class="va">m_mouth</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></code></pre></div>
 <p>Region geometries are heuristic approximations matched to a typical
 centred face on a square base image. For non-default base images, tune
 the full-face oval via <code>centre</code>, <code>half_width</code>,
 <code>half_height</code>; sub-region positions scale relative to that
 ellipse.</p>
-<p><strong>Real example (Oliveira et al., 2019, Study 1, Trust
-condition).</strong> Region-restricted ICC(3,1) on the same 20-producer
-signal matrix shows where producer agreement is concentrated:</p>
-<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># rel_icc(sm_trust[face_mask(c(256L,256L), region = R), , drop = FALSE])</span></span>
-<span><span class="co">#&gt; region        n_pixels   ICC(3,1)   ICC(3,k)</span></span>
-<span><span class="co">#&gt; full           32,192     0.109      0.710</span></span>
-<span><span class="co">#&gt; eyes            1,022     0.069      0.595</span></span>
-<span><span class="co">#&gt; nose              770     0.028      0.363</span></span>
-<span><span class="co">#&gt; mouth             966     0.092      0.670</span></span>
-<span><span class="co">#&gt; upper_face     16,096     0.087      0.655</span></span>
-<span><span class="co">#&gt; lower_face     16,096     0.130      0.749</span></span></code></pre></div>
-<p>Producer agreement is strongest in the lower-face region (mouth +
-jaw), weakest in the nose. The pattern aligns with the visible features
-of the published Trust group CI (Figure 1 of the paper).</p>
-<p>Region-restricted infoVal on the same data:</p>
-<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># infoval(sm_trust, noise_matrix, tc, mask = face_mask(c(256L,256L), region = R), ...)</span></span>
-<span><span class="co">#&gt; region   median z   range          n above 1.96</span></span>
-<span><span class="co">#&gt; full     +0.51      [-1.81, +3.13]      4/20</span></span>
-<span><span class="co">#&gt; eyes     +0.55      [-0.98, +1.56]      0/20</span></span>
-<span><span class="co">#&gt; mouth    +0.52      [-0.76, +4.67]      3/20</span></span></code></pre></div>
-<p>Regional infoVal works as a sensitivity check: if a region’s median z
-is markedly lower than the full-face median, the group signal is
-<em>not</em> concentrated in that region; if it is markedly higher, the
-region carries more than its pixel-share of the signal. For Trust, the
-eye and mouth regions both replicate the full-face median; the eye
-region’s per-producer range is narrower, suggesting producers agree on
-<em>direction</em> in the eye region but the energy is modest.</p>
+<p><strong>Region-restricted between-condition inference</strong> uses
+the same mask but applied symmetrically to both arms. Because
+<code><a href="../reference/rel_cluster_test.html">rel_cluster_test()</a></code> needs every pixel in the image grid to
+label connected components, the way to restrict it is to
+<em>zero-fill</em> outside the region in both signal matrices: clusters
+then can only form within the kept region.</p>
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">zero_fill</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">sm</span>, <span class="va">keep</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">out</span> <span class="op">&lt;-</span> <span class="va">sm</span></span>
+<span>  <span class="va">out</span><span class="op">[</span><span class="op">!</span><span class="va">keep</span>, <span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
+<span>  <span class="va">out</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">m_eyes</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/face_mask.html">face_mask</a></span><span class="op">(</span><span class="va">img_dims</span>, region <span class="op">=</span> <span class="st">"eyes"</span><span class="op">)</span></span>
+<span><span class="va">clust_eyes</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rel_cluster_test.html">rel_cluster_test</a></span><span class="op">(</span></span>
+<span>  <span class="fu">zero_fill</span><span class="op">(</span><span class="va">sm_A</span>, <span class="va">m_eyes</span><span class="op">)</span>,</span>
+<span>  <span class="fu">zero_fill</span><span class="op">(</span><span class="va">sm_B</span>, <span class="va">m_eyes</span><span class="op">)</span>,</span>
+<span>  img_dims          <span class="op">=</span> <span class="va">img_dims</span>,</span>
+<span>  cluster_threshold <span class="op">=</span> <span class="fl">2.0</span>,</span>
+<span>  n_permutations    <span class="op">=</span> <span class="fl">1000L</span>,</span>
+<span>  seed              <span class="op">=</span> <span class="fl">1L</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>§7 walks through both region-restricted ICC and region-restricted
+cluster contrasts on a real dataset with figures.</p>
 <p><strong>Critical-review note.</strong> Region masks are heuristic.
 They do not account for individual differences in face geometry (the
 base face’s eyes, nose, mouth occupy different pixels on different
@@ -1792,6 +1483,28 @@ differently-proportioned base faces, define a custom mask via
 pixel vector. The geometries shipped here are calibrated to KDEF- style
 256x256 male faces and should reproduce reasonably for most published RC
 datasets.</p>
+<div class="section level4">
+<h4 id="section-load-face-mask">Loading an external mask: <code>load_face_mask()</code><a class="anchor" aria-label="anchor" href="#section-load-face-mask"></a>
+</h4>
+<p>If your mask comes from outside R (a hand-painted PNG, a
+<code>webmorphR::mask_oval()</code> output, or any other binary image),
+<code><a href="../reference/load_face_mask.html">load_face_mask()</a></code> converts it to the logical-vector format
+<code><a href="../reference/face_mask.html">face_mask()</a></code> returns:</p>
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/load_face_mask.html">load_face_mask</a></span><span class="op">(</span><span class="st">"masks/oval_256.png"</span>,</span>
+<span>                     threshold     <span class="op">=</span> <span class="fl">0.5</span>,</span>
+<span>                     expected_dims <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">256L</span>, <span class="fl">256L</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">fm</span><span class="op">)</span>               <span class="co"># fraction of pixels included</span></span>
+<span><span class="fu"><a href="../reference/infoval.html">infoval</a></span><span class="op">(</span><span class="va">signal_matrix</span>, <span class="va">noise_matrix</span>, <span class="va">trial_counts</span>,</span>
+<span>        mask <span class="op">=</span> <span class="va">fm</span>, iter <span class="op">=</span> <span class="fl">1000L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></code></pre></div>
+<p>White / light pixels (luminance above <code>threshold</code>, default
+0.5) become <code>TRUE</code>; dark pixels become <code>FALSE</code>.
+RGB images are converted to luminance via ITU-R BT.709 weights. Pass
+<code>expected_dims</code> to abort on mask-vs-signal dimension
+mismatches at the input boundary; if the saved image uses the opposite
+convention (black = include), <code>!load_face_mask(...)</code> inverts
+it.</p>
+</div>
 </div>
 <div class="section level3">
 <h3 id="visualising-producer-agreement-plot_agreement_map">6.7 Visualising producer agreement:
@@ -1803,16 +1516,16 @@ pixel’s colour is proportional to a one-sample t-statistic across
 producers (mean / standard error), so positive saturation means
 agreement on positive signal and negative saturation means agreement on
 negative signal.</p>
-<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Continuous t-map (default)</span></span>
-<span><span class="fu"><a href="../reference/plot_agreement_map.html">plot_agreement_map</a></span><span class="op">(</span><span class="va">sm_trust</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/plot_agreement_map.html">plot_agreement_map</a></span><span class="op">(</span><span class="va">signal_matrix</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Region-restricted, mouth only</span></span>
-<span><span class="fu"><a href="../reference/plot_agreement_map.html">plot_agreement_map</a></span><span class="op">(</span><span class="va">sm_trust</span>,</span>
+<span><span class="fu"><a href="../reference/plot_agreement_map.html">plot_agreement_map</a></span><span class="op">(</span><span class="va">signal_matrix</span>,</span>
 <span>                   mask <span class="op">=</span> <span class="fu"><a href="../reference/face_mask.html">face_mask</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">256L</span>, <span class="fl">256L</span><span class="op">)</span>, region <span class="op">=</span> <span class="st">"mouth"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Thresholded view (only pixels with |t| &gt; 2.0 are coloured)</span></span>
-<span><span class="fu"><a href="../reference/plot_agreement_map.html">plot_agreement_map</a></span><span class="op">(</span><span class="va">sm_trust</span>, threshold <span class="op">=</span> <span class="fl">2.0</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="../reference/plot_agreement_map.html">plot_agreement_map</a></span><span class="op">(</span><span class="va">signal_matrix</span>, threshold <span class="op">=</span> <span class="fl">2.0</span><span class="op">)</span></span></code></pre></div>
 <p>Use this for <strong>descriptive</strong> figures of where producers
 agree within a condition; pair with <code><a href="../reference/rel_cluster_test.html">rel_cluster_test()</a></code>
 (which is the <strong>inferential</strong> counterpart for
@@ -1820,7 +1533,290 @@ between-condition pixel-level contrasts).</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="brief-rc-end-to-end">7. Brief-RC end-to-end<a class="anchor" aria-label="anchor" href="#brief-rc-end-to-end"></a>
+<h2 id="demo-applying-rcicrely-to-oliveira-et-al--2019-study-1">7. Demo: applying <code>rcicrely</code> to Oliveira et al. (2019),
+Study 1<a class="anchor" aria-label="anchor" href="#demo-applying-rcicrely-to-oliveira-et-al--2019-study-1"></a>
+</h2>
+<p>This section walks the package end-to-end on a published 2IFC
+dataset, in the order a researcher would actually run the analyses.
+Every output shown is real (chunks are <code>eval = FALSE</code> because
+the data is not bundled).</p>
+<blockquote>
+<p>Oliveira, M., Garcia-Marques, T., Dotsch, R., &amp; Garcia-Marques,
+L. (2019). Dominance and competence face to face: Dissociations obtained
+with a reverse correlation approach. <em>European Journal of Social
+Psychology</em>. <a href="https://doi.org/10.1002/ejsp.2569" class="external-link uri">https://doi.org/10.1002/ejsp.2569</a>. Open data: <a href="https://doi.org/10.17605/osf.io/hr5pd" class="external-link uri">https://doi.org/10.17605/osf.io/hr5pd</a>.</p>
+</blockquote>
+<p>In Study 1, 200 participants completed a 2IFC reverse-correlation
+task with <strong>300 trials each</strong> on a 256x256 male base face,
+across 10 trait conditions in a between-subjects design (20 producers
+per trait): Dominant, Submissive, Trust, Untrust, Friendly, Unfriendly,
+Intelligent, Unintelligent, Competent, Incompetent.</p>
+<div class="section level3">
+<h3 id="setup-per-trait-signal-matrices">7.1 Setup: per-trait signal matrices<a class="anchor" aria-label="anchor" href="#setup-per-trait-signal-matrices"></a>
+</h3>
+<p>Load the response data and the noise pool. The pattern below works
+for any 2IFC study with <code>subject</code>, <code>trial</code>,
+<code>stimulus</code>, <code>response</code> columns (the column names
+vary between datasets; rename to fit).</p>
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/olivethree/rcicrely" class="external-link">rcicrely</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Trial-level data: one row per (subject, trial) pair.</span></span>
+<span><span class="va">responses</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv2</a></span><span class="op">(</span><span class="st">"study1data.csv"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://pillar.r-lib.org/reference/glimpse.html" class="external-link">glimpse</a></span><span class="op">(</span><span class="va">responses</span><span class="op">)</span></span>
+<span><span class="co">#&gt; $ subject  &lt;int&gt; ...           # producer id</span></span>
+<span><span class="co">#&gt; $ trait    &lt;chr&gt; "TRUST" ...    # condition label</span></span>
+<span><span class="co">#&gt; $ trial    &lt;int&gt; 1, 2, 3, ...</span></span>
+<span><span class="co">#&gt; $ stimulus &lt;int&gt; ...            # noise pattern shown on this trial</span></span>
+<span><span class="co">#&gt; $ response &lt;int&gt; +1 / -1        # +1 = oriented chosen, -1 = inverted</span></span>
+<span></span>
+<span><span class="co"># Pixels x pool-size matrix of noise patterns used at stimulus generation.</span></span>
+<span><span class="va">noise_matrix</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_noise_matrix.html">read_noise_matrix</a></span><span class="op">(</span><span class="st">"rcic_stimuli.Rdata"</span>, baseimage <span class="op">=</span> <span class="st">"male"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">noise_matrix</span><span class="op">)</span></span>
+<span><span class="co">#&gt; 65536 x 300</span></span></code></pre></div>
+<p>Build the signal matrix for <strong>one trait</strong> (Trust). A
+producer’s raw mask is the sign-weighted average of the noise patterns
+they chose:</p>
+<blockquote>
+<p>mask = (noise[, chosen_stimuli] %*% chosen_responses) / n_trials</p>
+</blockquote>
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Filter to Trust trials, ordered by producer + trial number.</span></span>
+<span><span class="va">trust_trials</span> <span class="op">&lt;-</span> <span class="va">responses</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">trait</span> <span class="op">==</span> <span class="st">"TRUST"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="va">subject</span>, <span class="va">trial</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">producers</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">trust_trials</span><span class="op">$</span><span class="va">subject</span><span class="op">)</span>             <span class="co"># 20 ids</span></span>
+<span><span class="va">n_pixels</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">noise_matrix</span><span class="op">)</span></span>
+<span><span class="va">sm_trust</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="cn">NA_real_</span>, nrow <span class="op">=</span> <span class="va">n_pixels</span>, ncol <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">producers</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">sm_trust</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="va">producers</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># One column per producer: their raw mask.</span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">producers</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">this_producer</span> <span class="op">&lt;-</span> <span class="va">trust_trials</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">subject</span> <span class="op">==</span> <span class="va">producers</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">)</span></span>
+<span>  <span class="va">sm_trust</span><span class="op">[</span>, <span class="va">i</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="va">noise_matrix</span><span class="op">[</span>, <span class="va">this_producer</span><span class="op">$</span><span class="va">stimulus</span><span class="op">]</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span></span>
+<span>                      <span class="va">this_producer</span><span class="op">$</span><span class="va">response</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">this_producer</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">sm_trust</span>, <span class="st">"img_dims"</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">256L</span>, <span class="fl">256L</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">sm_trust</span>, <span class="st">"source"</span><span class="op">)</span>   <span class="op">&lt;-</span> <span class="st">"raw"</span></span></code></pre></div>
+<p>Repeat the same block (lines 4 onwards) for <code>"DOMINANT"</code>,
+<code>"COMPETENT"</code>, and <code>"FRIENDLY"</code> to get
+<code>sm_dominant</code>, <code>sm_competent</code>,
+<code>sm_friendly</code>. To do all 10 traits in one pass, wrap the loop
+in a function:</p>
+<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">build_sm</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">trait_label</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">sub</span> <span class="op">&lt;-</span> <span class="va">responses</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">trait</span> <span class="op">==</span> <span class="va">trait_label</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="va">subject</span>, <span class="va">trial</span><span class="op">)</span></span>
+<span>  <span class="va">ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">sub</span><span class="op">$</span><span class="va">subject</span><span class="op">)</span></span>
+<span>  <span class="va">m</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="cn">NA_real_</span>, nrow <span class="op">=</span> <span class="va">n_pixels</span>, ncol <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">ids</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="va">ids</span><span class="op">)</span></span>
+<span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">ids</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">pr</span>      <span class="op">&lt;-</span> <span class="va">sub</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">subject</span> <span class="op">==</span> <span class="va">ids</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">)</span></span>
+<span>    <span class="va">m</span><span class="op">[</span>, <span class="va">i</span><span class="op">]</span>  <span class="op">&lt;-</span> <span class="op">(</span><span class="va">noise_matrix</span><span class="op">[</span>, <span class="va">pr</span><span class="op">$</span><span class="va">stimulus</span><span class="op">]</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">pr</span><span class="op">$</span><span class="va">response</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">pr</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">m</span>, <span class="st">"img_dims"</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">256L</span>, <span class="fl">256L</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">m</span>, <span class="st">"source"</span><span class="op">)</span>   <span class="op">&lt;-</span> <span class="st">"raw"</span></span>
+<span>  <span class="va">m</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">signal_by_trait</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">responses</span><span class="op">$</span><span class="va">trait</span><span class="op">)</span>, <span class="va">build_sm</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">signal_by_trait</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">responses</span><span class="op">$</span><span class="va">trait</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sm_trust</span>     <span class="op">&lt;-</span> <span class="va">signal_by_trait</span><span class="op">[[</span><span class="st">"TRUST"</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="va">sm_dominant</span>  <span class="op">&lt;-</span> <span class="va">signal_by_trait</span><span class="op">[[</span><span class="st">"DOMINANT"</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="va">sm_competent</span> <span class="op">&lt;-</span> <span class="va">signal_by_trait</span><span class="op">[[</span><span class="st">"COMPETENT"</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="va">sm_friendly</span>  <span class="op">&lt;-</span> <span class="va">signal_by_trait</span><span class="op">[[</span><span class="st">"FRIENDLY"</span><span class="op">]</span><span class="op">]</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="within-condition-reliability">7.2 Within-condition reliability<a class="anchor" aria-label="anchor" href="#within-condition-reliability"></a>
+</h3>
+<p>Did the 20 producers in each condition agree?</p>
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/rel_split_half.html">rel_split_half</a></span><span class="op">(</span><span class="va">sm_trust</span>,    n_permutations <span class="op">=</span> <span class="fl">500L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Trust:    r_hh = 0.405, r_sb = 0.577, 95% CI on r_sb = [0.539, 0.616]</span></span>
+<span><span class="fu"><a href="../reference/rel_split_half.html">rel_split_half</a></span><span class="op">(</span><span class="va">sm_dominant</span>, n_permutations <span class="op">=</span> <span class="fl">500L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Dominant: r_hh = 0.262, r_sb = 0.415, 95% CI on r_sb = [0.380, 0.450]</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/rel_icc.html">rel_icc</a></span><span class="op">(</span><span class="va">sm_trust</span><span class="op">)</span></span>
+<span><span class="co">#&gt; ICC(3,1) = 0.1008,  ICC(3,k) = 0.6917</span></span>
+<span><span class="fu"><a href="../reference/rel_icc.html">rel_icc</a></span><span class="op">(</span><span class="va">sm_dominant</span><span class="op">)</span></span>
+<span><span class="co">#&gt; ICC(3,1) = 0.0489,  ICC(3,k) = 0.5068</span></span></code></pre></div>
+<p>Trust replicates with clearly higher group-level reliability than
+Dominant on both metrics. ICC(3,1) (the resolution-comparable
+single-producer reliability) and Spearman-Brown-projected
+<code>r_SB</code> agree on the ordering. ICC(3,k) is high in absolute
+terms because of the resolution asymptote at large pixel counts;
+ICC(3,1) is the cross-study comparable number.</p>
+<p>LOO inspection on Trust:</p>
+<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">loo</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rel_loo.html">rel_loo</a></span><span class="op">(</span><span class="va">sm_trust</span>, flag_method <span class="op">=</span> <span class="st">"mad"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="../reference/rel_loo_z.html">rel_loo_z</a></span><span class="op">(</span><span class="va">loo</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   participant_id  correlation  z_score  flag</span></span>
+<span><span class="co">#&gt; 1          18043       0.9905    -1.68  FALSE</span></span>
+<span><span class="co">#&gt; 2          18051       0.9911    -0.99  FALSE</span></span>
+<span><span class="co">#&gt; 3          18131       0.9913    -0.79  FALSE</span></span></code></pre></div>
+<p>Median raw <code>r_loo</code> is .992 (MAD = .001), near 1 by
+construction. Zero producers cleared the MAD flag threshold, but the
+z-scored ordering still ranks producers by influence on the group CI:
+the top of the table is the inspection priority list.</p>
+</div>
+<div class="section level3">
+<h3 id="per-producer-signal-vs--chance">7.3 Per-producer signal vs. chance<a class="anchor" aria-label="anchor" href="#per-producer-signal-vs--chance"></a>
+</h3>
+<p><code><a href="../reference/infoval.html">infoval()</a></code> answers “does each producer’s mask carry more
+than chance?”. With 300 trials per producer the trial-count-matched
+reference is simulated at 300:</p>
+<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Trial count per producer, computed from the data (named numeric).</span></span>
+<span><span class="va">trial_counts</span> <span class="op">&lt;-</span> <span class="va">responses</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">trait</span> <span class="op">==</span> <span class="st">"TRUST"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">subject</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">n</span>, name <span class="op">=</span> <span class="va">subject</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/infoval.html">infoval</a></span><span class="op">(</span><span class="va">sm_trust</span>, <span class="va">noise_matrix</span>, <span class="va">trial_counts</span>,</span>
+<span>        iter <span class="op">=</span> <span class="fl">1000L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span><span class="co">#&gt; per-producer: median z = 0.35, range [-1.69, 2.30], n above 1.96 = 2/20</span></span>
+<span></span>
+<span><span class="co"># Group-mean CI (effective n_trials = 300 x 20 = 6000):</span></span>
+<span><span class="va">group_ci</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">rowMeans</a></span><span class="op">(</span><span class="va">sm_trust</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">group_ci</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="st">"TRUST_group"</span></span>
+<span><span class="va">group_n</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>TRUST_group <span class="op">=</span> <span class="fl">6000L</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/infoval.html">infoval</a></span><span class="op">(</span><span class="va">group_ci</span>, <span class="va">noise_matrix</span>, <span class="va">group_n</span>, iter <span class="op">=</span> <span class="fl">1000L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span><span class="co">#&gt; group-mean CI z = 11.39</span></span>
+<span></span>
+<span><span class="co"># Face-mask lift on per-producer z:</span></span>
+<span><span class="fu"><a href="../reference/infoval.html">infoval</a></span><span class="op">(</span><span class="va">sm_trust</span>, <span class="va">noise_matrix</span>, <span class="va">trial_counts</span>,</span>
+<span>        mask <span class="op">=</span> <span class="fu"><a href="../reference/face_mask.html">face_mask</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">256L</span>, <span class="fl">256L</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>        iter <span class="op">=</span> <span class="fl">1000L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span><span class="co">#&gt; masked median = 0.50  (vs unmasked median = 0.35; lift = +0.15)</span></span></code></pre></div>
+<p>This is exactly the pattern §6.5 describes: per-producer median z is
+0.35 with only 2/20 producers individually above 1.96, <em>yet</em> the
+group-mean z is 11.39, unmistakable signal. The published Trust/Friendly
+correlation of .69 (Table 2 of the paper) and the trait dissociations
+visible in Figure 1 are consistent with the group-level z, not with
+reading the per-producer median as “weak signal”. Recommended report:
+“the group-mean classification image showed strong informational value
+(z = 11.39, n_eff = 6000); 2 of 20 producers individually exceeded z =
+1.96.”</p>
+</div>
+<div class="section level3">
+<h3 id="where-in-the-image-do-conditions-disagree">7.4 Where in the image do conditions disagree?<a class="anchor" aria-label="anchor" href="#where-in-the-image-do-conditions-disagree"></a>
+</h3>
+<p>The Dominant vs Competent contrast yields spatially-localized,
+FWE-controlled clusters:</p>
+<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/rel_cluster_test.html">rel_cluster_test</a></span><span class="op">(</span><span class="va">sm_dominant</span>, <span class="va">sm_competent</span>,</span>
+<span>                 img_dims          <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">256L</span>, <span class="fl">256L</span><span class="op">)</span>,</span>
+<span>                 cluster_threshold <span class="op">=</span> <span class="fl">2.0</span>,</span>
+<span>                 n_permutations    <span class="op">=</span> <span class="fl">1000L</span>,</span>
+<span>                 seed              <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></code></pre></div>
+<div class="figure" style="text-align: center">
+<img src="figures/oliveira_2019/cluster_dominant_vs_competent.png" class="r-plt" alt="Cluster test, Dominant vs Competent group CIs (Oliveira et al., 2019, Study 1). Pixel-wise Welch t-map rendered as a translucent diverging overlay on the male base face (positive/red = Dominant larger, negative/blue = Competent larger). Significant clusters at FWE-corrected alpha = .05 are outlined in black." width="70%"><p class="caption">
+Cluster test, Dominant vs Competent group CIs (Oliveira et al., 2019,
+Study 1). Pixel-wise Welch t-map rendered as a translucent diverging
+overlay on the male base face (positive/red = Dominant larger,
+negative/blue = Competent larger). Significant clusters at FWE-corrected
+alpha = .05 are outlined in black.
+</p>
+</div>
+</div>
+<div class="section level3">
+<h3 id="how-far-apart-are-conditions-overall">7.5 How far apart are conditions overall?<a class="anchor" aria-label="anchor" href="#how-far-apart-are-conditions-overall"></a>
+</h3>
+<p><code><a href="../reference/rel_dissimilarity.html">rel_dissimilarity()</a></code> complements the spatial picture with
+a single-number magnitude. Comparing a “similar” trait pair against a
+“dissimilar” one:</p>
+<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/rel_dissimilarity.html">rel_dissimilarity</a></span><span class="op">(</span><span class="va">sm_trust</span>,    <span class="va">sm_friendly</span>,  n_boot <span class="op">=</span> <span class="fl">500L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Euclidean = 16.81, 95% CI [19.26, 24.86], normalised = 0.0657</span></span>
+<span><span class="fu"><a href="../reference/rel_dissimilarity.html">rel_dissimilarity</a></span><span class="op">(</span><span class="va">sm_dominant</span>, <span class="va">sm_competent</span>, n_boot <span class="op">=</span> <span class="fl">500L</span>, seed <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Euclidean = 21.08, 95% CI [21.53, 30.75], normalised = 0.0823</span></span></code></pre></div>
+<p>Dominant-vs-Competent yields a substantially larger Euclidean
+distance than Trust-vs-Friendly, the same direction as the published
+group-CI Pearson correlations (.69 for Trust × Friendly, −.22 for
+Dominant × Competent in Table 2 of the paper). Pearson is the
+within-shape question; Euclidean is the how-far-apart question.</p>
+</div>
+<div class="section level3">
+<h3 id="where-on-the-face-do-producers-agree-by-region">7.6 Where on the face do producers agree, by region?<a class="anchor" aria-label="anchor" href="#where-on-the-face-do-producers-agree-by-region"></a>
+</h3>
+<p>Region-restricted ICC(3,1) on the same Trust signal matrix shows
+where producer agreement concentrates:</p>
+<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># rel_icc(sm_trust[face_mask(c(256L,256L), region = R), , drop = FALSE])</span></span>
+<span><span class="co">#&gt; region        n_pixels   ICC(3,1)   ICC(3,k)</span></span>
+<span><span class="co">#&gt; full           32,192     0.109      0.710</span></span>
+<span><span class="co">#&gt; eyes            1,022     0.069      0.595</span></span>
+<span><span class="co">#&gt; nose              770     0.028      0.363</span></span>
+<span><span class="co">#&gt; mouth             966     0.092      0.670</span></span>
+<span><span class="co">#&gt; upper_face     16,096     0.087      0.655</span></span>
+<span><span class="co">#&gt; lower_face     16,096     0.130      0.749</span></span></code></pre></div>
+<p>Agreement is strongest in the lower-face region (mouth + jaw),
+weakest in the nose. The pattern aligns with the visible features of the
+published Trust group CI (Figure 1 of the paper). Region- restricted
+infoVal works as a sensitivity check on the same data:</p>
+<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># infoval(sm_trust, noise_matrix, tc, mask = face_mask(c(256L,256L), region = R), ...)</span></span>
+<span><span class="co">#&gt; region   median z   range          n above 1.96</span></span>
+<span><span class="co">#&gt; full     +0.51      [-1.81, +3.13]      4/20</span></span>
+<span><span class="co">#&gt; eyes     +0.55      [-0.98, +1.56]      0/20</span></span>
+<span><span class="co">#&gt; mouth    +0.52      [-0.76, +4.67]      3/20</span></span></code></pre></div>
+<p>Eye and mouth regions both replicate the full-face median; the eye
+region’s per-producer range is narrower, suggesting producers agree on
+direction in the eye region but the energy is modest.</p>
+<p>Region-restricted <strong>between-condition</strong> clusters
+(Trustworthy vs Dominant), zero-filling outside each region so clusters
+can only form within it:</p>
+<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">img_dims</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">256L</span>, <span class="fl">256L</span><span class="op">)</span></span>
+<span><span class="va">m_eyes</span>   <span class="op">&lt;-</span> <span class="fu"><a href="../reference/face_mask.html">face_mask</a></span><span class="op">(</span><span class="va">img_dims</span>, region <span class="op">=</span> <span class="st">"eyes"</span><span class="op">)</span></span>
+<span><span class="va">m_mouth</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/face_mask.html">face_mask</a></span><span class="op">(</span><span class="va">img_dims</span>, region <span class="op">=</span> <span class="st">"mouth"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># rel_cluster_test() needs the full image grid to label connected</span></span>
+<span><span class="co"># components, so we restrict by "blanking out" pixels outside the</span></span>
+<span><span class="co"># region: set them to zero. Clusters can then only form inside the</span></span>
+<span><span class="co"># kept region.</span></span>
+<span><span class="va">zero_fill</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">sm</span>, <span class="va">keep_pixels</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">out</span> <span class="op">&lt;-</span> <span class="va">sm</span></span>
+<span>  <span class="va">out</span><span class="op">[</span><span class="op">!</span><span class="va">keep_pixels</span>, <span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
+<span>  <span class="va">out</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="co"># Eyes region.</span></span>
+<span><span class="va">sm_trust_eyes</span>    <span class="op">&lt;-</span> <span class="fu">zero_fill</span><span class="op">(</span><span class="va">sm_trust</span>,    <span class="va">m_eyes</span><span class="op">)</span></span>
+<span><span class="va">sm_dominant_eyes</span> <span class="op">&lt;-</span> <span class="fu">zero_fill</span><span class="op">(</span><span class="va">sm_dominant</span>, <span class="va">m_eyes</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/rel_cluster_test.html">rel_cluster_test</a></span><span class="op">(</span><span class="va">sm_trust_eyes</span>, <span class="va">sm_dominant_eyes</span>,</span>
+<span>                 img_dims          <span class="op">=</span> <span class="va">img_dims</span>,</span>
+<span>                 cluster_threshold <span class="op">=</span> <span class="fl">2.0</span>,</span>
+<span>                 n_permutations    <span class="op">=</span> <span class="fl">1000L</span>,</span>
+<span>                 seed              <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Mouth region.</span></span>
+<span><span class="va">sm_trust_mouth</span>    <span class="op">&lt;-</span> <span class="fu">zero_fill</span><span class="op">(</span><span class="va">sm_trust</span>,    <span class="va">m_mouth</span><span class="op">)</span></span>
+<span><span class="va">sm_dominant_mouth</span> <span class="op">&lt;-</span> <span class="fu">zero_fill</span><span class="op">(</span><span class="va">sm_dominant</span>, <span class="va">m_mouth</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/rel_cluster_test.html">rel_cluster_test</a></span><span class="op">(</span><span class="va">sm_trust_mouth</span>, <span class="va">sm_dominant_mouth</span>,</span>
+<span>                 img_dims          <span class="op">=</span> <span class="va">img_dims</span>,</span>
+<span>                 cluster_threshold <span class="op">=</span> <span class="fl">2.0</span>,</span>
+<span>                 n_permutations    <span class="op">=</span> <span class="fl">1000L</span>,</span>
+<span>                 seed              <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span></code></pre></div>
+<div class="figure" style="text-align: center">
+<img src="figures/oliveira_2019/cluster_trust_vs_dominant_eyes_mouth.png" class="r-plt" alt="Region-restricted cluster test, Trustworthy vs Dominant group CIs (Oliveira et al., 2019, Study 1). Pixel-wise Welch t-map rendered as a translucent diverging overlay on the male base face; positive/red = Trustworthy larger, negative/blue = Dominant larger. Eyes region (left panel) and mouth region (right panel). Significant clusters at FWE-corrected alpha = .05 are outlined in black." width="95%"><p class="caption">
+Region-restricted cluster test, Trustworthy vs Dominant group CIs
+(Oliveira et al., 2019, Study 1). Pixel-wise Welch t-map rendered as a
+translucent diverging overlay on the male base face; positive/red =
+Trustworthy larger, negative/blue = Dominant larger. Eyes region (left
+panel) and mouth region (right panel). Significant clusters at
+FWE-corrected alpha = .05 are outlined in black.
+</p>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="brief-rc-end-to-end">8. Brief-RC end-to-end<a class="anchor" aria-label="anchor" href="#brief-rc-end-to-end"></a>
 </h2>
 <p>Schmitz, Rougier &amp; Yzerbyt (2024) introduced Brief-RC 12: each
 trial shows 12 noisy faces (6 oriented, 6 inverted, drawn from a shared
@@ -1831,8 +1827,18 @@ trial, columns <code>participant_id</code>, <code>trial</code>,
 <code>rcicrely</code>’s implementation is native (no rcicr
 <code>_brief</code> functions, which don’t exist in the upstream rcicr
 v1.0.1).</p>
-<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># 1. Generate the noise pool (once per project) - heavy step.</span></span>
+<p>The Schmitz materials distribute the noise pool as a plain-text
+<code>noise_matrix.txt</code> (pixels × pool size,
+whitespace-delimited), so that’s the typical entry point if you
+replicate from their OSF repo. If you generate the pool yourself with
+<code>rcicr</code>, the captured return value can be cached as
+<code>.rds</code> for fast reloads (see step 1 below).</p>
+<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 1a. Replicating Schmitz et al.: read the published noise_matrix.txt</span></span>
+<span><span class="co">#     directly. read_noise_matrix() autodetects the format.</span></span>
+<span><span class="va">noise</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_noise_matrix.html">read_noise_matrix</a></span><span class="op">(</span><span class="st">"data/noise_matrix.txt"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># 1b. Generating your own pool with rcicr (one-off, slow):</span></span>
 <span><span class="fu">rcicr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/rcicr/man/generateStimuli2IFC.html" class="external-link">generateStimuli2IFC</a></span><span class="op">(</span></span>
 <span>  base_face_files     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>base <span class="op">=</span> <span class="st">"data/base.jpg"</span><span class="op">)</span>,</span>
 <span>  n_trials            <span class="op">=</span> <span class="fl">600L</span>,        <span class="co"># becomes the Brief-RC pool size</span></span>
@@ -1840,19 +1846,19 @@ v1.0.1).</p>
 <span>  stimulus_path       <span class="op">=</span> <span class="st">"data/stim"</span>,</span>
 <span>  label               <span class="op">=</span> <span class="st">"mystudy"</span>,</span>
 <span>  ncores              <span class="op">=</span> <span class="fl">1L</span>,          <span class="co"># macOS-safe default</span></span>
-<span>  return_as_dataframe <span class="op">=</span> <span class="cn">TRUE</span>,        <span class="co"># capture the noise matrix!</span></span>
+<span>  return_as_dataframe <span class="op">=</span> <span class="cn">TRUE</span>,        <span class="co"># capture the noise matrix</span></span>
 <span>  seed                <span class="op">=</span> <span class="fl">1L</span></span>
-<span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="st">"data/noise_matrix.rds"</span><span class="op">)</span>  <span class="co"># cache for fast loading</span></span>
+<span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="st">"data/noise_matrix.rds"</span><span class="op">)</span>  <span class="co"># cache for fast reloads</span></span>
 <span></span>
 <span><span class="co"># 2. Collect Brief-RC responses in the per-trial format.</span></span>
 <span></span>
 <span><span class="co"># 3. Compute individual CIs.</span></span>
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ci_from_responses_briefrc.html">ci_from_responses_briefrc</a></span><span class="op">(</span></span>
 <span>  responses       <span class="op">=</span> <span class="va">my_brief_rc_responses</span>,</span>
-<span>  noise_matrix    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="st">"data/noise_matrix.rds"</span><span class="op">)</span>,</span>
+<span>  noise_matrix    <span class="op">=</span> <span class="va">noise</span>,           <span class="co"># or readRDS("data/noise_matrix.rds")</span></span>
 <span>  base_image_path <span class="op">=</span> <span class="st">"data/base.jpg"</span>,</span>
 <span>  method          <span class="op">=</span> <span class="st">"briefrc12"</span>,</span>
-<span>  scaling         <span class="op">=</span> <span class="st">"matched"</span>   <span class="co"># also rendered for plotting</span></span>
+<span>  scaling         <span class="op">=</span> <span class="st">"matched"</span>        <span class="co"># also rendered for plotting</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># 4. Reliability assessment.</span></span>
@@ -1860,7 +1866,7 @@ v1.0.1).</p>
 <span><span class="va">between</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_between.html">run_between</a></span><span class="op">(</span><span class="va">res_A</span><span class="op">$</span><span class="va">signal_matrix</span>, <span class="va">res_B</span><span class="op">$</span><span class="va">signal_matrix</span>,</span>
 <span>                       seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># 5. Save rendered CI to PNG (visualization only - DO NOT use for stats)</span></span>
+<span><span class="co"># 5. Save rendered CIs to PNG (visualisation only; do not feed to rel_*).</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"png"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="kw">for</span> <span class="op">(</span><span class="va">j</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">participants</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="va">img</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">rendered_ci</span><span class="op">[</span>, <span class="va">j</span><span class="op">]</span>, <span class="va">res</span><span class="op">$</span><span class="va">img_dims</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, <span class="va">res</span><span class="op">$</span><span class="va">img_dims</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span><span class="op">)</span></span>
@@ -1876,31 +1882,26 @@ pool size. For 2IFC the two are equal so the original rcicr default is
 fine; for Brief-RC each producer typically records fewer choices than
 there are pool items, so a pool-size reference biases infoVal downward.
 <code><a href="../reference/infoval.html">infoval()</a></code> closes that calibration gap. Pass the <strong>raw
-mask</strong> (<code>res$signal_matrix</code>) — not
+mask</strong> (<code>res$signal_matrix</code>), not
 <code>res$rendered_ci</code> or a PNG.</p>
-<p>A note on what “subset” means here. Brief-RC’s whole point is that
-each trial is <em>cognitively</em> richer than 2IFC: the producer
-integrates 12 noisy faces of context, not 2. So Brief-RC producers do
-<strong>not</strong> see less of the pool at the perceptual level. What
-the <code><a href="../reference/infoval.html">infoval()</a></code> reference is matched to is the number of
-<strong>recorded</strong> choices that enter the mask — one
-<code>(stim, +/-1)</code> per trial — which is typically smaller than
-the pool size in Brief-RC studies. This is the right calibration for the
-magnitude statistic infoVal computes; it is not a claim about cognitive
-exposure.</p>
-<p>A note on cross-paradigm comparisons. infoVal measures the
-<strong>magnitude</strong> of the mask (Frobenius norm) against a chance
-reference. Brief-RC’s purported cognitive benefit — better target
-localisation per trial — may produce a more accurate but not necessarily
-larger mask, and a magnitude statistic does not distinguish those. Treat
-absolute Brief-RC vs 2IFC z-score differences with caution.
+<p>Two notes on interpretation. First, “subset” here means the number of
+<strong>recorded</strong> choices that enter the mask (one
+<code>(stim, +/-1)</code> per trial), not the producer’s perceptual
+exposure: Brief-RC trials are <em>cognitively</em> richer than 2IFC
+trials (12 noisy faces of context vs. 2), so producers do not see less
+of the pool. The trial-count match is the right calibration for
+infoVal’s magnitude statistic, not a claim about cognitive exposure.
+Second, infoVal measures the <strong>magnitude</strong> of the mask
+(Frobenius norm) against a chance reference, so it does not distinguish
+a more accurate mask from a larger one. Treat absolute Brief-RC vs 2IFC
+z-score differences with caution;
 <code><a href="../reference/rel_split_half.html">rel_split_half()</a></code>/<code><a href="../reference/rel_icc.html">rel_icc()</a></code> (signal stability)
 and <code><a href="../reference/rel_cluster_test.html">rel_cluster_test()</a></code>/<code><a href="../reference/rel_dissimilarity.html">rel_dissimilarity()</a></code>
-(between- condition separability) are the right complements when you
-care about pattern accuracy rather than magnitude.</p>
+(between-condition separability) are the right complements when pattern
+accuracy matters more than magnitude.</p>
 </div>
 <div class="section level2">
-<h2 id="interpreting-results-and-common-pitfalls">8. Interpreting results and common pitfalls<a class="anchor" aria-label="anchor" href="#interpreting-results-and-common-pitfalls"></a>
+<h2 id="interpreting-results-and-common-pitfalls">9. Interpreting results and common pitfalls<a class="anchor" aria-label="anchor" href="#interpreting-results-and-common-pitfalls"></a>
 </h2>
 <p><strong>Sample size.</strong> <code>rcicrely</code> aborts below 4
 producers per condition and warns below 30; a sample of N &gt;= 60
@@ -1914,31 +1915,20 @@ CI.</p>
 investigation, not a verdict. Use <code>flag_method = "mad"</code> if
 the SD rule is dominated by the very outliers it tries to find.</p>
 <p><strong>ICC(3,<em>) vs ICC(2,</em>).</strong> Numerically close at
-high pixel counts but ICC(3,*) is the correctly-specified model. Don’t
-swap because of a reviewer; report both with
-<code>variants = c("3_1", "3_k", "2_1", "2_k")</code> if pressed.</p>
+high pixel counts; ICC(3,*) is the correctly-specified model (pixels
+fixed, participants random). Use
+<code>variants = c("3_1", "3_k", "2_1", "2_k")</code> when both are
+needed.</p>
 <p><strong>Cluster threshold != p-value.</strong>
 <code>cluster_threshold = 2.0</code> is the t-cutoff for forming
 clusters. Significance is decided by mass relative to the null. The
 default is roughly two-tailed p &lt; 0.05 at large df, but at small N it
 under-rejects - inspect the t histogram.</p>
-<p><strong>Raw vs. rendered CIs.</strong> This package’s reliability
-math is correct <strong>given</strong> a raw signal matrix. Mode 1 (PNGs
-on disk) loads <code>scaling(mask)</code> instead of <code>mask</code>;
-results will differ from what raw responses would produce. The size of
-the difference depends on the scaling that was applied at PNG-write
-time. Mode 2 is the safe path.</p>
-<p><strong><code>infoVal</code> correctness.</strong>
-<code><a href="https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html" class="external-link">rcicr::computeInfoVal2IFC()</a></code> extracts the raw
-<code>$ci</code> from its input CI-list internally, so the standard 2IFC
-path is safe regardless of <code>scaling</code>. The pitfall is in
-hand-rolled <code>infoVal</code> implementations, for Brief-RC, or for
-any custom code that consumes a bare matrix, which must be fed the raw
-mask. Feeding rendered/scaled values silently distorts the reference
-comparison and produces wrong significance verdicts.</p>
+<p>For raw-vs-rendered considerations and the <code>infoVal</code>
+scaling caveat, see §3.2.</p>
 </div>
 <div class="section level2">
-<h2 id="references">9. References<a class="anchor" aria-label="anchor" href="#references"></a>
+<h2 id="references">10. References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
 <ul>
 <li>Brinkman, L., Todorov, A., &amp; Dotsch, R. (2017). Visualising
@@ -1993,7 +1983,7 @@ Uses in assessing rater reliability. <em>Psychological Bulletin</em>,
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Manuel Oliveira.</p>
+  <p>Manuel Oliveira, 2026</p>
 </div>
 
 <div class="pkgdown-footer-right">

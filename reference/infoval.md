@@ -99,10 +99,14 @@ The reference distribution for producer j is built by simulating `iter`
 random masks at the same trial count `trial_counts[j]`, mirroring the
 `genMask()` construction exactly (Schmitz, Rougier, & Yzerbyt, 2024):
 
-1.  Sample `trial_counts[j]` stimulus ids uniformly from `1:n_pool` with
-    replacement.
+1.  Sample `trial_counts[j]` stimulus ids uniformly from `1:n_pool`
+    (without replacement when `trial_counts[j] <= n_pool`, the typical
+    case for both 2IFC and standard Brief-RC; with replacement only when
+    the producer recorded more contributions than the pool size). See
+    the v0.2.1 calibration note below.
 
-2.  Sample `trial_counts[j]` responses uniformly from `{-1, +1}`.
+2.  Sample `trial_counts[j]` responses uniformly from `{-1, +1}` (always
+    with replacement).
 
 3.  Collapse `response` by `stim` via
     [`mean()`](https://rdrr.io/r/base/mean.html) (this is the
@@ -120,7 +124,7 @@ simulation efficient when several producers have the same number of
 trials.
 
 Choice of statistic: the **Frobenius norm** is the correct form per
-Schmitz, Muller, & Yzerbyt (2019, comment) and the 2020 erratum. The
+Schmitz, Rougier, & Yzerbyt (2020, comment) and the 2020 erratum. The
 original
 [`rcicr::computeInfoVal2IFC()`](https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html)
 already uses it (`norm(matrix(target_ci[["ci"]]), "f")`); this function
@@ -172,15 +176,16 @@ Dotsch, R., & Aarts, H. (2019). Quantifying the informational value of
 classification images. *Behavior Research Methods*, 51(5), 2059-2073.
 [doi:10.3758/s13428-019-01232-2](https://doi.org/10.3758/s13428-019-01232-2)
 
-Schmitz, M., Muller, D., & Yzerbyt, V. (2019). Comment on "Quantifying
+Schmitz, M., Rougier, M., & Yzerbyt, V. (2020). Comment on "Quantifying
 the informational value of classification images": A miscomputation of
-the infoVal metric. *Behavior Research Methods*.
+the infoVal metric. *Behavior Research Methods*, 52(3), 1383-1386.
 [doi:10.3758/s13428-019-01295-1](https://doi.org/10.3758/s13428-019-01295-1)
 
-Schmitz, M., Muller, D., & Yzerbyt, V. (2020). Erratum to: Comment on
-"Quantifying the informational value of classification images":
-Miscomputation of infoVal metric was a minor issue and is now corrected.
-*Behavior Research Methods*, 52, 1800-1801.
+Schmitz, M., Rougier, M., Yzerbyt, V., Brinkman, L., & Dotsch, R.
+(2020). Erratum to: Comment on "Quantifying the informational value of
+classification images": Miscomputation of infoVal metric was a minor
+issue and is now corrected. *Behavior Research Methods*, 52(4),
+1800-1801.
 [doi:10.3758/s13428-020-01367-7](https://doi.org/10.3758/s13428-020-01367-7)
 
 Schmitz, M., Rougier, M., & Yzerbyt, V. (2024). Introducing the brief

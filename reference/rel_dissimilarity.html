@@ -44,7 +44,7 @@ the two conditions differ."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Between-condition dissimilarity with bootstrap confidence intervals</h1>
-      <small class="dont-index">Source: <a href="https://github.com/olivethree/rcicrely/blob/v0.2.2/R/rel_dissimilarity.R" class="external-link"><code>R/rel_dissimilarity.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/olivethree/rcicrely/blob/main/R/rel_dissimilarity.R" class="external-link"><code>R/rel_dissimilarity.R</code></a></small>
       <div class="d-none name"><code>rel_dissimilarity.Rd</code></div>
     </div>
 
@@ -67,9 +67,12 @@ the two conditions differ.</p>
 <span>  paired <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  n_boot <span class="op">=</span> <span class="fl">2000L</span>,</span>
 <span>  ci_level <span class="op">=</span> <span class="fl">0.95</span>,</span>
+<span>  null <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"none"</span>, <span class="st">"permutation"</span><span class="op">)</span>,</span>
+<span>  n_permutations <span class="op">=</span> <span class="fl">2000L</span>,</span>
 <span>  mask <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  progress <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  progress <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  acknowledge_scaling <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -99,6 +102,22 @@ identical column names.</p></dd>
 <dd><p>Confidence level. Default 0.95.</p></dd>
 
 
+<dt id="arg-null">null<a class="anchor" aria-label="anchor" href="#arg-null"></a></dt>
+<dd><p>One of <code>"none"</code> (default) or <code>"permutation"</code>.
+<code>"permutation"</code> builds an empirical chance baseline for the
+Euclidean distance:</p><ul><li><p>Between-subjects (<code>paired = FALSE</code>): stratified condition-
+label permutation across producers, preserving <code>(N_a, N_b)</code>.</p></li>
+<li><p>Paired (<code>paired = TRUE</code>): random sign-flip on per-producer
+<code>A - B</code> differences (exact null under exchangeability of pair
+sign).</p></li>
+</ul></dd>
+
+
+<dt id="arg-n-permutations">n_permutations<a class="anchor" aria-label="anchor" href="#arg-n-permutations"></a></dt>
+<dd><p>Integer. Number of null iterations when
+<code>null = "permutation"</code>. Default 2000.</p></dd>
+
+
 <dt id="arg-mask">mask<a class="anchor" aria-label="anchor" href="#arg-mask"></a></dt>
 <dd><p>Optional logical vector of length
 <code>nrow(signal_matrix_a)</code> restricting the Euclidean / correlation
@@ -114,6 +133,12 @@ the masked count.</p></dd>
 
 <dt id="arg-progress">progress<a class="anchor" aria-label="anchor" href="#arg-progress"></a></dt>
 <dd><p>Show a <code>cli</code> progress bar.</p></dd>
+
+
+<dt id="arg-acknowledge-scaling">acknowledge_scaling<a class="anchor" aria-label="anchor" href="#arg-acknowledge-scaling"></a></dt>
+<dd><p>Logical. When <code>FALSE</code> (default), the
+shared <code>assert_raw_signal()</code> helper errors on a known-rendered
+matrix on either side. Set <code>TRUE</code> to override.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -163,13 +188,23 @@ on the full sample (primary statistic).</p></li>
 for cross-resolution comparisons.</p></li>
 <li><p><code>$boot_dist</code>, <code>$ci_dist</code>, <code>$boot_se_dist</code>, bootstrap distribution,
 percentile CI, and SE of the Euclidean distance.</p></li>
+<li><p><code>$null</code> (character), the null mode used.</p></li>
+<li><p><code>$null_distribution</code>, when <code>null != "none"</code>: numeric vector of
+per-iteration Euclidean distances under the chosen null. <code>NULL</code>
+otherwise.</p></li>
+<li><p><code>$d_null_p95</code>, 95th percentile of the null distribution
+(cutoff for "above-chance" magnitude). <code>NA_real_</code> when
+<code>null = "none"</code>.</p></li>
+<li><p><code>$d_z</code>, z-equivalent effect size: <code>(observed_d - mean(null)) / sd(null)</code>. <code>NA_real_</code> when <code>null = "none"</code>.</p></li>
+<li><p><code>$d_ratio</code>, observed Euclidean over the null median.
+<code>NA_real_</code> when <code>null = "none"</code>.</p></li>
 <li><p><code>$correlation</code>, <code>$boot_cor</code>, <code>$ci_cor</code>, <code>$boot_se_cor</code>: Pearson
 correlation of the group means and its bootstrap summary.
 <strong>Deprecated.</strong> Retained for backwards compatibility with v0.1.x
 code and scheduled for removal in v0.3. Treat these as
 within-study descriptive statistics only; see <strong>Why Euclidean
 and not Pearson correlation</strong>.</p></li>
-<li><p><code>$n_boot</code>, <code>$ci_level</code>, metadata.</p></li>
+<li><p><code>$n_boot</code>, <code>$ci_level</code>, <code>$paired</code>, metadata.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="common-mistakes">Common mistakes<a class="anchor" aria-label="anchor" href="#common-mistakes"></a></h2>
@@ -190,9 +225,10 @@ The baseline is above zero for independent CIs (see above).</p></li>
 
 <p>Euclidean distance is sensitive to <strong>any</strong> scaling; Pearson r
 survives a single uniform scaling but breaks under per-CI
-<code>"matched"</code>-style scaling. If <code>signal_matrix_a</code> / <code>_b</code> came from
-<code><a href="read_cis.html">read_cis()</a></code> / <code><a href="extract_signal.html">extract_signal()</a></code> on rendered PNGs, treat results
-as approximate. See
+<code>"matched"</code>-style scaling. Inputs with
+<code>attr(., "source") == "rendered"</code> (set automatically by Mode 1
+readers like <code><a href="extract_signal.html">extract_signal()</a></code>) error unless
+<code>acknowledge_scaling = TRUE</code>. See
 <code><a href="../articles/tutorial.html">vignette("tutorial", package = "rcicrely")</a></code> chapter 3.</p>
     </div>
     <div class="section level2">
@@ -210,7 +246,7 @@ bootstrap</em>. Chapman &amp; Hall / CRC.</p>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Manuel Oliveira.</p>
+  <p>Manuel Oliveira, 2026</p>
 </div>
 
 <div class="pkgdown-footer-right">

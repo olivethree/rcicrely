@@ -12,7 +12,7 @@ outlier screening** tool, not a reliability statistic — see below.
 rel_loo(
   signal_matrix,
   flag_threshold = 2.5,
-  flag_method = c("sd", "mad"),
+  flag_method = c("mad", "sd"),
   flag_threshold_sd = NULL,
   mask = NULL
 )
@@ -32,8 +32,12 @@ rel_loo(
 
 - flag_method:
 
-  One of `"sd"` (default) or `"mad"`. See **Details** for which to
-  choose.
+  One of `"mad"` (default since v0.3) or `"sd"`. The MAD/median rule is
+  robust to the very influential producers it is meant to detect (one
+  outlier inflates `sd_r` and pulls `mean_r`, masking itself); SD/mean
+  is retained for backwards compatibility and emits a one-time
+  per-session deprecation message. SD is scheduled for removal in v0.4.
+  See **Details** for the mathematical justification.
 
 - flag_threshold_sd:
 

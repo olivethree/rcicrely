@@ -11,8 +11,12 @@ a single anatomical region.
 
 Five regions are supported:
 
-- `"full"` (default): the full face oval (Schmitz, Rougier, & Yzerbyt
-  2024 geometry).
+- `"full"` (default): the full face oval, approximating the oval face
+  region described in Schmitz, Rougier, & Yzerbyt (2024). (The paper
+  applies an oval mask to extract the face region but does not specify
+  its geometry; the `half_width = 0.35`, `half_height = 0.45` defaults
+  follow the geometry used by Schmitz's accompanying R package and are
+  tunable here via `half_width` / `half_height`.)
 
 - `"eyes"`: two small ellipses at the typical eye positions.
 

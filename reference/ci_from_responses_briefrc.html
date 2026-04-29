@@ -44,7 +44,7 @@ reliability metrics."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Compute individual Brief-RC CIs from trial-level responses</h1>
-      <small class="dont-index">Source: <a href="https://github.com/olivethree/rcicrely/blob/v0.2.2/R/ci_from_responses_briefrc.R" class="external-link"><code>R/ci_from_responses_briefrc.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/olivethree/rcicrely/blob/main/R/ci_from_responses_briefrc.R" class="external-link"><code>R/ci_from_responses_briefrc.R</code></a></small>
       <div class="d-none name"><code>ci_from_responses_briefrc.Rd</code></div>
     </div>
 
@@ -114,10 +114,12 @@ future release and currently aborts with a clear message.</p></dd>
 <dd><p>Visualisation-only scaling for the optional
 <code>$rendered_ci</code> field. One of <code>"none"</code> (default; no rendered_ci
 returned), <code>"matched"</code> (stretch mask to base range, then add to
-base, Schmitz's default), or <code>"constant"</code> (multiply mask by
-<code>scaling_constant</code>, then add to base). The mathematical
-<code>$signal_matrix</code> returned by this function is always the raw
-unscaled mask, regardless of this argument.</p></dd>
+base, the rcicr <code>auto-scale</code> method also used by Schmitz et al.
+2024 in Experiment 2), or <code>"constant"</code> (multiply mask by
+<code>scaling_constant</code>, then add to base, as Schmitz et al. 2024
+used in Experiment 1). The mathematical <code>$signal_matrix</code>
+returned by this function is always the raw unscaled mask,
+regardless of this argument.</p></dd>
 
 
 <dt id="arg-scaling-constant">scaling_constant<a class="anchor" aria-label="anchor" href="#arg-scaling-constant"></a></dt>
@@ -206,7 +208,7 @@ representations. <em>European Journal of Social Psychology</em>.
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Manuel Oliveira.</p>
+  <p>Manuel Oliveira, 2026</p>
 </div>
 
 <div class="pkgdown-footer-right">

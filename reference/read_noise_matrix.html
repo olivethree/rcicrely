@@ -72,7 +72,7 @@ case-sensitive matching)."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Load the noise matrix from an rcicr <code>.Rdata</code>, an <code>.rds</code>, or a text file</h1>
-      <small class="dont-index">Source: <a href="https://github.com/olivethree/rcicrely/blob/v0.2.2/R/read_noise_matrix.R" class="external-link"><code>R/read_noise_matrix.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/olivethree/rcicrely/blob/main/R/read_noise_matrix.R" class="external-link"><code>R/read_noise_matrix.R</code></a></small>
       <div class="d-none name"><code>read_noise_matrix.Rd</code></div>
     </div>
 
@@ -151,7 +151,70 @@ from the rdata each run.</p></li>
 <li><p>Multiple stale <code>.rdata</code> accumulating in a directory because
 rcicr timestamps its filenames; pick the most recent by mtime if
 you have several.</p></li>
+<li><p>On macOS the file is saved with a lowercase <code>.Rdata</code> extension;
+<code>list.files(pattern = "\\.RData$")</code> will miss it (use
+<code>ignore.case = TRUE</code>).</p></li>
 </ul></div>
+    <div class="section level2">
+    <h2 id="what-is-in-an-rcicr-rdata">What is in an rcicr <code>.Rdata</code><a class="anchor" aria-label="anchor" href="#what-is-in-an-rcicr-rdata"></a></h2>
+
+
+<p><code>load("rcic_stimuli.Rdata")</code> adds the following objects to your
+environment. Names are short and not self-explanatory:</p>
+<dl><dt><code>base_face_files</code></dt>
+<dd><p>Named list of file paths to the original
+face images. The list names (e.g. <code>"base"</code>) are the labels you
+pass downstream as <code>baseimage = "..."</code>.</p></dd>
+
+<dt><code>base_faces</code></dt>
+<dd><p>Base images themselves, loaded as numeric
+matrices of grayscale pixels in <code>[0, 1]</code>. One matrix per label;
+shape <code>img_size x img_size</code>.</p></dd>
+
+<dt><code>img_size</code></dt>
+<dd><p>Side length of the (square) images in pixels.</p></dd>
+
+<dt><code>n_trials</code></dt>
+<dd><p>Number of stimulus pairs (and unique noise
+patterns) generated.</p></dd>
+
+<dt><code>noise_type</code></dt>
+<dd><p>Type of noise basis. The rcicr default and only
+well-tested option is <code>"sinusoid"</code>.</p></dd>
+
+<dt><code>p</code></dt>
+<dd><p>The noise basis. A list with <code>$patches</code> (a stack of
+standard sinusoidal patterns at multiple scales, orientations,
+phases) and <code>$patchIdx</code> (an index that maps positions in a
+parameter vector to entries in <code>$patches</code>). Think of <code>$patches</code>
+as a dictionary of sinusoidal "ingredients".</p></dd>
+
+<dt><code>stimuli_params</code></dt>
+<dd><p>The per-trial recipe for combining <code>p</code>'s
+ingredients. A named list of matrices, one per base face. Each
+row is one trial; each entry is a contrast weight.
+<code>rcicr::generateNoiseImage(stimuli_params[[base]][i, ], p)</code>
+reconstructs trial <code>i</code>.</p></dd>
+
+<dt><code>seed</code></dt>
+<dd><p>Random seed used at generation, for reproducibility.</p></dd>
+
+<dt><code>label</code>, <code>stimulus_path</code>, <code>trial</code>, <code>generator_version</code>,
+<code>use_same_parameters</code></dt>
+<dd><p>Bookkeeping; not consumed by analysis.</p></dd>
+
+<dt><code>reference_norms</code></dt>
+<dd><p>Random-responder Frobenius norms. Not
+present at first; created and inserted in place the first time
+<code><a href="https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html" class="external-link">rcicr::computeInfoVal2IFC()</a></code> is called on the file. Copy the
+rdata first if you want it untouched.</p></dd>
+
+
+</dl><p>The load-bearing objects for analysis are <code>base_faces</code>,
+<code>stimuli_params</code>, <code>p</code>, and <code>img_size</code>. Trial-level noise images are
+not stored; this loader recomputes them on demand via
+<code>generateNoiseImage()</code>.</p>
+    </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="ci_from_responses_briefrc.html">ci_from_responses_briefrc()</a></code></p></div>
@@ -160,11 +223,14 @@ you have several.</p></li>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="co"># From an rcicr rdata:</span></span></span>
-<span class="r-in"><span><span class="va">nm</span> <span class="op">&lt;-</span> <span class="fu">read_noise_matrix</span><span class="op">(</span><span class="st">"data/rcicr_stimuli.Rdata"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># Plain text (Schmitz et al. 2024 OSF format):</span></span></span>
+<span class="r-in"><span><span class="va">nm</span> <span class="op">&lt;-</span> <span class="fu">read_noise_matrix</span><span class="op">(</span><span class="st">"data/noise_matrix.txt"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># From a cached rds you saved earlier:</span></span></span>
+<span class="r-in"><span><span class="co"># Cached .rds (from rcicr's return-as-dataframe output):</span></span></span>
 <span class="r-in"><span><span class="va">nm</span> <span class="op">&lt;-</span> <span class="fu">read_noise_matrix</span><span class="op">(</span><span class="st">"data/noise_matrix.rds"</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># rcicr .Rdata (reconstructs each trial; slow):</span></span></span>
+<span class="r-in"><span><span class="va">nm</span> <span class="op">&lt;-</span> <span class="fu">read_noise_matrix</span><span class="op">(</span><span class="st">"data/rcicr_stimuli.Rdata"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
@@ -173,7 +239,7 @@ you have several.</p></li>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Manuel Oliveira.</p>
+  <p>Manuel Oliveira, 2026</p>
 </div>
 
 <div class="pkgdown-footer-right">

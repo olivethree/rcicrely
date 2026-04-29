@@ -40,7 +40,7 @@ the statistic is computed."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Per-producer informational value with trial-count-matched reference</h1>
-      <small class="dont-index">Source: <a href="https://github.com/olivethree/rcicrely/blob/v0.2.2/R/infoval.R" class="external-link"><code>R/infoval.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/olivethree/rcicrely/blob/main/R/infoval.R" class="external-link"><code>R/infoval.R</code></a></small>
       <div class="d-none name"><code>infoval.Rd</code></div>
     </div>
 
@@ -138,8 +138,13 @@ classification image mask, optionally restricted to a logical
 <code>iter</code> random masks at the same trial count <code>trial_counts[j]</code>,
 mirroring the <code>genMask()</code> construction exactly (Schmitz, Rougier,
 &amp; Yzerbyt, 2024):</p><ol><li><p>Sample <code>trial_counts[j]</code> stimulus ids uniformly from
-<code>1:n_pool</code> with replacement.</p></li>
-<li><p>Sample <code>trial_counts[j]</code> responses uniformly from <code>{-1, +1}</code>.</p></li>
+<code>1:n_pool</code> (without replacement when
+<code>trial_counts[j] &lt;= n_pool</code>, the typical case for both 2IFC
+and standard Brief-RC; with replacement only when the
+producer recorded more contributions than the pool size).
+See the v0.2.1 calibration note below.</p></li>
+<li><p>Sample <code>trial_counts[j]</code> responses uniformly from <code>{-1, +1}</code>
+(always with replacement).</p></li>
 <li><p>Collapse <code>response</code> by <code>stim</code> via <code><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean()</a></code> (this is the
 duplicate-stim rule used by Brief-RC).</p></li>
 <li><p>Build the mask: <code>noise_matrix[, unique_stims] %*% mean_response / n_unique_stims</code>.</p></li>
@@ -151,7 +156,7 @@ Producers sharing a trial count share a reference; this makes the
 simulation efficient when several producers have the same number
 of trials.</p>
 <p>Choice of statistic: the <strong>Frobenius norm</strong> is the correct form
-per Schmitz, Muller, &amp; Yzerbyt (2019, comment) and the 2020
+per Schmitz, Rougier, &amp; Yzerbyt (2020, comment) and the 2020
 erratum. The original <code><a href="https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html" class="external-link">rcicr::computeInfoVal2IFC()</a></code> already uses it
 (<code>norm(matrix(target_ci[["ci"]]), "f")</code>); this function matches
 that convention for both 2IFC and Brief-RC data.</p>
@@ -192,15 +197,15 @@ magnitude-based infoVal.</p></li>
 Dotsch, R., &amp; Aarts, H. (2019). Quantifying the informational
 value of classification images. <em>Behavior Research Methods</em>,
 51(5), 2059-2073. <a href="https://doi.org/10.3758/s13428-019-01232-2" class="external-link">doi:10.3758/s13428-019-01232-2</a></p>
-<p>Schmitz, M., Muller, D., &amp; Yzerbyt, V. (2019). Comment on
+<p>Schmitz, M., Rougier, M., &amp; Yzerbyt, V. (2020). Comment on
 "Quantifying the informational value of classification images": A
-miscomputation of the infoVal metric. <em>Behavior Research Methods</em>.
-<a href="https://doi.org/10.3758/s13428-019-01295-1" class="external-link">doi:10.3758/s13428-019-01295-1</a></p>
-<p>Schmitz, M., Muller, D., &amp; Yzerbyt, V. (2020). Erratum to:
-Comment on "Quantifying the informational value of classification
-images": Miscomputation of infoVal metric was a minor issue and
-is now corrected. <em>Behavior Research Methods</em>, 52, 1800-1801.
-<a href="https://doi.org/10.3758/s13428-020-01367-7" class="external-link">doi:10.3758/s13428-020-01367-7</a></p>
+miscomputation of the infoVal metric. <em>Behavior Research Methods</em>,
+52(3), 1383-1386. <a href="https://doi.org/10.3758/s13428-019-01295-1" class="external-link">doi:10.3758/s13428-019-01295-1</a></p>
+<p>Schmitz, M., Rougier, M., Yzerbyt, V., Brinkman, L., &amp; Dotsch, R.
+(2020). Erratum to: Comment on "Quantifying the informational value
+of classification images": Miscomputation of infoVal metric was a
+minor issue and is now corrected. <em>Behavior Research Methods</em>,
+52(4), 1800-1801. <a href="https://doi.org/10.3758/s13428-020-01367-7" class="external-link">doi:10.3758/s13428-020-01367-7</a></p>
 <p>Schmitz, M., Rougier, M., &amp; Yzerbyt, V. (2024). Introducing the
 brief reverse correlation: an improved tool to assess visual
 representations. <em>European Journal of Social Psychology</em>.
@@ -217,7 +222,7 @@ representations. <em>European Journal of Social Psychology</em>.
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Manuel Oliveira.</p>
+  <p>Manuel Oliveira, 2026</p>
 </div>
 
 <div class="pkgdown-footer-right">

@@ -63,10 +63,12 @@ ci_from_responses_briefrc(
 
   Visualisation-only scaling for the optional `$rendered_ci` field. One
   of `"none"` (default; no rendered_ci returned), `"matched"` (stretch
-  mask to base range, then add to base, Schmitz's default), or
-  `"constant"` (multiply mask by `scaling_constant`, then add to base).
-  The mathematical `$signal_matrix` returned by this function is always
-  the raw unscaled mask, regardless of this argument.
+  mask to base range, then add to base, the rcicr `auto-scale` method
+  also used by Schmitz et al. 2024 in Experiment 2), or `"constant"`
+  (multiply mask by `scaling_constant`, then add to base, as Schmitz et
+  al. 2024 used in Experiment 1). The mathematical `$signal_matrix`
+  returned by this function is always the raw unscaled mask, regardless
+  of this argument.
 
 - scaling_constant:
 

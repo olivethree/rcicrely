@@ -79,6 +79,76 @@ matrix.
   timestamps its filenames; pick the most recent by mtime if you have
   several.
 
+- On macOS the file is saved with a lowercase `.Rdata` extension;
+  `list.files(pattern = "\\.RData$")` will miss it (use
+  `ignore.case = TRUE`).
+
+## What is in an rcicr `.Rdata`
+
+`load("rcic_stimuli.Rdata")` adds the following objects to your
+environment. Names are short and not self-explanatory:
+
+- `base_face_files`:
+
+  Named list of file paths to the original face images. The list names
+  (e.g. `"base"`) are the labels you pass downstream as
+  `baseimage = "..."`.
+
+- `base_faces`:
+
+  Base images themselves, loaded as numeric matrices of grayscale pixels
+  in `[0, 1]`. One matrix per label; shape `img_size x img_size`.
+
+- `img_size`:
+
+  Side length of the (square) images in pixels.
+
+- `n_trials`:
+
+  Number of stimulus pairs (and unique noise patterns) generated.
+
+- `noise_type`:
+
+  Type of noise basis. The rcicr default and only well-tested option is
+  `"sinusoid"`.
+
+- `p`:
+
+  The noise basis. A list with `$patches` (a stack of standard
+  sinusoidal patterns at multiple scales, orientations, phases) and
+  `$patchIdx` (an index that maps positions in a parameter vector to
+  entries in `$patches`). Think of `$patches` as a dictionary of
+  sinusoidal "ingredients".
+
+- `stimuli_params`:
+
+  The per-trial recipe for combining `p`'s ingredients. A named list of
+  matrices, one per base face. Each row is one trial; each entry is a
+  contrast weight.
+  `rcicr::generateNoiseImage(stimuli_params[[base]][i, ], p)`
+  reconstructs trial `i`.
+
+- `seed`:
+
+  Random seed used at generation, for reproducibility.
+
+- `label`, `stimulus_path`, `trial`, `generator_version`,
+  `use_same_parameters`:
+
+  Bookkeeping; not consumed by analysis.
+
+- `reference_norms`:
+
+  Random-responder Frobenius norms. Not present at first; created and
+  inserted in place the first time
+  [`rcicr::computeInfoVal2IFC()`](https://rdrr.io/pkg/rcicr/man/computeInfoVal2IFC.html)
+  is called on the file. Copy the rdata first if you want it untouched.
+
+The load-bearing objects for analysis are `base_faces`,
+`stimuli_params`, `p`, and `img_size`. Trial-level noise images are not
+stored; this loader recomputes them on demand via
+`generateNoiseImage()`.
+
 ## See also
 
 [`ci_from_responses_briefrc()`](https://olivethree.github.io/rcicrely/reference/ci_from_responses_briefrc.md)
@@ -87,10 +157,13 @@ matrix.
 
 ``` r
 if (FALSE) { # \dontrun{
-# From an rcicr rdata:
-nm <- read_noise_matrix("data/rcicr_stimuli.Rdata")
+# Plain text (Schmitz et al. 2024 OSF format):
+nm <- read_noise_matrix("data/noise_matrix.txt")
 
-# From a cached rds you saved earlier:
+# Cached .rds (from rcicr's return-as-dataframe output):
 nm <- read_noise_matrix("data/noise_matrix.rds")
+
+# rcicr .Rdata (reconstructs each trial; slow):
+nm <- read_noise_matrix("data/rcicr_stimuli.Rdata")
 } # }
 ```

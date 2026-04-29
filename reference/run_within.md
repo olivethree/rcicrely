@@ -15,10 +15,13 @@ per metric.
 run_within(
   signal_matrix,
   n_permutations = 2000L,
+  null = c("none", "permutation", "random_responders"),
+  noise_matrix = NULL,
   icc_variants = c("3_1", "3_k"),
   mask = NULL,
   seed = NULL,
-  progress = TRUE
+  progress = TRUE,
+  acknowledge_scaling = FALSE
 )
 ```
 
@@ -33,6 +36,18 @@ run_within(
   Passed to
   [`rel_split_half()`](https://olivethree.github.io/rcicrely/reference/rel_split_half.md).
   Default 2000.
+
+- null:
+
+  Forwarded to
+  [`rel_split_half()`](https://olivethree.github.io/rcicrely/reference/rel_split_half.md).
+  Default `"none"`.
+
+- noise_matrix:
+
+  Pixels x pool-size matrix. Required when `null = "random_responders"`;
+  forwarded to
+  [`rel_split_half()`](https://olivethree.github.io/rcicrely/reference/rel_split_half.md).
 
 - icc_variants:
 
@@ -56,6 +71,12 @@ run_within(
 - progress:
 
   Show `cli` progress bars.
+
+- acknowledge_scaling:
+
+  Logical. Forwarded to
+  [`rel_icc()`](https://olivethree.github.io/rcicrely/reference/rel_icc.md);
+  when `FALSE` (default), known-rendered inputs error.
 
 ## Value
 

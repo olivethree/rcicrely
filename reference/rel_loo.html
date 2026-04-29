@@ -40,7 +40,7 @@ statistic — see below.'></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Leave-one-out influence screening</h1>
-      <small class="dont-index">Source: <a href="https://github.com/olivethree/rcicrely/blob/v0.2.2/R/rel_loo.R" class="external-link"><code>R/rel_loo.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/olivethree/rcicrely/blob/main/R/rel_loo.R" class="external-link"><code>R/rel_loo.R</code></a></small>
       <div class="d-none name"><code>rel_loo.Rd</code></div>
     </div>
 
@@ -58,7 +58,7 @@ statistic — see below.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">rel_loo</span><span class="op">(</span></span>
 <span>  <span class="va">signal_matrix</span>,</span>
 <span>  flag_threshold <span class="op">=</span> <span class="fl">2.5</span>,</span>
-<span>  flag_method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sd"</span>, <span class="st">"mad"</span><span class="op">)</span>,</span>
+<span>  flag_method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mad"</span>, <span class="st">"sd"</span><span class="op">)</span>,</span>
 <span>  flag_threshold_sd <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  mask <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -80,8 +80,13 @@ an alias.</p></dd>
 
 
 <dt id="arg-flag-method">flag_method<a class="anchor" aria-label="anchor" href="#arg-flag-method"></a></dt>
-<dd><p>One of <code>"sd"</code> (default) or <code>"mad"</code>. See
-<strong>Details</strong> for which to choose.</p></dd>
+<dd><p>One of <code>"mad"</code> (default since v0.3) or
+<code>"sd"</code>. The MAD/median rule is robust to the very influential
+producers it is meant to detect (one outlier inflates <code>sd_r</code>
+and pulls <code>mean_r</code>, masking itself); SD/mean is retained for
+backwards compatibility and emits a one-time per-session
+deprecation message. SD is scheduled for removal in v0.4. See
+<strong>Details</strong> for the mathematical justification.</p></dd>
 
 
 <dt id="arg-flag-threshold-sd">flag_threshold_sd<a class="anchor" aria-label="anchor" href="#arg-flag-threshold-sd"></a></dt>
@@ -204,7 +209,7 @@ catch.</p></li>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Manuel Oliveira.</p>
+  <p>Manuel Oliveira, 2026</p>
 </div>
 
 <div class="pkgdown-footer-right">

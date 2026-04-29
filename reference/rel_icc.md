@@ -9,7 +9,12 @@ produced?". Most papers report ICC(3,k) as the headline.
 ## Usage
 
 ``` r
-rel_icc(signal_matrix, variants = c("3_1", "3_k"), mask = NULL)
+rel_icc(
+  signal_matrix,
+  variants = c("3_1", "3_k"),
+  mask = NULL,
+  acknowledge_scaling = FALSE
+)
 ```
 
 ## Arguments
@@ -32,6 +37,12 @@ rel_icc(signal_matrix, variants = c("3_1", "3_k"), mask = NULL)
   [`load_face_mask()`](https://olivethree.github.io/rcicrely/reference/load_face_mask.md)).
   ICC is variance-based; the masked statistic reflects only the selected
   pixels.
+
+- acknowledge_scaling:
+
+  Logical. When `FALSE` (default), the shared `assert_raw_signal()`
+  helper errors on a known-rendered matrix. Set `TRUE` to override (only
+  when you have a reason to compute ICC on scaled data).
 
 ## Value
 
@@ -88,13 +99,10 @@ inflates Type I error.
 ## Reliability metrics expect raw masks
 
 ICC is a variance-based statistic. **Strongly** sensitive to any scaling
-step. If `signal_matrix` was extracted from rendered (scaled) PNGs via
-[`read_cis()`](https://olivethree.github.io/rcicrely/reference/read_cis.md)
-/
-[`extract_signal()`](https://olivethree.github.io/rcicrely/reference/extract_signal.md),
-the variance decomposition is computed on `scaling(mask)` rather than
-`mask` and the result will not match what raw responses would produce.
-See
+step. Inputs with `attr(., "source") == "rendered"` (set automatically
+by Mode 1 readers like
+[`extract_signal()`](https://olivethree.github.io/rcicrely/reference/extract_signal.md))
+error unless `acknowledge_scaling = TRUE`. See
 [`vignette("tutorial", package = "rcicrely")`](https://olivethree.github.io/rcicrely/articles/tutorial.md)
 chapter 3.
 

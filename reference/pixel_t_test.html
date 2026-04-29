@@ -58,7 +58,7 @@ standalone inferential test."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Vectorised pixel-wise t-test (independent or paired)</h1>
-      <small class="dont-index">Source: <a href="https://github.com/olivethree/rcicrely/blob/v0.2.2/R/pixel_t_test.R" class="external-link"><code>R/pixel_t_test.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/olivethree/rcicrely/blob/main/R/pixel_t_test.R" class="external-link"><code>R/pixel_t_test.R</code></a></small>
       <div class="d-none name"><code>pixel_t_test.Rd</code></div>
     </div>
 
@@ -79,7 +79,13 @@ standalone inferential test.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">pixel_t_test</span><span class="op">(</span><span class="va">signal_matrix_a</span>, <span class="va">signal_matrix_b</span>, paired <span class="op">=</span> <span class="cn">FALSE</span>, mask <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">pixel_t_test</span><span class="op">(</span></span>
+<span>  <span class="va">signal_matrix_a</span>,</span>
+<span>  <span class="va">signal_matrix_b</span>,</span>
+<span>  paired <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  mask <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  acknowledge_scaling <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -106,6 +112,14 @@ mask before computing t — see <code><a href="../articles/tutorial.html">vignet
 the apply-symmetrically rule. The returned vector is then of
 length <code>sum(mask)</code>, not <code>nrow(signal_matrix_a)</code>.</p></dd>
 
+
+<dt id="arg-acknowledge-scaling">acknowledge_scaling<a class="anchor" aria-label="anchor" href="#arg-acknowledge-scaling"></a></dt>
+<dd><p>Logical. When <code>FALSE</code> (default), the
+shared <code>assert_raw_signal()</code> helper errors on a known-rendered
+matrix. Set <code>TRUE</code> to override (only do this if you have a
+reason to compute Welch t on scaled data). Cascades to internal
+<code>pixel_t_test()</code> calls from <code><a href="rel_cluster_test.html">rel_cluster_test()</a></code>.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -125,7 +139,10 @@ special-case them.</p>
 
 
 <p>Welch t and paired t are variance-based and sensitive to scaling.
-See <code><a href="../articles/tutorial.html">vignette("tutorial", package = "rcicrely")</a></code> chapter 3.</p>
+Inputs with <code>attr(., "source") == "rendered"</code> (set automatically
+by Mode 1 readers like <code><a href="extract_signal.html">extract_signal()</a></code>) error unless
+<code>acknowledge_scaling = TRUE</code>. See
+<code><a href="../articles/tutorial.html">vignette("tutorial", package = "rcicrely")</a></code> chapter 3.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -137,7 +154,7 @@ See <code><a href="../articles/tutorial.html">vignette("tutorial", package = "rc
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Manuel Oliveira.</p>
+  <p>Manuel Oliveira, 2026</p>
 </div>
 
 <div class="pkgdown-footer-right">

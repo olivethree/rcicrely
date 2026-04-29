@@ -56,20 +56,17 @@
 </h1></div>
 <!-- badges: start -->
 
-<blockquote>
-<p><strong>Are the classification images from your reverse correlation study reliable enough to publish?</strong> <code>rcicrely</code> helps you find out.</p>
-</blockquote>
 <div class="section level2">
 <h2 id="why-this-package">Why this package?<a class="anchor" aria-label="anchor" href="#why-this-package"></a>
 </h2>
-<p>You ran a reverse correlation study. Maybe each participant saw pairs of noisy faces and picked the one that looked more <em>trustworthy</em>. After averaging across participants, you have a beautiful group-level classification image (CI). Before reporting it, two questions deserve an honest answer:</p>
+<p>You ran a reverse correlation study, each participant saw pairs of noisy faces and picked the one that looked more <em>trustworthy</em>. After averaging across participants, you have a plausible looking group-level classification image (CI). Before reporting it, two questions deserve an honest answer though:</p>
 <ol style="list-style-type: decimal">
 <li>
-<strong>Did the participants actually agree?</strong> If you split your sample in half, do the two halves produce similar CIs — or did you average a pile of noise?</li>
+<strong>Did the participants actually agree?</strong> If you split your sample in half, do the two halves produce similar CIs, or did you just average a pile of noise?</li>
 <li>
-<strong>Is the “trustworthy” CI really different from your comparison condition</strong> (say, “untrustworthy”), or could the apparent difference be chance?</li>
+<strong>Is the “trustworthy” CI really different from your comparison condition</strong> (say, “untrustworthy”, or “healthy”), or could the apparent difference be mere chance?</li>
 </ol>
-<p><code>rcicrely</code> answers both, working directly on the pixel-level signal produced by your participants. No second-phase study where naive raters score CIs on Likert scales — and no inheriting the Type I error inflation of that two-phase design (Cone, Brown-Iannuzzi, Lei, &amp; Dotsch, 2021).</p>
+<p><code>rcicrely</code> answers both by working directly on the pixel-level signal produced by your participants. No second-phase study where independent raters subjectively rate CIs on rating scales, and no inheriting the Type I error inflation of that two-phase design (Cone, Brown-Iannuzzi, Lei, &amp; Dotsch, 2021).</p>
 <p>It works whether you ran a standard <strong>2IFC</strong> task (the classic reverse-correlation paradigm) or a <strong>Brief-RC 12</strong> task (Schmitz, Rougier &amp; Yzerbyt, 2024 — 12 noisy faces per trial instead of 2).</p>
 </div>
 <div class="section level2">
@@ -82,6 +79,11 @@
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"rdotsch/rcicr"</span><span class="op">)</span></span></code></pre></div>
 <p>If you only run Brief-RC, you can skip <code>rcicr</code> — the Brief-RC code is fully native to <code>rcicrely</code>.</p>
+</div>
+<div class="section level2">
+<h2 id="users-guide">User’s guide<a class="anchor" aria-label="anchor" href="#users-guide"></a>
+</h2>
+<p>The <strong><a href="https://olivethree.github.io/rcicrely/articles/tutorial.html">full user guide</a></strong> walks through every exported function with worked examples, including real-data examples from a published 2IFC reverse- correlation study (<a href="https://doi.org/10.1002/ejsp.2569" class="external-link">Oliveira et al., 2019</a>).</p>
 </div>
 <div class="section level2">
 <h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
@@ -137,13 +139,13 @@
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="reference/run_within.html">run_within</a></span><span class="op">(</span><span class="va">untrustworthy</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="reference/run_between.html">run_between</a></span><span class="op">(</span><span class="va">trustworthy</span>, <span class="va">untrustworthy</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <blockquote>
-<p><strong>Heads-up.</strong> Results from PNG/JPEG inputs may differ slightly from raw-response inputs because PNGs encode the <em>display-scaled</em> CI, not the raw signal. The package warns you once per session when this matters; see <a href="https://olivethree.github.io/rcicrely/articles/tutorial.html">the tutorial</a> for the full story.</p>
+<p><strong>Heads-up.</strong> Results from PNG/JPEG inputs may differ slightly from raw-response inputs because PNGs encode the <em>display-scaled</em> CI, not the raw signal. The package warns you once per session when this matters; see <a href="https://olivethree.github.io/rcicrely/articles/tutorial.html">the tutorial</a> for the full story. When possible always use CIdata instead of deriving it from existing images.</p>
 </blockquote>
-<p>For a function-by-function walkthrough — including how to interpret cluster maps, sample-size warnings, when to use ICC(3,1) vs ICC(3,k), and Brief-RC end-to-end — see the <strong><a href="https://olivethree.github.io/rcicrely/articles/tutorial.html">full user guide</a></strong>.</p>
+<p>For a function-by-function walkthrough, including how to interpret cluster maps, sample-size warnings, when to use ICC(3,1) vs ICC(3,k), and Brief-RC end-to-end; see the <strong><a href="https://olivethree.github.io/rcicrely/articles/tutorial.html">full user guide</a></strong>.</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="under-the-hood">Under the hood<a class="anchor" aria-label="anchor" href="#under-the-hood"></a>
+<h2 id="behind-the-scenes">Behind the scenes<a class="anchor" aria-label="anchor" href="#behind-the-scenes"></a>
 </h2>
 <p>If you want the technical details:</p>
 <ul>
@@ -172,9 +174,9 @@ https://doi.org/10.5281/zenodo.19772888</code></pre>
 <p>MIT © Manuel Oliveira.</p>
 </div>
 <div class="section level2">
-<h2 id="acknowledgements">Acknowledgements<a class="anchor" aria-label="anchor" href="#acknowledgements"></a>
+<h2 id="credits">Credits<a class="anchor" aria-label="anchor" href="#credits"></a>
 </h2>
-<p>This package owes its test harness and code-review discipline to work done in collaboration with Anthropic’s Claude.</p>
+<p>Manuel Oliveira — <a href="https://www.manueloliveira.nl" class="external-link uri">https://www.manueloliveira.nl</a>. Development was assisted by Claude (Anthropic); the author is responsible for all content and decisions.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
@@ -223,7 +225,7 @@ https://doi.org/10.5281/zenodo.19772888</code></pre>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Manuel Oliveira.</p>
+  <p>Manuel Oliveira, 2026</p>
 </div>
 
 <div class="pkgdown-footer-right">

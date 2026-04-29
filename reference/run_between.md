@@ -24,7 +24,8 @@ run_between(
   ci_level = 0.95,
   mask = NULL,
   seed = NULL,
-  progress = TRUE
+  progress = TRUE,
+  acknowledge_scaling = FALSE
 )
 ```
 
@@ -88,6 +89,14 @@ run_between(
 - progress:
 
   Show `cli` progress bars.
+
+- acknowledge_scaling:
+
+  Logical. Forwarded to both
+  [`rel_cluster_test()`](https://olivethree.github.io/rcicrely/reference/rel_cluster_test.md)
+  and
+  [`rel_dissimilarity()`](https://olivethree.github.io/rcicrely/reference/rel_dissimilarity.md);
+  when `FALSE` (default), known-rendered inputs error.
 
 ## Value
 

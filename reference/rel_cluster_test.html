@@ -48,7 +48,7 @@ magnitude summary."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Cluster-based permutation test with family-wise error control</h1>
-      <small class="dont-index">Source: <a href="https://github.com/olivethree/rcicrely/blob/v0.2.2/R/rel_cluster_test.R" class="external-link"><code>R/rel_cluster_test.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/olivethree/rcicrely/blob/main/R/rel_cluster_test.R" class="external-link"><code>R/rel_cluster_test.R</code></a></small>
       <div class="d-none name"><code>rel_cluster_test.Rd</code></div>
     </div>
 
@@ -81,7 +81,8 @@ magnitude summary.</p>
 <span>  alpha <span class="op">=</span> <span class="fl">0.05</span>,</span>
 <span>  mask <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  progress <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  progress <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  acknowledge_scaling <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -162,6 +163,12 @@ Apply the same mask in any companion analyses for consistency.</p></dd>
 <dt id="arg-progress">progress<a class="anchor" aria-label="anchor" href="#arg-progress"></a></dt>
 <dd><p>Show a <code>cli</code> progress bar.</p></dd>
 
+
+<dt id="arg-acknowledge-scaling">acknowledge_scaling<a class="anchor" aria-label="anchor" href="#arg-acknowledge-scaling"></a></dt>
+<dd><p>Logical. When <code>FALSE</code> (default), the
+internal <code><a href="pixel_t_test.html">pixel_t_test()</a></code> errors on a known-rendered matrix.
+Set <code>TRUE</code> to override; cascades down to that call.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -231,8 +238,10 @@ reimplement it yourself).</p></li>
 
 
 <p>Welch t and cluster mass / TFCE are variance-based and sensitive
-to any scaling. If <code>signal_matrix_a</code> / <code>_b</code> came from rendered
-PNGs, results are distorted. See
+to any scaling. Inputs with <code>attr(., "source") == "rendered"</code>
+(set automatically by Mode 1 readers like <code><a href="extract_signal.html">extract_signal()</a></code>)
+error unless <code>acknowledge_scaling = TRUE</code> cascades through the
+internal <code><a href="pixel_t_test.html">pixel_t_test()</a></code> call. See
 <code><a href="../articles/tutorial.html">vignette("tutorial", package = "rcicrely")</a></code> chapter 3.</p>
     </div>
     <div class="section level2">
@@ -258,7 +267,7 @@ dependence and localisation in cluster inference. <em>NeuroImage</em>,
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Manuel Oliveira.</p>
+  <p>Manuel Oliveira, 2026</p>
 </div>
 
 <div class="pkgdown-footer-right">

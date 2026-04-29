@@ -38,7 +38,7 @@ overall magnitude test in one call."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Run every between-condition discriminability metric</h1>
-      <small class="dont-index">Source: <a href="https://github.com/olivethree/rcicrely/blob/v0.2.2/R/run_between.R" class="external-link"><code>R/run_between.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/olivethree/rcicrely/blob/main/R/run_between.R" class="external-link"><code>R/run_between.R</code></a></small>
       <div class="d-none name"><code>run_between.Rd</code></div>
     </div>
 
@@ -63,7 +63,8 @@ overall magnitude test in one call.</p>
 <span>  ci_level <span class="op">=</span> <span class="fl">0.95</span>,</span>
 <span>  mask <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  progress <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  progress <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  acknowledge_scaling <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -117,6 +118,12 @@ identically). See <code><a href="../articles/tutorial.html">vignette("tutorial")
 <dt id="arg-progress">progress<a class="anchor" aria-label="anchor" href="#arg-progress"></a></dt>
 <dd><p>Show <code>cli</code> progress bars.</p></dd>
 
+
+<dt id="arg-acknowledge-scaling">acknowledge_scaling<a class="anchor" aria-label="anchor" href="#arg-acknowledge-scaling"></a></dt>
+<dd><p>Logical. Forwarded to both
+<code><a href="rel_cluster_test.html">rel_cluster_test()</a></code> and <code><a href="rel_dissimilarity.html">rel_dissimilarity()</a></code>; when <code>FALSE</code>
+(default), known-rendered inputs error.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -151,7 +158,7 @@ uses variance-based Welch t, and Euclidean distance in
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Manuel Oliveira.</p>
+  <p>Manuel Oliveira, 2026</p>
 </div>
 
 <div class="pkgdown-footer-right">

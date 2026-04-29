@@ -40,7 +40,7 @@ ICC(3,k) as the headline."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Intraclass correlation coefficients via direct mean squares</h1>
-      <small class="dont-index">Source: <a href="https://github.com/olivethree/rcicrely/blob/v0.2.2/R/rel_icc.R" class="external-link"><code>R/rel_icc.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/olivethree/rcicrely/blob/main/R/rel_icc.R" class="external-link"><code>R/rel_icc.R</code></a></small>
       <div class="d-none name"><code>rel_icc.Rd</code></div>
     </div>
 
@@ -55,7 +55,12 @@ ICC(3,k) as the headline.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">rel_icc</span><span class="op">(</span><span class="va">signal_matrix</span>, variants <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"3_1"</span>, <span class="st">"3_k"</span><span class="op">)</span>, mask <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">rel_icc</span><span class="op">(</span></span>
+<span>  <span class="va">signal_matrix</span>,</span>
+<span>  variants <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"3_1"</span>, <span class="st">"3_k"</span><span class="op">)</span>,</span>
+<span>  mask <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  acknowledge_scaling <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -79,6 +84,13 @@ Subset of <code>c("3_1", "3_k", "2_1", "2_k")</code>. Defaults to
 (e.g., from <code><a href="face_mask.html">face_mask()</a></code> or <code><a href="load_face_mask.html">load_face_mask()</a></code>). ICC is
 variance-based; the masked statistic reflects only the
 selected pixels.</p></dd>
+
+
+<dt id="arg-acknowledge-scaling">acknowledge_scaling<a class="anchor" aria-label="anchor" href="#arg-acknowledge-scaling"></a></dt>
+<dd><p>Logical. When <code>FALSE</code> (default), the
+shared <code>assert_raw_signal()</code> helper errors on a known-rendered
+matrix. Set <code>TRUE</code> to override (only when you have a reason to
+compute ICC on scaled data).</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -141,10 +153,9 @@ section below).</p></li>
 
 
 <p>ICC is a variance-based statistic. <strong>Strongly</strong> sensitive to any
-scaling step. If <code>signal_matrix</code> was extracted from rendered
-(scaled) PNGs via <code><a href="read_cis.html">read_cis()</a></code> / <code><a href="extract_signal.html">extract_signal()</a></code>, the variance
-decomposition is computed on <code>scaling(mask)</code> rather than <code>mask</code> and
-the result will not match what raw responses would produce. See
+scaling step. Inputs with <code>attr(., "source") == "rendered"</code> (set
+automatically by Mode 1 readers like <code><a href="extract_signal.html">extract_signal()</a></code>) error
+unless <code>acknowledge_scaling = TRUE</code>. See
 <code><a href="../articles/tutorial.html">vignette("tutorial", package = "rcicrely")</a></code> chapter 3.</p>
     </div>
     <div class="section level2">
@@ -170,7 +181,7 @@ I error is inflated in the two-phase reverse correlation procedure.
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Manuel Oliveira.</p>
+  <p>Manuel Oliveira, 2026</p>
 </div>
 
 <div class="pkgdown-footer-right">

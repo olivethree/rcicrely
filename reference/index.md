@@ -40,6 +40,8 @@ How consistent is a single condition’s CI?
 
 - [`rel_split_half()`](https://olivethree.github.io/rcicrely/reference/rel_split_half.md)
   : Permuted split-half reliability with Spearman-Brown correction
+- [`rel_split_half_null()`](https://olivethree.github.io/rcicrely/reference/rel_split_half_null.md)
+  : Compute only the empirical-null distribution for split-half
 - [`rel_icc()`](https://olivethree.github.io/rcicrely/reference/rel_icc.md)
   : Intraclass correlation coefficients via direct mean squares
 - [`run_within()`](https://olivethree.github.io/rcicrely/reference/run_within.md)
@@ -69,6 +71,10 @@ Is condition A’s CI distinguishable from condition B’s?
   on a single plot
 - [`run_between()`](https://olivethree.github.io/rcicrely/reference/run_between.md)
   : Run every between-condition discriminability metric
+- [`run_between_pairwise()`](https://olivethree.github.io/rcicrely/reference/run_between_pairwise.md)
+  : Run all pairwise between-condition comparisons across K conditions
+- [`agreement_map_test()`](https://olivethree.github.io/rcicrely/reference/agreement_map_test.md)
+  : Per-pixel inferential agreement map with FWER control
 
 ## Per-producer signal
 
@@ -79,7 +85,10 @@ Informational value with trial-count-matched reference.
 
 ## Visualisation helpers
 
-Pixel-wise agreement maps and other plot helpers.
+Pixel-wise agreement maps and overlay helpers.
 
 - [`plot_agreement_map()`](https://olivethree.github.io/rcicrely/reference/plot_agreement_map.md)
   : Per-pixel agreement heatmap for a producer signal matrix
+- [`plot_ci_overlay()`](https://olivethree.github.io/rcicrely/reference/plot_ci_overlay.md)
+  : Render a group CI as a translucent agreement-map overlay on a base
+  image

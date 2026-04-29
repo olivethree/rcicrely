@@ -20,9 +20,12 @@ rel_dissimilarity(
   paired = FALSE,
   n_boot = 2000L,
   ci_level = 0.95,
+  null = c("none", "permutation"),
+  n_permutations = 2000L,
   mask = NULL,
   seed = NULL,
-  progress = TRUE
+  progress = TRUE,
+  acknowledge_scaling = FALSE
 )
 ```
 
@@ -48,6 +51,22 @@ rel_dissimilarity(
 
   Confidence level. Default 0.95.
 
+- null:
+
+  One of `"none"` (default) or `"permutation"`. `"permutation"` builds
+  an empirical chance baseline for the Euclidean distance:
+
+  - Between-subjects (`paired = FALSE`): stratified condition- label
+    permutation across producers, preserving `(N_a, N_b)`.
+
+  - Paired (`paired = TRUE`): random sign-flip on per-producer `A - B`
+    differences (exact null under exchangeability of pair sign).
+
+- n_permutations:
+
+  Integer. Number of null iterations when `null = "permutation"`.
+  Default 2000.
+
 - mask:
 
   Optional logical vector of length `nrow(signal_matrix_a)` restricting
@@ -63,6 +82,12 @@ rel_dissimilarity(
 - progress:
 
   Show a `cli` progress bar.
+
+- acknowledge_scaling:
+
+  Logical. When `FALSE` (default), the shared `assert_raw_signal()`
+  helper errors on a known-rendered matrix on either side. Set `TRUE` to
+  override.
 
 ## Value
 
@@ -113,6 +138,22 @@ resolution-invariant).
 - `$boot_dist`, `$ci_dist`, `$boot_se_dist`, bootstrap distribution,
   percentile CI, and SE of the Euclidean distance.
 
+- `$null` (character), the null mode used.
+
+- `$null_distribution`, when `null != "none"`: numeric vector of
+  per-iteration Euclidean distances under the chosen null. `NULL`
+  otherwise.
+
+- `$d_null_p95`, 95th percentile of the null distribution (cutoff for
+  "above-chance" magnitude). `NA_real_` when `null = "none"`.
+
+- `$d_z`, z-equivalent effect size:
+  `(observed_d - mean(null)) / sd(null)`. `NA_real_` when
+  `null = "none"`.
+
+- `$d_ratio`, observed Euclidean over the null median. `NA_real_` when
+  `null = "none"`.
+
 - `$correlation`, `$boot_cor`, `$ci_cor`, `$boot_se_cor`: Pearson
   correlation of the group means and its bootstrap summary.
   **Deprecated.** Retained for backwards compatibility with v0.1.x code
@@ -120,7 +161,7 @@ resolution-invariant).
   descriptive statistics only; see **Why Euclidean and not Pearson
   correlation**.
 
-- `$n_boot`, `$ci_level`, metadata.
+- `$n_boot`, `$ci_level`, `$paired`, metadata.
 
 ## Common mistakes
 
@@ -139,11 +180,10 @@ resolution-invariant).
 
 Euclidean distance is sensitive to **any** scaling; Pearson r survives a
 single uniform scaling but breaks under per-CI `"matched"`-style
-scaling. If `signal_matrix_a` / `_b` came from
-[`read_cis()`](https://olivethree.github.io/rcicrely/reference/read_cis.md)
-/
-[`extract_signal()`](https://olivethree.github.io/rcicrely/reference/extract_signal.md)
-on rendered PNGs, treat results as approximate. See
+scaling. Inputs with `attr(., "source") == "rendered"` (set
+automatically by Mode 1 readers like
+[`extract_signal()`](https://olivethree.github.io/rcicrely/reference/extract_signal.md))
+error unless `acknowledge_scaling = TRUE`. See
 [`vignette("tutorial", package = "rcicrely")`](https://olivethree.github.io/rcicrely/articles/tutorial.md)
 chapter 3.
 

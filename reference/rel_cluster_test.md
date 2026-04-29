@@ -30,7 +30,8 @@ rel_cluster_test(
   alpha = 0.05,
   mask = NULL,
   seed = NULL,
-  progress = TRUE
+  progress = TRUE,
+  acknowledge_scaling = FALSE
 )
 ```
 
@@ -105,6 +106,13 @@ rel_cluster_test(
 - progress:
 
   Show a `cli` progress bar.
+
+- acknowledge_scaling:
+
+  Logical. When `FALSE` (default), the internal
+  [`pixel_t_test()`](https://olivethree.github.io/rcicrely/reference/pixel_t_test.md)
+  errors on a known-rendered matrix. Set `TRUE` to override; cascades
+  down to that call.
 
 ## Value
 
@@ -184,8 +192,12 @@ Method-specific step:
 ## Reliability metrics expect raw masks
 
 Welch t and cluster mass / TFCE are variance-based and sensitive to any
-scaling. If `signal_matrix_a` / `_b` came from rendered PNGs, results
-are distorted. See
+scaling. Inputs with `attr(., "source") == "rendered"` (set
+automatically by Mode 1 readers like
+[`extract_signal()`](https://olivethree.github.io/rcicrely/reference/extract_signal.md))
+error unless `acknowledge_scaling = TRUE` cascades through the internal
+[`pixel_t_test()`](https://olivethree.github.io/rcicrely/reference/pixel_t_test.md)
+call. See
 [`vignette("tutorial", package = "rcicrely")`](https://olivethree.github.io/rcicrely/articles/tutorial.md)
 chapter 3.
 

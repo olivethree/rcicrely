@@ -20,7 +20,13 @@ not intended as a standalone inferential test.
 ## Usage
 
 ``` r
-pixel_t_test(signal_matrix_a, signal_matrix_b, paired = FALSE, mask = NULL)
+pixel_t_test(
+  signal_matrix_a,
+  signal_matrix_b,
+  paired = FALSE,
+  mask = NULL,
+  acknowledge_scaling = FALSE
+)
 ```
 
 ## Arguments
@@ -45,6 +51,14 @@ pixel_t_test(signal_matrix_a, signal_matrix_b, paired = FALSE, mask = NULL)
   §6.6 for the apply-symmetrically rule. The returned vector is then of
   length `sum(mask)`, not `nrow(signal_matrix_a)`.
 
+- acknowledge_scaling:
+
+  Logical. When `FALSE` (default), the shared `assert_raw_signal()`
+  helper errors on a known-rendered matrix. Set `TRUE` to override (only
+  do this if you have a reason to compute Welch t on scaled data).
+  Cascades to internal `pixel_t_test()` calls from
+  [`rel_cluster_test()`](https://olivethree.github.io/rcicrely/reference/rel_cluster_test.md).
+
 ## Value
 
 Numeric vector of length `nrow(signal_matrix_a)` (or `sum(mask)` if
@@ -57,7 +71,11 @@ rather than `NaN` so cluster utilities don't have to special-case them.
 
 ## Reliability metrics expect raw masks
 
-Welch t and paired t are variance-based and sensitive to scaling. See
+Welch t and paired t are variance-based and sensitive to scaling. Inputs
+with `attr(., "source") == "rendered"` (set automatically by Mode 1
+readers like
+[`extract_signal()`](https://olivethree.github.io/rcicrely/reference/extract_signal.md))
+error unless `acknowledge_scaling = TRUE`. See
 [`vignette("tutorial", package = "rcicrely")`](https://olivethree.github.io/rcicrely/articles/tutorial.md)
 chapter 3.
 
