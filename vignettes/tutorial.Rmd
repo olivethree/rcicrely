@@ -1076,7 +1076,7 @@ rel_cluster_test(sm_dominant, sm_competent,
                  seed           = 1L)
 ```
 
-```{r oliveira-cluster-fig, echo = FALSE, out.width = "70%", fig.cap = "Cluster test, Dominant vs Competent group CIs (Oliveira et al., 2019, Study 1). Significant clusters at FWE-corrected alpha = .05 are outlined; positive (red) = Dominant larger, negative (blue) = Competent larger."}
+```{r oliveira-cluster-fig, echo = FALSE, out.width = "70%", fig.cap = "Cluster test, Dominant vs Competent group CIs (Oliveira et al., 2019, Study 1). Pixel-wise Welch t-map rendered as a translucent diverging overlay on the male base face (positive/red = Dominant larger, negative/blue = Competent larger). Significant clusters at FWE-corrected alpha = .05 are outlined in black."}
 fig_DC <- system.file(
   "extdata", "oliveira_2019_examples",
   "cluster_dominant_vs_competent.png",
@@ -1508,7 +1508,7 @@ clust_mouth <- rel_cluster_test(
 )
 ```
 
-```{r oliveira-region-fig, echo = FALSE, out.width = "85%", fig.cap = "Region-restricted cluster test, Trustworthy vs Dominant group CIs (Oliveira et al., 2019, Study 1). Eyes (left panel) and mouth (right panel). Significant clusters at FWE-corrected alpha = .05 are outlined; positive (red) = Trustworthy larger, negative (blue) = Dominant larger."}
+```{r oliveira-region-fig, echo = FALSE, out.width = "95%", fig.cap = "Region-restricted cluster test, Trustworthy vs Dominant group CIs (Oliveira et al., 2019, Study 1). Pixel-wise Welch t-map rendered as a translucent diverging overlay on the male base face; positive/red = Trustworthy larger, negative/blue = Dominant larger. Eyes region (left panel) and mouth region (right panel). Significant clusters at FWE-corrected alpha = .05 are outlined in black."}
 fig_TD <- system.file(
   "extdata", "oliveira_2019_examples",
   "cluster_trust_vs_dominant_eyes_mouth.png",

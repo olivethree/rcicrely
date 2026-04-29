@@ -36,6 +36,9 @@
 #'   identically). See `vignette("tutorial")` §6.6.
 #' @param seed Optional integer.
 #' @param progress Show `cli` progress bars.
+#' @param acknowledge_scaling Logical. Forwarded to both
+#'   [rel_cluster_test()] and [rel_dissimilarity()]; when `FALSE`
+#'   (default), known-rendered inputs error.
 #' @return Object of class `rcicrely_report` with `$results` =
 #'   named list of two `rcicrely_*` objects (`cluster_test`,
 #'   `dissimilarity`) and `$method = "between"`.
@@ -43,15 +46,16 @@
 #' @export
 run_between <- function(signal_matrix_a,
                         signal_matrix_b,
-                        img_dims          = NULL,
-                        n_permutations    = 2000L,
-                        n_boot            = 2000L,
-                        cluster_threshold = 2.0,
-                        alpha             = 0.05,
-                        ci_level          = 0.95,
-                        mask              = NULL,
-                        seed              = NULL,
-                        progress          = TRUE) {
+                        img_dims            = NULL,
+                        n_permutations      = 2000L,
+                        n_boot              = 2000L,
+                        cluster_threshold   = 2.0,
+                        alpha               = 0.05,
+                        ci_level            = 0.95,
+                        mask                = NULL,
+                        seed                = NULL,
+                        progress            = TRUE,
+                        acknowledge_scaling = FALSE) {
   validate_two_signal_matrices(signal_matrix_a, signal_matrix_b)
   if (is.null(img_dims)) {
     img_dims <- attr(signal_matrix_a, "img_dims")
@@ -60,21 +64,23 @@ run_between <- function(signal_matrix_a,
   results <- list(
     cluster_test = rel_cluster_test(
       signal_matrix_a, signal_matrix_b,
-      img_dims          = img_dims,
-      n_permutations    = n_permutations,
-      cluster_threshold = cluster_threshold,
-      alpha             = alpha,
-      mask              = mask,
-      seed              = seed,
-      progress          = progress
+      img_dims            = img_dims,
+      n_permutations      = n_permutations,
+      cluster_threshold   = cluster_threshold,
+      alpha               = alpha,
+      mask                = mask,
+      seed                = seed,
+      progress            = progress,
+      acknowledge_scaling = acknowledge_scaling
     ),
     dissimilarity = rel_dissimilarity(
       signal_matrix_a, signal_matrix_b,
-      n_boot   = n_boot,
-      ci_level = ci_level,
-      mask     = mask,
-      seed     = seed,
-      progress = progress
+      n_boot              = n_boot,
+      ci_level            = ci_level,
+      mask                = mask,
+      seed                = seed,
+      progress            = progress,
+      acknowledge_scaling = acknowledge_scaling
     )
   )
   new_rcicrely_report(

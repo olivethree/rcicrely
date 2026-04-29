@@ -113,6 +113,8 @@ read_cis <- function(dir,
   }
 
   attr(out, "img_dims") <- as.integer(dims)
+  # PNG-derived raw values are pre-base-subtraction but still rendered.
+  attr(out, "source") <- "rendered"
   warn_mode1_scaling(acknowledge_scaling = acknowledge_scaling)
   out
 }

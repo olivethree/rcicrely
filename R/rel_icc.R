@@ -61,11 +61,15 @@
 #'
 #' @section Reliability metrics expect raw masks:
 #' ICC is a variance-based statistic. **Strongly** sensitive to any
-#' scaling step. If `signal_matrix` was extracted from rendered
-#' (scaled) PNGs via [read_cis()] / [extract_signal()], the variance
-#' decomposition is computed on `scaling(mask)` rather than `mask` and
-#' the result will not match what raw responses would produce. See
+#' scaling step. Inputs with `attr(., "source") == "rendered"` (set
+#' automatically by Mode 1 readers like [extract_signal()]) error
+#' unless `acknowledge_scaling = TRUE`. See
 #' `vignette("tutorial", package = "rcicrely")` chapter 3.
+#'
+#' @param acknowledge_scaling Logical. When `FALSE` (default), the
+#'   shared `assert_raw_signal()` helper errors on a known-rendered
+#'   matrix. Set `TRUE` to override (only when you have a reason to
+#'   compute ICC on scaled data).
 #'
 #' @return Object of class `rcicrely_icc`. Fields described in
 #'   **Reading the result** above.
@@ -85,11 +89,12 @@
 #' \doi{10.1177/1948550620938616}
 #' @export
 rel_icc <- function(signal_matrix,
-                    variants = c("3_1", "3_k"),
-                    mask     = NULL) {
+                    variants            = c("3_1", "3_k"),
+                    mask                = NULL,
+                    acknowledge_scaling = FALSE) {
   validate_signal_matrix(signal_matrix)
+  assert_raw_signal(signal_matrix, acknowledge_scaling)
   signal_matrix <- apply_mask_to_signal(signal_matrix, mask)
-  if (looks_scaled(signal_matrix)) warn_looks_scaled("signal_matrix")
   variants <- match.arg(variants,
                         choices = c("3_1", "3_k", "2_1", "2_k"),
                         several.ok = TRUE)

@@ -55,6 +55,8 @@ extract_signal <- function(cis,
   } else {
     attr(out, "img_dims") <- as.integer(dim(base))
   }
+  # Mode 1 input boundary: PNG-derived signal is rendered, not raw.
+  attr(out, "source") <- "rendered"
   warn_mode1_scaling(acknowledge_scaling = acknowledge_scaling)
   out
 }

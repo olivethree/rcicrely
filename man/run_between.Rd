@@ -15,7 +15,8 @@ run_between(
   ci_level = 0.95,
   mask = NULL,
   seed = NULL,
-  progress = TRUE
+  progress = TRUE,
+  acknowledge_scaling = FALSE
 )
 }
 \arguments{
@@ -45,6 +46,10 @@ identically). See \code{vignette("tutorial")} §6.6.}
 \item{seed}{Optional integer.}
 
 \item{progress}{Show \code{cli} progress bars.}
+
+\item{acknowledge_scaling}{Logical. Forwarded to both
+\code{\link[=rel_cluster_test]{rel_cluster_test()}} and \code{\link[=rel_dissimilarity]{rel_dissimilarity()}}; when \code{FALSE}
+(default), known-rendered inputs error.}
 }
 \value{
 Object of class \code{rcicrely_report} with \verb{$results} =

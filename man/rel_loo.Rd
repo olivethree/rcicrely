@@ -7,7 +7,7 @@
 rel_loo(
   signal_matrix,
   flag_threshold = 2.5,
-  flag_method = c("sd", "mad"),
+  flag_method = c("mad", "sd"),
   flag_threshold_sd = NULL,
   mask = NULL
 )
@@ -20,8 +20,13 @@ the centre, defining the outlier cutoff. Default 2.5. Was
 \code{flag_threshold_sd} before v0.1.1; the old name still works as
 an alias.}
 
-\item{flag_method}{One of \code{"sd"} (default) or \code{"mad"}. See
-\strong{Details} for which to choose.}
+\item{flag_method}{One of \code{"mad"} (default since v0.3) or
+\code{"sd"}. The MAD/median rule is robust to the very influential
+producers it is meant to detect (one outlier inflates \code{sd_r}
+and pulls \code{mean_r}, masking itself); SD/mean is retained for
+backwards compatibility and emits a one-time per-session
+deprecation message. SD is scheduled for removal in v0.4. See
+\strong{Details} for the mathematical justification.}
 
 \item{flag_threshold_sd}{Deprecated alias for \code{flag_threshold}.
 Kept for backwards compatibility with v0.1.0.}

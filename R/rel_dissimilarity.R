@@ -60,6 +60,16 @@
 #'   same mask. The reported `n_pixels` and
 #'   `euclidean_normalised` (= `euclidean / sqrt(n_pixels)`) reflect
 #'   the masked count.
+#' @param null One of `"none"` (default) or `"permutation"`.
+#'   `"permutation"` builds an empirical chance baseline for the
+#'   Euclidean distance:
+#'   * Between-subjects (`paired = FALSE`): stratified condition-
+#'     label permutation across producers, preserving `(N_a, N_b)`.
+#'   * Paired (`paired = TRUE`): random sign-flip on per-producer
+#'     `A - B` differences (exact null under exchangeability of pair
+#'     sign).
+#' @param n_permutations Integer. Number of null iterations when
+#'   `null = "permutation"`. Default 2000.
 #' @param seed Optional integer; RNG state restored on exit.
 #' @param progress Show a `cli` progress bar.
 #' @section Reading the result:
@@ -69,13 +79,24 @@
 #'   for cross-resolution comparisons.
 #' * `$boot_dist`, `$ci_dist`, `$boot_se_dist`, bootstrap distribution,
 #'   percentile CI, and SE of the Euclidean distance.
+#' * `$null` (character), the null mode used.
+#' * `$null_distribution`, when `null != "none"`: numeric vector of
+#'   per-iteration Euclidean distances under the chosen null. `NULL`
+#'   otherwise.
+#' * `$d_null_p95`, 95th percentile of the null distribution
+#'   (cutoff for "above-chance" magnitude). `NA_real_` when
+#'   `null = "none"`.
+#' * `$d_z`, z-equivalent effect size: `(observed_d - mean(null)) /
+#'   sd(null)`. `NA_real_` when `null = "none"`.
+#' * `$d_ratio`, observed Euclidean over the null median.
+#'   `NA_real_` when `null = "none"`.
 #' * `$correlation`, `$boot_cor`, `$ci_cor`, `$boot_se_cor`: Pearson
 #'   correlation of the group means and its bootstrap summary.
 #'   **Deprecated.** Retained for backwards compatibility with v0.1.x
 #'   code and scheduled for removal in v0.3. Treat these as
 #'   within-study descriptive statistics only; see **Why Euclidean
 #'   and not Pearson correlation**.
-#' * `$n_boot`, `$ci_level`, metadata.
+#' * `$n_boot`, `$ci_level`, `$paired`, metadata.
 #'
 #' @section Common mistakes:
 #' * Reporting `$correlation` near 1 as "the conditions look the
@@ -90,10 +111,15 @@
 #' @section Reliability metrics expect raw masks:
 #' Euclidean distance is sensitive to **any** scaling; Pearson r
 #' survives a single uniform scaling but breaks under per-CI
-#' `"matched"`-style scaling. If `signal_matrix_a` / `_b` came from
-#' [read_cis()] / [extract_signal()] on rendered PNGs, treat results
-#' as approximate. See
+#' `"matched"`-style scaling. Inputs with
+#' `attr(., "source") == "rendered"` (set automatically by Mode 1
+#' readers like [extract_signal()]) error unless
+#' `acknowledge_scaling = TRUE`. See
 #' `vignette("tutorial", package = "rcicrely")` chapter 3.
+#'
+#' @param acknowledge_scaling Logical. When `FALSE` (default), the
+#'   shared `assert_raw_signal()` helper errors on a known-rendered
+#'   matrix on either side. Set `TRUE` to override.
 #'
 #' @return Object of class `rcicrely_dissim`. Fields described in
 #'   **Reading the result** above.
@@ -104,27 +130,34 @@
 #' @export
 rel_dissimilarity <- function(signal_matrix_a,
                               signal_matrix_b,
-                              paired   = FALSE,
-                              n_boot   = 2000L,
-                              ci_level = 0.95,
-                              mask     = NULL,
-                              seed     = NULL,
-                              progress = TRUE) {
+                              paired              = FALSE,
+                              n_boot              = 2000L,
+                              ci_level            = 0.95,
+                              null                = c("none",
+                                                       "permutation"),
+                              n_permutations      = 2000L,
+                              mask                = NULL,
+                              seed                = NULL,
+                              progress            = TRUE,
+                              acknowledge_scaling = FALSE) {
   validate_two_signal_matrices(signal_matrix_a, signal_matrix_b)
   if (isTRUE(paired)) {
     validate_paired_matrices(signal_matrix_a, signal_matrix_b)
   }
+  assert_raw_signal(signal_matrix_a, acknowledge_scaling,
+                    name = "signal_matrix_a")
+  assert_raw_signal(signal_matrix_b, acknowledge_scaling,
+                    name = "signal_matrix_b")
   signal_matrix_a <- apply_mask_to_signal(signal_matrix_a, mask,
                                            name = "signal_matrix_a")
   signal_matrix_b <- apply_mask_to_signal(signal_matrix_b, mask,
                                            name = "signal_matrix_b")
-  if (looks_scaled(signal_matrix_a) || looks_scaled(signal_matrix_b)) {
-    warn_looks_scaled("signal_matrix_a / _b")
-  }
+  null <- match.arg(null)
   n_a      <- ncol(signal_matrix_a)
   n_b      <- ncol(signal_matrix_b)
   n_pixels <- nrow(signal_matrix_a)
   n_boot   <- as.integer(n_boot)
+  n_permutations <- as.integer(n_permutations)
 
   mean_a <- rowMeans(signal_matrix_a)
   mean_b <- rowMeans(signal_matrix_b)
@@ -136,7 +169,8 @@ rel_dissimilarity <- function(signal_matrix_a,
   boot_cor  <- numeric(n_boot)
   boot_dist <- numeric(n_boot)
 
-  pid <- progress_start(n_boot, "dissimilarity bootstrap",
+  total_iter <- n_boot + (if (null == "none") 0L else n_permutations)
+  pid <- progress_start(total_iter, "dissimilarity bootstrap",
                         show = progress)
   on.exit(progress_done(pid), add = TRUE)
 
@@ -160,11 +194,69 @@ rel_dissimilarity <- function(signal_matrix_a,
     }
   })
 
+  d_null <- if (null == "none") {
+    NULL
+  } else {
+    if (isTRUE(paired)) {
+      # Sign-flip on per-producer (A - B) — exact null under
+      # exchangeability of the pair sign for paired designs.
+      diff_mat <- signal_matrix_a - signal_matrix_b
+      with_seed(if (is.null(seed)) NULL else seed + 1L, {
+        out <- numeric(n_permutations)
+        for (i in seq_len(n_permutations)) {
+          signs <- sample(c(-1, 1), n_a, replace = TRUE)
+          d_flipped <- sweep(diff_mat, 2L, signs, `*`)
+          # Under H0 (no condition difference), mean of A - B is 0.
+          # We measure the null Euclidean of (mean of sign-flipped
+          # diff), since the bootstrapped estimator is the
+          # Euclidean of (mean_a - mean_b).
+          m_d <- rowMeans(d_flipped)
+          out[i] <- sqrt(sum(m_d * m_d))
+          progress_tick(pid)
+        }
+        out
+      })
+    } else {
+      # Stratified condition-label permutation across producers.
+      combined <- cbind(signal_matrix_a, signal_matrix_b)
+      n_total <- n_a + n_b
+      with_seed(if (is.null(seed)) NULL else seed + 1L, {
+        out <- numeric(n_permutations)
+        for (i in seq_len(n_permutations)) {
+          perm <- sample.int(n_total)
+          idx_a <- perm[seq_len(n_a)]
+          idx_b <- perm[(n_a + 1L):n_total]
+          m_a   <- rowMeans(combined[, idx_a, drop = FALSE])
+          m_b   <- rowMeans(combined[, idx_b, drop = FALSE])
+          out[i] <- sqrt(sum((m_a - m_b)^2))
+          progress_tick(pid)
+        }
+        out
+      })
+    }
+  }
+
   tail <- (1 - ci_level) / 2
   ci_cor  <- stats::quantile(boot_cor,  c(tail, 1 - tail),
                              na.rm = TRUE, names = FALSE)
   ci_dist <- stats::quantile(boot_dist, c(tail, 1 - tail),
                              na.rm = TRUE, names = FALSE)
+
+  if (is.null(d_null)) {
+    d_null_p95 <- NA_real_
+    d_z        <- NA_real_
+    d_ratio    <- NA_real_
+  } else {
+    sd_null    <- stats::sd(d_null, na.rm = TRUE)
+    mean_null  <- mean(d_null, na.rm = TRUE)
+    d_null_p95 <- unname(stats::quantile(d_null, 0.95,
+                                         na.rm = TRUE))
+    d_z        <- if (sd_null > 0) {
+      (observed_dist - mean_null) / sd_null
+    } else NA_real_
+    med_null   <- stats::median(d_null, na.rm = TRUE)
+    d_ratio    <- if (med_null > 0) observed_dist / med_null else NA_real_
+  }
 
   new_rcicrely_dissim(
     correlation          = observed_cor,
@@ -178,6 +270,12 @@ rel_dissimilarity <- function(signal_matrix_a,
     boot_se_dist         = stats::sd(boot_dist, na.rm = TRUE),
     n_boot               = n_boot,
     ci_level             = ci_level,
-    n_pixels             = n_pixels
+    n_pixels             = n_pixels,
+    null                 = null,
+    null_distribution    = d_null,
+    d_null_p95           = d_null_p95,
+    d_z                  = d_z,
+    d_ratio              = d_ratio,
+    paired               = isTRUE(paired)
   )
 }

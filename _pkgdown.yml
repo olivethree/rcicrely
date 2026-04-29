@@ -8,6 +8,13 @@ template:
     heading_font: {google: "Source Sans 3"}
     code_font: {google: "JetBrains Mono"}
 
+footer:
+  structure:
+    left: developed_by
+    right: built_with
+  components:
+    developed_by: "Manuel Oliveira, 2026"
+
 home:
   title: rcicrely — toolkit for reliability analysis of classification images from reverse correlation studies in social psychology
   description: >

@@ -7,16 +7,24 @@
 run_within(
   signal_matrix,
   n_permutations = 2000L,
+  null = c("none", "permutation", "random_responders"),
+  noise_matrix = NULL,
   icc_variants = c("3_1", "3_k"),
   mask = NULL,
   seed = NULL,
-  progress = TRUE
+  progress = TRUE,
+  acknowledge_scaling = FALSE
 )
 }
 \arguments{
 \item{signal_matrix}{Pixels x participants, base-subtracted.}
 
 \item{n_permutations}{Passed to \code{\link[=rel_split_half]{rel_split_half()}}. Default 2000.}
+
+\item{null}{Forwarded to \code{\link[=rel_split_half]{rel_split_half()}}. Default \code{"none"}.}
+
+\item{noise_matrix}{Pixels x pool-size matrix. Required when
+\code{null = "random_responders"}; forwarded to \code{\link[=rel_split_half]{rel_split_half()}}.}
 
 \item{icc_variants}{Passed to \code{\link[=rel_icc]{rel_icc()}}.}
 
@@ -27,6 +35,9 @@ Threaded through to both \code{rel_split_half()} and \code{rel_icc()}.}
 \item{seed}{Optional integer; used for the split-half permutations.}
 
 \item{progress}{Show \code{cli} progress bars.}
+
+\item{acknowledge_scaling}{Logical. Forwarded to \code{\link[=rel_icc]{rel_icc()}};
+when \code{FALSE} (default), known-rendered inputs error.}
 }
 \value{
 Object of class \code{rcicrely_report} with \verb{$results} =

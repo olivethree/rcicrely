@@ -107,10 +107,15 @@
 #'
 #' @section Reliability metrics expect raw masks:
 #' Welch t and cluster mass / TFCE are variance-based and sensitive
-#' to any scaling. If `signal_matrix_a` / `_b` came from rendered
-#' PNGs, results are distorted. See
+#' to any scaling. Inputs with `attr(., "source") == "rendered"`
+#' (set automatically by Mode 1 readers like [extract_signal()])
+#' error unless `acknowledge_scaling = TRUE` cascades through the
+#' internal [pixel_t_test()] call. See
 #' `vignette("tutorial", package = "rcicrely")` chapter 3.
 #'
+#' @param acknowledge_scaling Logical. When `FALSE` (default), the
+#'   internal `pixel_t_test()` errors on a known-rendered matrix.
+#'   Set `TRUE` to override; cascades down to that call.
 #' @return Object of class `rcicrely_cluster_test`. Fields described
 #'   in **Reading the result**.
 #' @seealso [rel_dissimilarity()], [run_between()]
@@ -130,26 +135,26 @@
 #' @export
 rel_cluster_test <- function(signal_matrix_a,
                              signal_matrix_b,
-                             img_dims          = NULL,
-                             method            = c("threshold", "tfce"),
-                             paired            = FALSE,
-                             n_permutations    = 2000L,
-                             cluster_threshold = 2.0,
-                             tfce_H            = 2.0,
-                             tfce_E            = 0.5,
-                             tfce_n_steps      = 100L,
-                             alpha             = 0.05,
-                             mask              = NULL,
-                             seed              = NULL,
-                             progress          = TRUE) {
+                             img_dims            = NULL,
+                             method              = c("threshold", "tfce"),
+                             paired              = FALSE,
+                             n_permutations      = 2000L,
+                             cluster_threshold   = 2.0,
+                             tfce_H              = 2.0,
+                             tfce_E              = 0.5,
+                             tfce_n_steps        = 100L,
+                             alpha               = 0.05,
+                             mask                = NULL,
+                             seed                = NULL,
+                             progress            = TRUE,
+                             acknowledge_scaling = FALSE) {
   method <- match.arg(method)
   validate_two_signal_matrices(signal_matrix_a, signal_matrix_b)
   if (isTRUE(paired)) {
     validate_paired_matrices(signal_matrix_a, signal_matrix_b)
   }
-  if (looks_scaled(signal_matrix_a) || looks_scaled(signal_matrix_b)) {
-    warn_looks_scaled("signal_matrix_a / _b")
-  }
+  # Source-attribute enforcement is delegated to the internal
+  # pixel_t_test() call below; acknowledge_scaling cascades down.
   n_pix   <- nrow(signal_matrix_a)
   n_a     <- ncol(signal_matrix_a)
   n_b     <- ncol(signal_matrix_b)
@@ -186,7 +191,8 @@ rel_cluster_test <- function(signal_matrix_a,
 
   # ---- observed stats --------------------------------------------------
   observed_t <- pixel_t_test(signal_matrix_a, signal_matrix_b,
-                             paired = paired)
+                             paired              = paired,
+                             acknowledge_scaling = acknowledge_scaling)
   if (!is.null(mask)) observed_t[!mask] <- 0
 
   if (method == "threshold") {

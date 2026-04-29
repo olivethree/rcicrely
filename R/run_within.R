@@ -41,8 +41,13 @@
 #' @param mask Optional logical vector of length `nrow(signal_matrix)`
 #'   restricting all metrics to a region (e.g., from [face_mask()]).
 #'   Threaded through to both `rel_split_half()` and `rel_icc()`.
+#' @param null Forwarded to [rel_split_half()]. Default `"none"`.
+#' @param noise_matrix Pixels x pool-size matrix. Required when
+#'   `null = "random_responders"`; forwarded to [rel_split_half()].
 #' @param seed Optional integer; used for the split-half permutations.
 #' @param progress Show `cli` progress bars.
+#' @param acknowledge_scaling Logical. Forwarded to [rel_icc()];
+#'   when `FALSE` (default), known-rendered inputs error.
 #' @return Object of class `rcicrely_report` with `$results` =
 #'   named list of two `rcicrely_*` objects (`split_half`, `icc`)
 #'   and `$method = "within"`.
@@ -50,11 +55,16 @@
 #'   influence diagnostic, [run_between()].
 #' @export
 run_within <- function(signal_matrix,
-                       n_permutations    = 2000L,
-                       icc_variants      = c("3_1", "3_k"),
-                       mask              = NULL,
-                       seed              = NULL,
-                       progress          = TRUE) {
+                       n_permutations      = 2000L,
+                       null                = c("none", "permutation",
+                                               "random_responders"),
+                       noise_matrix        = NULL,
+                       icc_variants        = c("3_1", "3_k"),
+                       mask                = NULL,
+                       seed                = NULL,
+                       progress            = TRUE,
+                       acknowledge_scaling = FALSE) {
+  null <- match.arg(null)
   validate_signal_matrix(signal_matrix)
   img_dims <- attr(signal_matrix, "img_dims")
 
@@ -62,14 +72,17 @@ run_within <- function(signal_matrix,
     split_half = rel_split_half(
       signal_matrix,
       n_permutations = n_permutations,
+      null           = null,
+      noise_matrix   = noise_matrix,
       mask           = mask,
       seed           = seed,
       progress       = progress
     ),
     icc = rel_icc(
       signal_matrix,
-      variants = icc_variants,
-      mask     = mask
+      variants            = icc_variants,
+      mask                = mask,
+      acknowledge_scaling = acknowledge_scaling
     )
   )
   new_rcicrely_report(results, method = "within", img_dims = img_dims)

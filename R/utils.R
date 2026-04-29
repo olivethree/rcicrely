@@ -77,7 +77,10 @@ validate_signal_matrix <- function(x,
 #' Returns the (possibly-subsetted) matrix, with the
 #' `img_dims` attribute preserved when no subsetting happens (when
 #' `mask = NULL`) and dropped when the mask reshapes the rows
-#' (subsetted matrices are no longer 2D-image-shaped).
+#' (subsetted matrices are no longer 2D-image-shaped). The
+#' `source` attribute (`"raw"` / `"rendered"`) is preserved across
+#' subsetting because masking pixels does not change whether the
+#' values are raw or scaled.
 #'
 #' @param signal_matrix Pixels x participants numeric matrix.
 #' @param mask Optional logical vector of length `nrow(signal_matrix)`.
@@ -109,10 +112,69 @@ apply_mask_to_signal <- function(signal_matrix, mask = NULL,
              dominated by noise. Use a more permissive mask."
     ))
   }
+  src <- attr(signal_matrix, "source")
   out <- signal_matrix[mask, , drop = FALSE]
   # img_dims attribute is no longer meaningful after row-subset, drop it
   attr(out, "img_dims") <- NULL
+  if (!is.null(src)) attr(out, "source") <- src
   out
+}
+
+#' Assert that a signal matrix is raw (not rendered/scaled)
+#'
+#' The shared enforcement point for variance-based metrics
+#' (`pixel_t_test()`, `rel_icc()`, `rel_dissimilarity()`).
+#' `rel_cluster_test()` inherits enforcement via its internal
+#' `pixel_t_test()` call.
+#'
+#' Decision tree:
+#' * `attr(x, "source") == "raw"`: pass.
+#' * `attr(x, "source") == "rendered"`: error unless
+#'   `acknowledge_scaling = TRUE` (variance-based metrics on scaled
+#'   data give wrong numbers).
+#' * No `source` attribute: fall back to `looks_scaled()` heuristic.
+#'   If flagged, emit the once-per-session warning (do not error,
+#'   we cannot be sure). If clean, pass silently.
+#'
+#' Why not a single enforcement point in `pixel_t_test()`:
+#' `rel_icc()` and `rel_dissimilarity()` do not call
+#' `pixel_t_test()`, so a single-point design would silently fail
+#' to enforce on those code paths. Each variance-based metric calls
+#' this helper directly.
+#'
+#' @param x Pixels x participants signal matrix.
+#' @param acknowledge_scaling Logical. When `TRUE`, suppress the
+#'   error/warning for known-rendered or heuristic-flagged input.
+#' @param name Argument name at the call site, for error messages.
+#' @return Invisibly `TRUE` if pass; `cli::cli_abort()`s if the
+#'   matrix is `"rendered"` and `acknowledge_scaling` is `FALSE`.
+#' @keywords internal
+#' @noRd
+assert_raw_signal <- function(x,
+                              acknowledge_scaling = FALSE,
+                              name = "signal_matrix") {
+  src <- attr(x, "source")
+  if (identical(src, "raw")) return(invisible(TRUE))
+  if (identical(src, "rendered") && !isTRUE(acknowledge_scaling)) {
+    cli::cli_abort(c(
+      "{.arg {name}} is a {.strong rendered} CI (PNG-derived); \\
+       variance-based metrics give wrong numbers on rendered data.",
+      "i" = "Mode 2 ({.fn ci_from_responses_2ifc} / \\
+             {.fn ci_from_responses_briefrc}) returns the raw mask.",
+      "i" = "If you understand the trade-off and want to proceed \\
+             anyway, pass {.code acknowledge_scaling = TRUE}.",
+      "i" = "See {.code vignette(\"tutorial\", package = \"rcicrely\")} \\
+             chapter 3 for the full discussion."
+    ))
+  }
+  if (identical(src, "rendered") && isTRUE(acknowledge_scaling)) {
+    return(invisible(TRUE))
+  }
+  # No source attribute: fall back to heuristic.
+  if (!isTRUE(acknowledge_scaling) && looks_scaled(x)) {
+    warn_looks_scaled(name)
+  }
+  invisible(TRUE)
 }
 
 #' Assert two signal matrices have compatible shape for between-condition
@@ -238,6 +300,7 @@ progress_done <- function(id) {
 .rcicrely_session_state$mode1_warning_emitted        <- FALSE
 .rcicrely_session_state$looks_scaled_warning_emitted <- FALSE
 .rcicrely_session_state$icc_resolution_warning_emitted <- FALSE
+.rcicrely_session_state$loo_sd_deprecated_emitted    <- FALSE
 
 #' @keywords internal
 #' @noRd
@@ -245,6 +308,37 @@ reset_session_warnings <- function() {
   .rcicrely_session_state$mode1_warning_emitted          <- FALSE
   .rcicrely_session_state$looks_scaled_warning_emitted   <- FALSE
   .rcicrely_session_state$icc_resolution_warning_emitted <- FALSE
+  .rcicrely_session_state$loo_sd_deprecated_emitted      <- FALSE
+  invisible()
+}
+
+#' Emit the once-per-session rel_loo(flag_method = "sd") deprecation
+#'
+#' Default switched to `"mad"` in v0.3; `"sd"` retained for
+#' backwards compatibility and slated for removal in v0.4. The MAD
+#' rule is robust to the influential producers LOO is designed to
+#' detect; the SD rule is mask-prone (one outlier inflates `sd_r`
+#' and pulls `mean_r`, hiding itself behind a `z` near `-1`).
+#'
+#' @keywords internal
+#' @noRd
+warn_loo_sd_deprecated <- function() {
+  if (isTRUE(getOption("rcicrely.silence_loo_deprecation", FALSE))) {
+    return(invisible())
+  }
+  if (isTRUE(.rcicrely_session_state$loo_sd_deprecated_emitted)) {
+    return(invisible())
+  }
+  cli::cli_warn(c(
+    "{.code rel_loo(flag_method = \"sd\")} is deprecated since v0.3 \\
+     and will be removed in v0.4.",
+    "i" = "The MAD/median rule (the new default) is robust to the \\
+           influential producers LOO is designed to flag.",
+    "*" = "Drop the {.arg flag_method} argument or pass \\
+           {.code flag_method = \"mad\"} explicitly.",
+    "i" = "Silence: {.code options(rcicrely.silence_loo_deprecation = TRUE)}."
+  ))
+  .rcicrely_session_state$loo_sd_deprecated_emitted <- TRUE
   invisible()
 }
 

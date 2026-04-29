@@ -4,7 +4,13 @@
 \alias{pixel_t_test}
 \title{Vectorised pixel-wise t-test (independent or paired)}
 \usage{
-pixel_t_test(signal_matrix_a, signal_matrix_b, paired = FALSE, mask = NULL)
+pixel_t_test(
+  signal_matrix_a,
+  signal_matrix_b,
+  paired = FALSE,
+  mask = NULL,
+  acknowledge_scaling = FALSE
+)
 }
 \arguments{
 \item{signal_matrix_a, signal_matrix_b}{Pixels x participants,
@@ -21,6 +27,12 @@ to a region. \strong{Both} matrices are subsetted with the same
 mask before computing t — see \code{vignette("tutorial")} §6.6 for
 the apply-symmetrically rule. The returned vector is then of
 length \code{sum(mask)}, not \code{nrow(signal_matrix_a)}.}
+
+\item{acknowledge_scaling}{Logical. When \code{FALSE} (default), the
+shared \code{assert_raw_signal()} helper errors on a known-rendered
+matrix. Set \code{TRUE} to override (only do this if you have a
+reason to compute Welch t on scaled data). Cascades to internal
+\code{pixel_t_test()} calls from \code{\link[=rel_cluster_test]{rel_cluster_test()}}.}
 }
 \value{
 Numeric vector of length \code{nrow(signal_matrix_a)} (or
@@ -54,7 +66,10 @@ special-case them.
 \section{Reliability metrics expect raw masks}{
 
 Welch t and paired t are variance-based and sensitive to scaling.
-See \code{vignette("tutorial", package = "rcicrely")} chapter 3.
+Inputs with \code{attr(., "source") == "rendered"} (set automatically
+by Mode 1 readers like \code{\link[=extract_signal]{extract_signal()}}) error unless
+\code{acknowledge_scaling = TRUE}. See
+\code{vignette("tutorial", package = "rcicrely")} chapter 3.
 }
 
 \seealso{

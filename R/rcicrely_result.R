@@ -2,20 +2,46 @@
 ## these back from `rel_*()`, `run_within()`, `run_between()`.
 ## Print / summary / plot methods live in R/plot_methods.R.
 
+#' Build an S3 result with shared metadata
+#'
+#' Centralised wrapper that attaches `rcicrely_version` to every
+#' result object (§1.8). Future fields with the same lifetime
+#' (e.g., a build date) belong here.
+#'
+#' @keywords internal
+#' @noRd
+new_rcicrely_object <- function(payload, subclass) {
+  structure(
+    payload,
+    class            = c(subclass, "rcicrely_result"),
+    rcicrely_version = utils::packageVersion("rcicrely")
+  )
+}
+
 new_rcicrely_split_half <- function(r_hh, r_sb, ci_95, ci_95_sb,
                                     distribution, n_participants,
-                                    n_permutations) {
-  structure(
+                                    n_permutations,
+                                    null              = "none",
+                                    null_distribution = NULL,
+                                    r_hh_null_p95     = NA_real_,
+                                    r_hh_excess       = NA_real_,
+                                    r_sb_excess       = NA_real_) {
+  new_rcicrely_object(
     list(
-      r_hh            = r_hh,
-      r_sb            = r_sb,
-      ci_95           = ci_95,
-      ci_95_sb        = ci_95_sb,
-      distribution    = distribution,
-      n_participants  = n_participants,
-      n_permutations  = n_permutations
+      r_hh              = r_hh,
+      r_sb              = r_sb,
+      ci_95             = ci_95,
+      ci_95_sb          = ci_95_sb,
+      distribution      = distribution,
+      null              = null,
+      null_distribution = null_distribution,
+      r_hh_null_p95     = r_hh_null_p95,
+      r_hh_excess       = r_hh_excess,
+      r_sb_excess       = r_sb_excess,
+      n_participants    = n_participants,
+      n_permutations    = n_permutations
     ),
-    class = c("rcicrely_split_half", "rcicrely_result")
+    subclass = "rcicrely_split_half"
   )
 }
 
@@ -24,7 +50,7 @@ new_rcicrely_loo <- function(correlations, z_scores,
                              median_r, mad_r,
                              threshold, flagged, summary_df,
                              flag_method, flag_threshold) {
-  structure(
+  new_rcicrely_object(
     list(
       correlations   = correlations,
       z_scores       = z_scores,
@@ -38,14 +64,14 @@ new_rcicrely_loo <- function(correlations, z_scores,
       flag_method    = flag_method,
       flag_threshold = flag_threshold
     ),
-    class = c("rcicrely_loo", "rcicrely_result")
+    subclass = "rcicrely_loo"
   )
 }
 
 new_rcicrely_icc <- function(icc_3_1, icc_3_k, icc_2_1, icc_2_k,
                              ms_rows, ms_cols, ms_error,
                              n_raters, n_targets, model, variants) {
-  structure(
+  new_rcicrely_object(
     list(
       icc_3_1   = icc_3_1,
       icc_3_k   = icc_3_k,
@@ -59,7 +85,7 @@ new_rcicrely_icc <- function(icc_3_1, icc_3_k, icc_2_1, icc_2_k,
       model     = model,
       variants  = variants
     ),
-    class = c("rcicrely_icc", "rcicrely_result")
+    subclass = "rcicrely_icc"
   )
 }
 
@@ -78,7 +104,7 @@ new_rcicrely_cluster_test <- function(observed_t, clusters,
                                       tfce_H = NA_real_,
                                       tfce_E = NA_real_,
                                       tfce_n_steps = NA_integer_) {
-  structure(
+  new_rcicrely_object(
     list(
       observed_t             = observed_t,
       method                 = method,
@@ -100,7 +126,7 @@ new_rcicrely_cluster_test <- function(observed_t, clusters,
       tfce_E                 = tfce_E,
       tfce_n_steps           = tfce_n_steps
     ),
-    class = c("rcicrely_cluster_test", "rcicrely_result")
+    subclass = "rcicrely_cluster_test"
   )
 }
 
@@ -110,8 +136,14 @@ new_rcicrely_dissim <- function(correlation, euclidean,
                                 ci_cor, ci_dist,
                                 boot_se_cor, boot_se_dist,
                                 n_boot, ci_level,
-                                n_pixels) {
-  structure(
+                                n_pixels,
+                                null              = "none",
+                                null_distribution = NULL,
+                                d_null_p95        = NA_real_,
+                                d_z               = NA_real_,
+                                d_ratio           = NA_real_,
+                                paired            = FALSE) {
+  new_rcicrely_object(
     list(
       correlation          = correlation,
       euclidean            = euclidean,
@@ -124,16 +156,22 @@ new_rcicrely_dissim <- function(correlation, euclidean,
       boot_se_dist         = boot_se_dist,
       n_boot               = n_boot,
       ci_level             = ci_level,
-      n_pixels             = n_pixels
+      n_pixels             = n_pixels,
+      null                 = null,
+      null_distribution    = null_distribution,
+      d_null_p95           = d_null_p95,
+      d_z                  = d_z,
+      d_ratio              = d_ratio,
+      paired               = paired
     ),
-    class = c("rcicrely_dissim", "rcicrely_result")
+    subclass = "rcicrely_dissim"
   )
 }
 
 new_rcicrely_infoval <- function(infoval, norms, reference,
                                  ref_median, ref_mad, trial_counts,
                                  mask, iter, n_pool, seed) {
-  structure(
+  new_rcicrely_object(
     list(
       infoval      = infoval,
       norms        = norms,
@@ -146,7 +184,7 @@ new_rcicrely_infoval <- function(infoval, norms, reference,
       n_pool       = n_pool,
       seed         = seed
     ),
-    class = c("rcicrely_infoval", "rcicrely_result")
+    subclass = "rcicrely_infoval"
   )
 }
 
@@ -157,6 +195,7 @@ new_rcicrely_report <- function(results, method, img_dims = NULL) {
       method   = method,
       img_dims = img_dims
     ),
-    class = c("rcicrely_report")
+    class            = "rcicrely_report",
+    rcicrely_version = utils::packageVersion("rcicrely")
   )
 }

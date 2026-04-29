@@ -10,9 +10,12 @@ rel_dissimilarity(
   paired = FALSE,
   n_boot = 2000L,
   ci_level = 0.95,
+  null = c("none", "permutation"),
+  n_permutations = 2000L,
   mask = NULL,
   seed = NULL,
-  progress = TRUE
+  progress = TRUE,
+  acknowledge_scaling = FALSE
 )
 }
 \arguments{
@@ -30,6 +33,20 @@ identical column names.}
 
 \item{ci_level}{Confidence level. Default 0.95.}
 
+\item{null}{One of \code{"none"} (default) or \code{"permutation"}.
+\code{"permutation"} builds an empirical chance baseline for the
+Euclidean distance:
+\itemize{
+\item Between-subjects (\code{paired = FALSE}): stratified condition-
+label permutation across producers, preserving \verb{(N_a, N_b)}.
+\item Paired (\code{paired = TRUE}): random sign-flip on per-producer
+\code{A - B} differences (exact null under exchangeability of pair
+sign).
+}}
+
+\item{n_permutations}{Integer. Number of null iterations when
+\code{null = "permutation"}. Default 2000.}
+
 \item{mask}{Optional logical vector of length
 \code{nrow(signal_matrix_a)} restricting the Euclidean / correlation
 computation to a region. Both matrices are subsetted with the
@@ -40,6 +57,10 @@ the masked count.}
 \item{seed}{Optional integer; RNG state restored on exit.}
 
 \item{progress}{Show a \code{cli} progress bar.}
+
+\item{acknowledge_scaling}{Logical. When \code{FALSE} (default), the
+shared \code{assert_raw_signal()} helper errors on a known-rendered
+matrix on either side. Set \code{TRUE} to override.}
 }
 \value{
 Object of class \code{rcicrely_dissim}. Fields described in
@@ -99,13 +120,23 @@ on the full sample (primary statistic).
 for cross-resolution comparisons.
 \item \verb{$boot_dist}, \verb{$ci_dist}, \verb{$boot_se_dist}, bootstrap distribution,
 percentile CI, and SE of the Euclidean distance.
+\item \verb{$null} (character), the null mode used.
+\item \verb{$null_distribution}, when \code{null != "none"}: numeric vector of
+per-iteration Euclidean distances under the chosen null. \code{NULL}
+otherwise.
+\item \verb{$d_null_p95}, 95th percentile of the null distribution
+(cutoff for "above-chance" magnitude). \code{NA_real_} when
+\code{null = "none"}.
+\item \verb{$d_z}, z-equivalent effect size: \code{(observed_d - mean(null)) / sd(null)}. \code{NA_real_} when \code{null = "none"}.
+\item \verb{$d_ratio}, observed Euclidean over the null median.
+\code{NA_real_} when \code{null = "none"}.
 \item \verb{$correlation}, \verb{$boot_cor}, \verb{$ci_cor}, \verb{$boot_se_cor}: Pearson
 correlation of the group means and its bootstrap summary.
 \strong{Deprecated.} Retained for backwards compatibility with v0.1.x
 code and scheduled for removal in v0.3. Treat these as
 within-study descriptive statistics only; see \strong{Why Euclidean
 and not Pearson correlation}.
-\item \verb{$n_boot}, \verb{$ci_level}, metadata.
+\item \verb{$n_boot}, \verb{$ci_level}, \verb{$paired}, metadata.
 }
 }
 
@@ -127,9 +158,10 @@ The baseline is above zero for independent CIs (see above).
 
 Euclidean distance is sensitive to \strong{any} scaling; Pearson r
 survives a single uniform scaling but breaks under per-CI
-\code{"matched"}-style scaling. If \code{signal_matrix_a} / \verb{_b} came from
-\code{\link[=read_cis]{read_cis()}} / \code{\link[=extract_signal]{extract_signal()}} on rendered PNGs, treat results
-as approximate. See
+\code{"matched"}-style scaling. Inputs with
+\code{attr(., "source") == "rendered"} (set automatically by Mode 1
+readers like \code{\link[=extract_signal]{extract_signal()}}) error unless
+\code{acknowledge_scaling = TRUE}. See
 \code{vignette("tutorial", package = "rcicrely")} chapter 3.
 }
 

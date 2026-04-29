@@ -69,6 +69,7 @@ ci_shade <- function(xlo, xhi, col = "#377EB8", alpha = 0.15) {
 
 #' @export
 print.rcicrely_split_half <- function(x, ...) {
+  warn_known_regression(x)
   cat("<rcicrely split-half reliability>\n")
   cat(sprintf("  N producers:          %d\n", x$n_participants))
   cat(sprintf("  n_permutations:       %d\n", x$n_permutations))
@@ -76,6 +77,13 @@ print.rcicrely_split_half <- function(x, ...) {
               x$r_hh, x$ci_95[1], x$ci_95[2]))
   cat(sprintf("  Spearman-Brown r_SB:  %.3f  [%.3f, %.3f]\n",
               x$r_sb, x$ci_95_sb[1], x$ci_95_sb[2]))
+  null <- if (is.null(x$null)) "none" else x$null
+  if (!identical(null, "none")) {
+    cat(sprintf("  null:                 %s\n", null))
+    cat(sprintf("  null p95 (r_hh):      %.3f\n", x$r_hh_null_p95))
+    cat(sprintf("  excess r_hh:          %+.3f\n", x$r_hh_excess))
+    cat(sprintf("  excess r_SB:          %+.3f\n", x$r_sb_excess))
+  }
   invisible(x)
 }
 
@@ -140,6 +148,7 @@ plot.rcicrely_split_half <- function(x, ...,
 
 #' @export
 print.rcicrely_loo <- function(x, ...) {
+  warn_known_regression(x)
   cat("<rcicrely leave-one-out influence screening>\n")
   cat(sprintf("  N producers:        %d\n", length(x$correlations)))
   cat(sprintf("  flag rule:          %s (threshold = %.2f)\n",
@@ -250,6 +259,7 @@ plot.rcicrely_loo <- function(x, ...,
 
 #' @export
 print.rcicrely_icc <- function(x, ...) {
+  warn_known_regression(x)
   cat("<rcicrely ICC>\n")
   cat(sprintf("  model:        %s\n", x$model))
   cat(sprintf("  N targets:    %d pixels\n",       x$n_targets))
@@ -358,6 +368,7 @@ plot.rcicrely_icc <- function(x, ..., main = "Intraclass correlation") {
 
 #' @export
 print.rcicrely_cluster_test <- function(x, ...) {
+  warn_known_regression(x)
   method <- if (is.null(x$method)) "threshold" else x$method
   if (method == "tfce") {
     cat("<rcicrely cluster-based permutation test (TFCE)>\n")
@@ -504,6 +515,7 @@ plot.rcicrely_cluster_test <- function(x, ...,
 
 #' @export
 print.rcicrely_dissim <- function(x, ...) {
+  warn_known_regression(x)
   cat("<rcicrely representational dissimilarity>\n")
   cat(sprintf("  n_boot:               %d\n", x$n_boot))
   cat(sprintf("  CI level:             %.0f%%\n", x$ci_level * 100))
@@ -519,6 +531,17 @@ print.rcicrely_dissim <- function(x, ...) {
       "    Euclidean / sqrt(n)   = %.4f   (resolution-normalised)\n",
       x$euclidean_normalised
     ))
+  }
+  null <- if (is.null(x$null)) "none" else x$null
+  if (!identical(null, "none")) {
+    cat(sprintf(
+      "\n  Empirical null (%s%s):\n",
+      null,
+      if (isTRUE(x$paired)) "; sign-flip" else "; condition-label"
+    ))
+    cat(sprintf("    null p95 (Euclidean)  = %.3f\n", x$d_null_p95))
+    cat(sprintf("    z-equivalent          = %+.2f\n", x$d_z))
+    cat(sprintf("    observed / null med   = %.2fx\n", x$d_ratio))
   }
   cat("\n  [Deprecated - will be removed in v0.3]\n")
   cat(sprintf(
@@ -699,7 +722,37 @@ compare_dissimilarity <- function(...,
 # ---- rcicrely_report -------------------------------------------------------
 
 #' @export
+print.rcicrely_pairwise_report <- function(x, ...) {
+  warn_known_regression(x)
+  cat(sprintf(
+    "<rcicrely pairwise report: %d conditions, %d pairs, fwer = %s>\n",
+    length(x$conditions), nrow(x$pairs), x$fwer
+  ))
+  cat(sprintf("  alpha (across pairs): %.3f\n", x$alpha))
+  cat(sprintf("  cluster method:       %s\n", x$method))
+  if (isTRUE(x$paired)) cat("  design:               paired (within-subjects)\n")
+  cat("\n")
+  pr <- x$pairs
+  pr$pair <- sprintf("%s vs %s", pr$cond_a, pr$cond_b)
+  pr$p_min       <- formatC(pr$p_min, format = "f", digits = 4)
+  pr$p_adj_pair  <- formatC(pr$p_adj_pair, format = "f", digits = 4)
+  pr$euclidean   <- formatC(pr$euclidean, format = "f", digits = 3)
+  pr$euclidean_normalised <-
+    formatC(pr$euclidean_normalised, format = "f", digits = 4)
+  pr$sig <- ifelse(pr$significant, "*", "")
+  print(pr[, c("pair", "n_clusters", "p_min", "p_adj_pair", "sig",
+               "euclidean", "euclidean_normalised")],
+        row.names = FALSE)
+  cat(sprintf(
+    "\n  p_adj_pair: minimum within-pair cluster p, %s-adjusted across %d pairs.\n",
+    x$fwer, nrow(x$pairs)
+  ))
+  invisible(x)
+}
+
+#' @export
 print.rcicrely_report <- function(x, ...) {
+  warn_known_regression(x)
   cat(sprintf("<rcicrely report: %s>\n", x$method))
   for (nm in names(x$results)) {
     cat("---\n")
@@ -736,6 +789,7 @@ plot.rcicrely_report <- function(x, ...) {
 
 #' @export
 print.rcicrely_infoval <- function(x, ...) {
+  warn_known_regression(x)
   cat("<rcicrely informational value>\n")
   cat(sprintf("  producers:          %d\n", length(x$infoval)))
   cat(sprintf("  unique trial counts: %s\n",

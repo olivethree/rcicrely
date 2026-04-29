@@ -230,7 +230,11 @@ ci_from_responses_2ifc <- function(responses,
     }
   }
   attr(signal_matrix, "img_dims") <- img_dims
-  if (!is.null(rendered)) attr(rendered, "img_dims") <- img_dims
+  attr(signal_matrix, "source") <- "raw"
+  if (!is.null(rendered)) {
+    attr(rendered, "img_dims") <- img_dims
+    attr(rendered, "source") <- "rendered"
+  }
 
   out <- list(
     signal_matrix = signal_matrix,

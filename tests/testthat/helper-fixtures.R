@@ -39,3 +39,37 @@ write_tiny_png <- function(path, data) {
   png::writePNG(data, path)
   path
 }
+
+# Source-attribute-tagged fixtures (used by §1.1 / §1.2 tests).
+
+raw_pure_signal <- function(n_pix = 1024L, n_p = 12L, seed = 1L) {
+  set.seed(seed)
+  side       <- as.integer(sqrt(n_pix))
+  signal_vec <- c(rep(1, n_pix / 2L), rep(0, n_pix / 2L))
+  amp        <- stats::runif(n_p, 0.8, 1.2)
+  out        <- outer(signal_vec, amp)
+  attr(out, "img_dims") <- c(side, side)
+  attr(out, "source")   <- "raw"
+  out
+}
+
+raw_zero_signal <- function(n_pix = 1024L, n_p = 12L, seed = 2L) {
+  set.seed(seed)
+  side <- as.integer(sqrt(n_pix))
+  out  <- matrix(stats::rnorm(n_pix * n_p, sd = 0.05), n_pix, n_p)
+  attr(out, "img_dims") <- c(side, side)
+  attr(out, "source")   <- "raw"
+  out
+}
+
+raw_sign_flipped_signal <- function(n_pix = 1024L, n_p = 12L,
+                                    seed = 3L) {
+  set.seed(seed)
+  side       <- as.integer(sqrt(n_pix))
+  signal_vec <- c(rep(1, n_pix / 2L), rep(0, n_pix / 2L))
+  signs      <- sample(c(-1, 1), n_p, replace = TRUE)
+  out        <- outer(signal_vec, signs)
+  attr(out, "img_dims") <- c(side, side)
+  attr(out, "source")   <- "raw"
+  out
+}

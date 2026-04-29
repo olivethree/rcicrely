@@ -4,7 +4,12 @@
 \alias{rel_icc}
 \title{Intraclass correlation coefficients via direct mean squares}
 \usage{
-rel_icc(signal_matrix, variants = c("3_1", "3_k"), mask = NULL)
+rel_icc(
+  signal_matrix,
+  variants = c("3_1", "3_k"),
+  mask = NULL,
+  acknowledge_scaling = FALSE
+)
 }
 \arguments{
 \item{signal_matrix}{Pixels x participants (targets x raters),
@@ -19,6 +24,11 @@ Subset of \code{c("3_1", "3_k", "2_1", "2_k")}. Defaults to
 (e.g., from \code{\link[=face_mask]{face_mask()}} or \code{\link[=load_face_mask]{load_face_mask()}}). ICC is
 variance-based; the masked statistic reflects only the
 selected pixels.}
+
+\item{acknowledge_scaling}{Logical. When \code{FALSE} (default), the
+shared \code{assert_raw_signal()} helper errors on a known-rendered
+matrix. Set \code{TRUE} to override (only when you have a reason to
+compute ICC on scaled data).}
 }
 \value{
 Object of class \code{rcicrely_icc}. Fields described in
@@ -86,10 +96,9 @@ section below).
 \section{Reliability metrics expect raw masks}{
 
 ICC is a variance-based statistic. \strong{Strongly} sensitive to any
-scaling step. If \code{signal_matrix} was extracted from rendered
-(scaled) PNGs via \code{\link[=read_cis]{read_cis()}} / \code{\link[=extract_signal]{extract_signal()}}, the variance
-decomposition is computed on \code{scaling(mask)} rather than \code{mask} and
-the result will not match what raw responses would produce. See
+scaling step. Inputs with \code{attr(., "source") == "rendered"} (set
+automatically by Mode 1 readers like \code{\link[=extract_signal]{extract_signal()}}) error
+unless \code{acknowledge_scaling = TRUE}. See
 \code{vignette("tutorial", package = "rcicrely")} chapter 3.
 }
 

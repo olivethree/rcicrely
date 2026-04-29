@@ -38,14 +38,27 @@
 #'
 #' @section Reliability metrics expect raw masks:
 #' Welch t and paired t are variance-based and sensitive to scaling.
-#' See `vignette("tutorial", package = "rcicrely")` chapter 3.
+#' Inputs with `attr(., "source") == "rendered"` (set automatically
+#' by Mode 1 readers like [extract_signal()]) error unless
+#' `acknowledge_scaling = TRUE`. See
+#' `vignette("tutorial", package = "rcicrely")` chapter 3.
 #'
+#' @param acknowledge_scaling Logical. When `FALSE` (default), the
+#'   shared `assert_raw_signal()` helper errors on a known-rendered
+#'   matrix. Set `TRUE` to override (only do this if you have a
+#'   reason to compute Welch t on scaled data). Cascades to internal
+#'   `pixel_t_test()` calls from [rel_cluster_test()].
 #' @seealso [rel_cluster_test()]
 #' @export
 pixel_t_test <- function(signal_matrix_a, signal_matrix_b,
-                         paired = FALSE,
-                         mask   = NULL) {
+                         paired              = FALSE,
+                         mask                = NULL,
+                         acknowledge_scaling = FALSE) {
   validate_two_signal_matrices(signal_matrix_a, signal_matrix_b)
+  assert_raw_signal(signal_matrix_a, acknowledge_scaling,
+                    name = "signal_matrix_a")
+  assert_raw_signal(signal_matrix_b, acknowledge_scaling,
+                    name = "signal_matrix_b")
   signal_matrix_a <- apply_mask_to_signal(signal_matrix_a, mask,
                                            name = "signal_matrix_a")
   signal_matrix_b <- apply_mask_to_signal(signal_matrix_b, mask,

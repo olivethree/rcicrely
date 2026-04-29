@@ -18,7 +18,8 @@ rel_cluster_test(
   alpha = 0.05,
   mask = NULL,
   seed = NULL,
-  progress = TRUE
+  progress = TRUE,
+  acknowledge_scaling = FALSE
 )
 }
 \arguments{
@@ -71,6 +72,10 @@ Apply the same mask in any companion analyses for consistency.}
 \item{seed}{Optional integer; RNG state restored on exit.}
 
 \item{progress}{Show a \code{cli} progress bar.}
+
+\item{acknowledge_scaling}{Logical. When \code{FALSE} (default), the
+internal \code{pixel_t_test()} errors on a known-rendered matrix.
+Set \code{TRUE} to override; cascades down to that call.}
 }
 \value{
 Object of class \code{rcicrely_cluster_test}. Fields described
@@ -159,8 +164,10 @@ reimplement it yourself).
 \section{Reliability metrics expect raw masks}{
 
 Welch t and cluster mass / TFCE are variance-based and sensitive
-to any scaling. If \code{signal_matrix_a} / \verb{_b} came from rendered
-PNGs, results are distorted. See
+to any scaling. Inputs with \code{attr(., "source") == "rendered"}
+(set automatically by Mode 1 readers like \code{\link[=extract_signal]{extract_signal()}})
+error unless \code{acknowledge_scaling = TRUE} cascades through the
+internal \code{\link[=pixel_t_test]{pixel_t_test()}} call. See
 \code{vignette("tutorial", package = "rcicrely")} chapter 3.
 }
 
