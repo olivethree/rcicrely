@@ -7,6 +7,8 @@
 rel_split_half(
   signal_matrix,
   n_permutations = 2000L,
+  null = c("none", "permutation", "random_responders"),
+  noise_matrix = NULL,
   mask = NULL,
   seed = NULL,
   progress = TRUE
@@ -18,6 +20,30 @@ rel_split_half(
 \item{n_permutations}{Integer number of random splits. Default
 2000, cheap and keeps Monte Carlo error on tail probabilities
 below 0.01.}
+
+\item{null}{One of \code{"none"} (default), \code{"permutation"}, or
+\code{"random_responders"}.
+\itemize{
+\item \code{"none"} skips the empirical-null computation. Backwards-
+compatible with v0.2.x; \verb{$null_distribution} is \code{NULL}.
+\item \code{"permutation"}: at each iteration, randomly shuffle pixel
+values within each producer column to break the spatial
+correlation structure that gives any half-half pair a
+non-zero baseline \code{r_hh} even on pure noise. Recompute
+\code{r_hh} per iteration; the empirical distribution becomes
+the chance baseline.
+\item \code{"random_responders"}: simulate \code{ncol(signal_matrix)}
+producers responding at chance using
+\code{simulate_reference_norms()}'s \code{genMask()} machinery on the
+supplied \code{noise_matrix}. Recompute \code{r_hh} per iteration.
+Closer to the empirical chance baseline of an actual RC
+experiment than \code{"permutation"} because it preserves the
+pixel correlation structure of real noise patterns.
+}}
+
+\item{noise_matrix}{Pixels x pool-size numeric matrix of noise
+patterns. Required when \code{null = "random_responders"}; ignored
+otherwise. Same shape as the matrix accepted by \code{\link[=infoval]{infoval()}}.}
 
 \item{mask}{Optional logical vector of length
 \code{nrow(signal_matrix)} restricting computation to a region of
@@ -62,6 +88,15 @@ sample. This is usually the headline number to report.
 \item \verb{$ci_95}, \verb{$ci_95_sb}, percentile 95\% CIs on each.
 \item \verb{$distribution}, the full per-permutation r vector for plotting
 or custom CIs.
+\item \verb{$null} (character), the null mode used.
+\item \verb{$null_distribution}, when \code{null != "none"}: numeric vector of
+per-iteration \code{r_hh} under the chosen null. \code{NULL} otherwise.
+\item \verb{$r_hh_null_p95}, 95th percentile of the null distribution.
+\code{NA_real_} when \code{null = "none"}.
+\item \verb{$r_hh_excess}, observed \code{r_hh} minus the null median. Headline
+"above-chance" reliability number; \code{NA_real_} when \code{null = "none"}.
+\item \verb{$r_sb_excess}, the same excess applied to Spearman-Brown
+projected \code{r_sb}. \code{NA_real_} when \code{null = "none"}.
 \item \verb{$n_participants}, \verb{$n_permutations}, metadata.
 }
 }
@@ -90,10 +125,11 @@ print(r); plot(r)
 }
 }
 \references{
-Brinkman, L., Goffin, S., van de Schoot, R., van Haren, N. E. M.,
-Dotsch, R., & Aarts, H. (2019). Quantifying the informational
-value of classification images. \emph{Behavior Research Methods},
-51(5), 2059-2073. \doi{10.3758/s13428-019-01232-2}
+Brinkman, L., Todorov, A., & Dotsch, R. (2017). Visualising
+mental representations: A primer on noise-based reverse
+correlation in social psychology. \emph{European Review of Social
+Psychology}, 28(1), 333-361.
+\doi{10.1080/10463283.2017.1381469}
 
 Shrout, P. E., & Fleiss, J. L. (1979). Intraclass correlations:
 uses in assessing rater reliability. \emph{Psychological Bulletin},

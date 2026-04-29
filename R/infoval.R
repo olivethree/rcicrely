@@ -39,7 +39,7 @@
 #' of trials.
 #'
 #' Choice of statistic: the **Frobenius norm** is the correct form
-#' per Schmitz, Muller, & Yzerbyt (2019, comment) and the 2020
+#' per Schmitz, Rougier, & Yzerbyt (2019, comment) and the 2020
 #' erratum. The original `rcicr::computeInfoVal2IFC()` already uses it
 #' (`norm(matrix(target_ci[["ci"]]), "f")`); this function matches
 #' that convention for both 2IFC and Brief-RC data.
@@ -118,16 +118,16 @@
 #' value of classification images. *Behavior Research Methods*,
 #' 51(5), 2059-2073. \doi{10.3758/s13428-019-01232-2}
 #'
-#' Schmitz, M., Muller, D., & Yzerbyt, V. (2019). Comment on
+#' Schmitz, M., Rougier, M., & Yzerbyt, V. (2019). Comment on
 #' "Quantifying the informational value of classification images": A
 #' miscomputation of the infoVal metric. *Behavior Research Methods*.
 #' \doi{10.3758/s13428-019-01295-1}
 #'
-#' Schmitz, M., Muller, D., & Yzerbyt, V. (2020). Erratum to:
-#' Comment on "Quantifying the informational value of classification
-#' images": Miscomputation of infoVal metric was a minor issue and
-#' is now corrected. *Behavior Research Methods*, 52, 1800-1801.
-#' \doi{10.3758/s13428-020-01367-7}
+#' Schmitz, M., Rougier, M., Yzerbyt, V., Brinkman, L., & Dotsch, R.
+#' (2020). Erratum to: Comment on "Quantifying the informational value
+#' of classification images": Miscomputation of infoVal metric was a
+#' minor issue and is now corrected. *Behavior Research Methods*, 52,
+#' 1800-1801. \doi{10.3758/s13428-020-01367-7}
 #'
 #' Schmitz, M., Rougier, M., & Yzerbyt, V. (2024). Introducing the
 #' brief reverse correlation: an improved tool to assess visual
