@@ -9,26 +9,24 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19772888.svg)](https://doi.org/10.5281/zenodo.19772888)
 <!-- badges: end -->
 
-> **Are the classification images from your reverse correlation study reliable enough to publish?** `rcicrely` helps you find out.
-
 ## Why this package?
 
-You ran a reverse correlation study. Maybe each participant saw pairs of
+You ran a reverse correlation study, each participant saw pairs of
 noisy faces and picked the one that looked more *trustworthy*. After
-averaging across participants, you have a beautiful group-level
+averaging across participants, you have a plausible looking group-level
 classification image (CI). Before reporting it, two questions deserve
-an honest answer:
+an honest answer though:
 
 1. **Did the participants actually agree?** If you split your sample in
-   half, do the two halves produce similar CIs — or did you average a
+   half, do the two halves produce similar CIs, or did you just average a
    pile of noise?
 2. **Is the "trustworthy" CI really different from your comparison
-   condition** (say, "untrustworthy"), or could the apparent
-   difference be chance?
+   condition** (say, "untrustworthy", or "healthy"), or could the apparent
+   difference be mere chance?
 
-`rcicrely` answers both, working directly on the pixel-level signal
-produced by your participants. No second-phase study where naive
-raters score CIs on Likert scales — and no inheriting the Type I error
+`rcicrely` answers both by working directly on the pixel-level signal
+produced by your participants. No second-phase study where independent
+raters subjectively rate CIs on rating scales, and no inheriting the Type I error
 inflation of that two-phase design (Cone, Brown-Iannuzzi, Lei, &
 Dotsch, 2021).
 
@@ -114,13 +112,13 @@ print(run_between(trustworthy, untrustworthy, seed = 1))
 > raw-response inputs because PNGs encode the *display-scaled* CI, not
 > the raw signal. The package warns you once per session when this
 > matters; see [the tutorial](https://olivethree.github.io/rcicrely/articles/tutorial.html)
-> for the full story.
+> for the full story. When possible always use CIdata instead of deriving it from existing images. 
 
-For a function-by-function walkthrough — including how to interpret
+For a function-by-function walkthrough, including how to interpret
 cluster maps, sample-size warnings, when to use ICC(3,1) vs ICC(3,k),
-and Brief-RC end-to-end — see the **[full user guide](https://olivethree.github.io/rcicrely/articles/tutorial.html)**.
+and Brief-RC end-to-end; see the **[full user guide](https://olivethree.github.io/rcicrely/articles/tutorial.html)**.
 
-## Under the hood
+## Behind the scenes
 
 If you want the technical details:
 
@@ -157,7 +155,8 @@ Or run `citation("rcicrely")` in R for a BibTeX entry.
 
 MIT © Manuel Oliveira.
 
-## Acknowledgements
+## Credits
 
-This package owes its test harness and code-review discipline to work
-done in collaboration with Anthropic's Claude.
+Manuel Oliveira — https://www.manueloliveira.nl. Development was
+assisted by Claude (Anthropic); the author is responsible for all
+content and decisions.
