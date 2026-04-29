@@ -48,6 +48,7 @@ reference:
     desc: "How consistent is a single condition's CI?"
     contents:
       - rel_split_half
+      - rel_split_half_null
       - rel_icc
       - run_within
 
@@ -65,6 +66,8 @@ reference:
       - rel_dissimilarity
       - compare_dissimilarity
       - run_between
+      - run_between_pairwise
+      - agreement_map_test
 
   - title: "Per-producer signal"
     desc: "Informational value with trial-count-matched reference."
@@ -72,9 +75,10 @@ reference:
       - infoval
 
   - title: "Visualisation helpers"
-    desc: "Pixel-wise agreement maps and other plot helpers."
+    desc: "Pixel-wise agreement maps and overlay helpers."
     contents:
       - plot_agreement_map
+      - plot_ci_overlay
 
 articles:
   - title: "Tutorial"
