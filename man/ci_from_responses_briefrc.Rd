@@ -42,10 +42,12 @@ future release and currently aborts with a clear message.}
 \item{scaling}{Visualisation-only scaling for the optional
 \verb{$rendered_ci} field. One of \code{"none"} (default; no rendered_ci
 returned), \code{"matched"} (stretch mask to base range, then add to
-base, Schmitz's default), or \code{"constant"} (multiply mask by
-\code{scaling_constant}, then add to base). The mathematical
-\verb{$signal_matrix} returned by this function is always the raw
-unscaled mask, regardless of this argument.}
+base, the rcicr \code{auto-scale} method also used by Schmitz et al.
+2024 in Experiment 2), or \code{"constant"} (multiply mask by
+\code{scaling_constant}, then add to base, as Schmitz et al. 2024
+used in Experiment 1). The mathematical \verb{$signal_matrix}
+returned by this function is always the raw unscaled mask,
+regardless of this argument.}
 
 \item{scaling_constant}{Numeric multiplier used when
 \code{scaling = "constant"}. Ignored otherwise.}

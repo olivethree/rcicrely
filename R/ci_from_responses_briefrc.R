@@ -66,10 +66,12 @@
 #' @param scaling Visualisation-only scaling for the optional
 #'   `$rendered_ci` field. One of `"none"` (default; no rendered_ci
 #'   returned), `"matched"` (stretch mask to base range, then add to
-#'   base, Schmitz's default), or `"constant"` (multiply mask by
-#'   `scaling_constant`, then add to base). The mathematical
-#'   `$signal_matrix` returned by this function is always the raw
-#'   unscaled mask, regardless of this argument.
+#'   base, the rcicr `auto-scale` method also used by Schmitz et al.
+#'   2024 in Experiment 2), or `"constant"` (multiply mask by
+#'   `scaling_constant`, then add to base, as Schmitz et al. 2024
+#'   used in Experiment 1). The mathematical `$signal_matrix`
+#'   returned by this function is always the raw unscaled mask,
+#'   regardless of this argument.
 #' @param scaling_constant Numeric multiplier used when
 #'   `scaling = "constant"`. Ignored otherwise.
 #' @return A list with
@@ -239,6 +241,7 @@ ci_from_responses_briefrc <- function(responses,
     signal_matrix[, pid] <- as.numeric(mask)
   }
   attr(signal_matrix, "img_dims") <- img_dims
+  attr(signal_matrix, "source") <- "raw"
 
   out <- list(
     signal_matrix = signal_matrix,
@@ -255,6 +258,7 @@ ci_from_responses_briefrc <- function(responses,
       scaling_constant = scaling_constant
     )
     attr(out$rendered_ci, "img_dims") <- img_dims
+    attr(out$rendered_ci, "source") <- "rendered"
   }
 
   out

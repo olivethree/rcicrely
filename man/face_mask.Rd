@@ -42,8 +42,13 @@ reliability or discriminability on a single anatomical region.
 
 Five regions are supported:
 \itemize{
-\item \code{"full"} (default): the full face oval (Schmitz, Rougier, &
-Yzerbyt 2024 geometry).
+\item \code{"full"} (default): the full face oval, approximating the
+oval face region described in Schmitz, Rougier, & Yzerbyt
+(2024). (The paper applies an oval mask to extract the face
+region but does not specify its geometry; the
+\code{half_width = 0.35}, \code{half_height = 0.45} defaults follow the
+geometry used by Schmitz's accompanying R package and are
+tunable here via \code{half_width} / \code{half_height}.)
 \item \code{"eyes"}: two small ellipses at the typical eye positions.
 \item \code{"nose"}: a narrow vertical ellipse along the midline.
 \item \code{"mouth"}: a wide-and-short ellipse below centre.

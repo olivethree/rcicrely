@@ -81,8 +81,13 @@ mirroring the \code{genMask()} construction exactly (Schmitz, Rougier,
 & Yzerbyt, 2024):
 \enumerate{
 \item Sample \code{trial_counts[j]} stimulus ids uniformly from
-\code{1:n_pool} with replacement.
-\item Sample \code{trial_counts[j]} responses uniformly from \verb{\{-1, +1\}}.
+\code{1:n_pool} (without replacement when
+\code{trial_counts[j] <= n_pool}, the typical case for both 2IFC
+and standard Brief-RC; with replacement only when the
+producer recorded more contributions than the pool size).
+See the v0.2.1 calibration note below.
+\item Sample \code{trial_counts[j]} responses uniformly from \verb{\{-1, +1\}}
+(always with replacement).
 \item Collapse \code{response} by \code{stim} via \code{mean()} (this is the
 duplicate-stim rule used by Brief-RC).
 \item Build the mask: \code{noise_matrix[, unique_stims] \%*\% mean_response / n_unique_stims}.
@@ -97,7 +102,7 @@ simulation efficient when several producers have the same number
 of trials.
 
 Choice of statistic: the \strong{Frobenius norm} is the correct form
-per Schmitz, Rougier, & Yzerbyt (2019, comment) and the 2020
+per Schmitz, Rougier, & Yzerbyt (2020, comment) and the 2020
 erratum. The original \code{rcicr::computeInfoVal2IFC()} already uses it
 (\code{norm(matrix(target_ci[["ci"]]), "f")}); this function matches
 that convention for both 2IFC and Brief-RC data.
@@ -143,16 +148,16 @@ Dotsch, R., & Aarts, H. (2019). Quantifying the informational
 value of classification images. \emph{Behavior Research Methods},
 51(5), 2059-2073. \doi{10.3758/s13428-019-01232-2}
 
-Schmitz, M., Rougier, M., & Yzerbyt, V. (2019). Comment on
+Schmitz, M., Rougier, M., & Yzerbyt, V. (2020). Comment on
 "Quantifying the informational value of classification images": A
-miscomputation of the infoVal metric. \emph{Behavior Research Methods}.
-\doi{10.3758/s13428-019-01295-1}
+miscomputation of the infoVal metric. \emph{Behavior Research Methods},
+52(3), 1383-1386. \doi{10.3758/s13428-019-01295-1}
 
 Schmitz, M., Rougier, M., Yzerbyt, V., Brinkman, L., & Dotsch, R.
 (2020). Erratum to: Comment on "Quantifying the informational value
 of classification images": Miscomputation of infoVal metric was a
-minor issue and is now corrected. \emph{Behavior Research Methods}, 52,
-1800-1801. \doi{10.3758/s13428-020-01367-7}
+minor issue and is now corrected. \emph{Behavior Research Methods},
+52(4), 1800-1801. \doi{10.3758/s13428-020-01367-7}
 
 Schmitz, M., Rougier, M., & Yzerbyt, V. (2024). Introducing the
 brief reverse correlation: an improved tool to assess visual

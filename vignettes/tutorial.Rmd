@@ -200,7 +200,8 @@ n_pix <- 32L * 32L
 n_p   <- 20L
 mask  <- matrix(rnorm(n_pix * n_p, sd = 0.02), n_pix, n_p)
 
-# Render: stretch each column to [-0.5, 0.5] (Schmitz "matched")
+# Render: stretch each column to [-0.5, 0.5] (rcicr's "matched" /
+# auto-scale option; the rcicr default for visualisation)
 rendered <- apply(mask, 2L, function(m) {
   rng <- diff(range(m)); if (rng == 0) m else m * (1 / rng)
 })
@@ -565,7 +566,9 @@ res <- ci_from_responses_briefrc(
   responses       = my_responses,
   noise_matrix    = my_noise,
   base_image_path = "data/base.jpg",
-  scaling         = "matched"        # Schmitz default for visualisation
+  scaling         = "matched"        # rcicr auto-scale (used for
+                                     # visualisation by Schmitz et al.
+                                     # 2024 in Experiment 2)
 )
 # res$signal_matrix is the raw mask, feed to rel_*
 # res$rendered_ci is base + matched(mask), for PNG / plotting only
