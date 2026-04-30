@@ -57,7 +57,7 @@
                         <h4 data-toc-skip class="author">Manuel
 Oliveira</h4>
             
-            <h4 data-toc-skip class="date">2026-04-29</h4>
+            <h4 data-toc-skip class="date">2026-04-30</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/olivethree/rcicrely/blob/main/vignettes/tutorial.Rmd" class="external-link"><code>vignettes/tutorial.Rmd</code></a></small>
       <div class="d-none name"><code>tutorial.Rmd</code></div>
@@ -1554,87 +1554,111 @@ Intelligent, Unintelligent, Competent, Incompetent.</p>
 <div class="section level3">
 <h3 id="setup-per-trait-signal-matrices">7.1 Setup: per-trait signal matrices<a class="anchor" aria-label="anchor" href="#setup-per-trait-signal-matrices"></a>
 </h3>
-<p>Load the response data and the noise pool. The pattern below works
-for any 2IFC study with <code>subject</code>, <code>trial</code>,
-<code>stimulus</code>, <code>response</code> columns (the column names
-vary between datasets; rename to fit).</p>
+<p><strong>Step 1. Load the data.</strong> One row per trial, with
+producer id, condition label, trial number, the noise pattern shown, and
+the producer’s response (<code>+1</code> if they chose the oriented
+version, <code>-1</code> if inverted).</p>
 <div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/olivethree/rcicrely" class="external-link">rcicrely</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Trial-level data: one row per (subject, trial) pair.</span></span>
 <span><span class="va">responses</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv2</a></span><span class="op">(</span><span class="st">"study1data.csv"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://pillar.r-lib.org/reference/glimpse.html" class="external-link">glimpse</a></span><span class="op">(</span><span class="va">responses</span><span class="op">)</span></span>
 <span><span class="co">#&gt; $ subject  &lt;int&gt; ...           # producer id</span></span>
-<span><span class="co">#&gt; $ trait    &lt;chr&gt; "TRUST" ...    # condition label</span></span>
+<span><span class="co">#&gt; $ trait    &lt;chr&gt; "TRUST" ...   # condition label</span></span>
 <span><span class="co">#&gt; $ trial    &lt;int&gt; 1, 2, 3, ...</span></span>
-<span><span class="co">#&gt; $ stimulus &lt;int&gt; ...            # noise pattern shown on this trial</span></span>
-<span><span class="co">#&gt; $ response &lt;int&gt; +1 / -1        # +1 = oriented chosen, -1 = inverted</span></span>
-<span></span>
-<span><span class="co"># Pixels x pool-size matrix of noise patterns used at stimulus generation.</span></span>
-<span><span class="va">noise_matrix</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_noise_matrix.html">read_noise_matrix</a></span><span class="op">(</span><span class="st">"rcic_stimuli.Rdata"</span>, baseimage <span class="op">=</span> <span class="st">"male"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">noise_matrix</span><span class="op">)</span></span>
-<span><span class="co">#&gt; 65536 x 300</span></span></code></pre></div>
-<p>Build the signal matrix for <strong>one trait</strong> (Trust). A
-producer’s raw mask is the sign-weighted average of the noise patterns
-they chose:</p>
-<blockquote>
-<p>mask = (noise[, chosen_stimuli] %*% chosen_responses) / n_trials</p>
-</blockquote>
+<span><span class="co">#&gt; $ stimulus &lt;int&gt; ...           # noise pattern shown on this trial</span></span>
+<span><span class="co">#&gt; $ response &lt;int&gt; +1 / -1</span></span></code></pre></div>
+<p><strong>Step 2. Load the noise pool.</strong> Each column of
+<code>noise_matrix</code> is one of the 300 noise patterns shown to
+producers across trials.</p>
 <div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Filter to Trust trials, ordered by producer + trial number.</span></span>
-<span><span class="va">trust_trials</span> <span class="op">&lt;-</span> <span class="va">responses</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<code class="sourceCode R"><span><span class="va">noise_matrix</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_noise_matrix.html">read_noise_matrix</a></span><span class="op">(</span><span class="st">"rcic_stimuli.Rdata"</span>, baseimage <span class="op">=</span> <span class="st">"male"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">noise_matrix</span><span class="op">)</span></span>
+<span><span class="co">#&gt; 65536 x 300              # 65,536 pixels (256 x 256), 300 noise patterns</span></span></code></pre></div>
+<p><strong>Step 3. Compute one producer’s raw mask, by hand.</strong> A
+producer’s mask is the sign-weighted average of the noise patterns they
+chose: take the noise patterns the producer saw, multiply each by
+<code>+1</code> or <code>-1</code> according to their response, then
+average across trials.</p>
+<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Pick one Trust producer and arrange their trials in order.</span></span>
+<span><span class="va">one_producer</span> <span class="op">&lt;-</span> <span class="va">responses</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">trait</span> <span class="op">==</span> <span class="st">"TRUST"</span>, <span class="va">subject</span> <span class="op">==</span> <span class="fl">18043</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="va">trial</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">chosen_noise</span>   <span class="op">&lt;-</span> <span class="va">noise_matrix</span><span class="op">[</span>, <span class="va">one_producer</span><span class="op">$</span><span class="va">stimulus</span><span class="op">]</span>   <span class="co"># 65536 x 300</span></span>
+<span><span class="va">sign_per_trial</span> <span class="op">&lt;-</span> <span class="va">one_producer</span><span class="op">$</span><span class="va">response</span>                    <span class="co"># +1 / -1, length 300</span></span>
+<span></span>
+<span><span class="va">mask_18043</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="va">chosen_noise</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">sign_per_trial</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">one_producer</span><span class="op">)</span></span>
+<span><span class="co"># `mask_18043` is now a 65,536-element vector: this producer's raw mask.</span></span></code></pre></div>
+<p><strong>Step 4. Stack one column per producer into the Trust signal
+matrix.</strong> Same calculation as Step 3, in a loop over the 20 Trust
+producers.</p>
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">trust_trials</span> <span class="op">&lt;-</span> <span class="va">responses</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">trait</span> <span class="op">==</span> <span class="st">"TRUST"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="va">subject</span>, <span class="va">trial</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">producers</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">trust_trials</span><span class="op">$</span><span class="va">subject</span><span class="op">)</span>             <span class="co"># 20 ids</span></span>
-<span><span class="va">n_pixels</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">noise_matrix</span><span class="op">)</span></span>
-<span><span class="va">sm_trust</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="cn">NA_real_</span>, nrow <span class="op">=</span> <span class="va">n_pixels</span>, ncol <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">producers</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">sm_trust</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="va">producers</span><span class="op">)</span></span>
+<span><span class="va">producer_ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">trust_trials</span><span class="op">$</span><span class="va">subject</span><span class="op">)</span>              <span class="co"># 20 ids</span></span>
+<span><span class="va">sm_trust</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="cn">NA_real_</span>,</span>
+<span>                   nrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">noise_matrix</span><span class="op">)</span>,</span>
+<span>                   ncol <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">producer_ids</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">sm_trust</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="va">producer_ids</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># One column per producer: their raw mask.</span></span>
-<span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">producers</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">this_producer</span> <span class="op">&lt;-</span> <span class="va">trust_trials</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">subject</span> <span class="op">==</span> <span class="va">producers</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">)</span></span>
-<span>  <span class="va">sm_trust</span><span class="op">[</span>, <span class="va">i</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="va">noise_matrix</span><span class="op">[</span>, <span class="va">this_producer</span><span class="op">$</span><span class="va">stimulus</span><span class="op">]</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span></span>
-<span>                      <span class="va">this_producer</span><span class="op">$</span><span class="va">response</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">this_producer</span><span class="op">)</span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">producer_ids</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">this_producer</span>  <span class="op">&lt;-</span> <span class="va">trust_trials</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">subject</span> <span class="op">==</span> <span class="va">producer_ids</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">)</span></span>
+<span>  <span class="va">chosen_noise</span>   <span class="op">&lt;-</span> <span class="va">noise_matrix</span><span class="op">[</span>, <span class="va">this_producer</span><span class="op">$</span><span class="va">stimulus</span><span class="op">]</span></span>
+<span>  <span class="va">sign_per_trial</span> <span class="op">&lt;-</span> <span class="va">this_producer</span><span class="op">$</span><span class="va">response</span></span>
+<span>  <span class="va">sm_trust</span><span class="op">[</span>, <span class="va">i</span><span class="op">]</span>  <span class="op">&lt;-</span> <span class="op">(</span><span class="va">chosen_noise</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">sign_per_trial</span><span class="op">)</span> <span class="op">/</span></span>
+<span>                      <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">this_producer</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
+<span></span>
+<span><span class="co"># Tag the matrix so `rcicrely` knows it carries a raw mask</span></span>
+<span><span class="co"># (variance-based metrics warn if they think the input was</span></span>
+<span><span class="co"># display-scaled; see §3.2).</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">sm_trust</span>, <span class="st">"img_dims"</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">256L</span>, <span class="fl">256L</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">sm_trust</span>, <span class="st">"source"</span><span class="op">)</span>   <span class="op">&lt;-</span> <span class="st">"raw"</span></span></code></pre></div>
-<p>Repeat the same block (lines 4 onwards) for <code>"DOMINANT"</code>,
-<code>"COMPETENT"</code>, and <code>"FRIENDLY"</code> to get
-<code>sm_dominant</code>, <code>sm_competent</code>,
-<code>sm_friendly</code>. To do all 10 traits in one pass, wrap the loop
-in a function:</p>
-<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">build_sm</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">trait_label</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">sub</span> <span class="op">&lt;-</span> <span class="va">responses</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
-<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">trait</span> <span class="op">==</span> <span class="va">trait_label</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<p><strong>Step 5. Repeat for the other traits the demo uses.</strong>
+The fastest path is to copy the Step 4 block and change
+<code>"TRUST"</code> to <code>"DOMINANT"</code>,
+<code>"COMPETENT"</code>, and <code>"FRIENDLY"</code> (saving each
+result into <code>sm_dominant</code>, <code>sm_competent</code>,
+<code>sm_friendly</code>).</p>
+<blockquote>
+<p><strong>Compact version (optional).</strong> If you want every trait
+in one go, the same logic fits in a loop over
+<code>unique(responses$trait)</code>:</p>
+<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">signal_by_trait</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">label</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">responses</span><span class="op">$</span><span class="va">trait</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">trials</span> <span class="op">&lt;-</span> <span class="va">responses</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">trait</span> <span class="op">==</span> <span class="va">label</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="va">subject</span>, <span class="va">trial</span><span class="op">)</span></span>
-<span>  <span class="va">ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">sub</span><span class="op">$</span><span class="va">subject</span><span class="op">)</span></span>
-<span>  <span class="va">m</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="cn">NA_real_</span>, nrow <span class="op">=</span> <span class="va">n_pixels</span>, ncol <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">ids</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">trials</span><span class="op">$</span><span class="va">subject</span><span class="op">)</span></span>
+<span>  <span class="va">m</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="cn">NA_real_</span>, nrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">noise_matrix</span><span class="op">)</span>,</span>
+<span>                ncol <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">ids</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="va">ids</span><span class="op">)</span></span>
 <span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">ids</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="va">pr</span>      <span class="op">&lt;-</span> <span class="va">sub</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">subject</span> <span class="op">==</span> <span class="va">ids</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">)</span></span>
-<span>    <span class="va">m</span><span class="op">[</span>, <span class="va">i</span><span class="op">]</span>  <span class="op">&lt;-</span> <span class="op">(</span><span class="va">noise_matrix</span><span class="op">[</span>, <span class="va">pr</span><span class="op">$</span><span class="va">stimulus</span><span class="op">]</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">pr</span><span class="op">$</span><span class="va">response</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">pr</span><span class="op">)</span></span>
+<span>    <span class="va">pr</span> <span class="op">&lt;-</span> <span class="va">trials</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">subject</span> <span class="op">==</span> <span class="va">ids</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">)</span></span>
+<span>    <span class="va">m</span><span class="op">[</span>, <span class="va">i</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="va">noise_matrix</span><span class="op">[</span>, <span class="va">pr</span><span class="op">$</span><span class="va">stimulus</span><span class="op">]</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">pr</span><span class="op">$</span><span class="va">response</span><span class="op">)</span> <span class="op">/</span></span>
+<span>                 <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">pr</span><span class="op">)</span></span>
 <span>  <span class="op">}</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">m</span>, <span class="st">"img_dims"</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">256L</span>, <span class="fl">256L</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">m</span>, <span class="st">"source"</span><span class="op">)</span>   <span class="op">&lt;-</span> <span class="st">"raw"</span></span>
-<span>  <span class="va">m</span></span>
+<span>  <span class="va">signal_by_trait</span><span class="op">[[</span><span class="va">label</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">m</span></span>
 <span><span class="op">}</span></span>
-<span></span>
-<span><span class="va">signal_by_trait</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">responses</span><span class="op">$</span><span class="va">trait</span><span class="op">)</span>, <span class="va">build_sm</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">signal_by_trait</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">responses</span><span class="op">$</span><span class="va">trait</span><span class="op">)</span></span>
-<span></span>
 <span><span class="va">sm_trust</span>     <span class="op">&lt;-</span> <span class="va">signal_by_trait</span><span class="op">[[</span><span class="st">"TRUST"</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="va">sm_dominant</span>  <span class="op">&lt;-</span> <span class="va">signal_by_trait</span><span class="op">[[</span><span class="st">"DOMINANT"</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="va">sm_competent</span> <span class="op">&lt;-</span> <span class="va">signal_by_trait</span><span class="op">[[</span><span class="st">"COMPETENT"</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="va">sm_friendly</span>  <span class="op">&lt;-</span> <span class="va">signal_by_trait</span><span class="op">[[</span><span class="st">"FRIENDLY"</span><span class="op">]</span><span class="op">]</span></span></code></pre></div>
+</blockquote>
 </div>
 <div class="section level3">
 <h3 id="within-condition-reliability">7.2 Within-condition reliability<a class="anchor" aria-label="anchor" href="#within-condition-reliability"></a>
 </h3>
 <p>Did the 20 producers in each condition agree?</p>
-<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rel_split_half.html">rel_split_half</a></span><span class="op">(</span><span class="va">sm_trust</span>,    n_permutations <span class="op">=</span> <span class="fl">500L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Trust:    r_hh = 0.405, r_sb = 0.577, 95% CI on r_sb = [0.539, 0.616]</span></span>
 <span><span class="fu"><a href="../reference/rel_split_half.html">rel_split_half</a></span><span class="op">(</span><span class="va">sm_dominant</span>, n_permutations <span class="op">=</span> <span class="fl">500L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
@@ -1651,7 +1675,7 @@ single-producer reliability) and Spearman-Brown-projected
 terms because of the resolution asymptote at large pixel counts;
 ICC(3,1) is the cross-study comparable number.</p>
 <p>LOO inspection on Trust:</p>
-<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">loo</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rel_loo.html">rel_loo</a></span><span class="op">(</span><span class="va">sm_trust</span>, flag_method <span class="op">=</span> <span class="st">"mad"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="../reference/rel_loo_z.html">rel_loo_z</a></span><span class="op">(</span><span class="va">loo</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   participant_id  correlation  z_score  flag</span></span>
@@ -1669,8 +1693,9 @@ the top of the table is the inspection priority list.</p>
 <p><code><a href="../reference/infoval.html">infoval()</a></code> answers “does each producer’s mask carry more
 than chance?”. With 300 trials per producer the trial-count-matched
 reference is simulated at 300:</p>
-<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Trial count per producer, computed from the data (named numeric).</span></span>
+<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># `infoval()` builds its chance reference for each producer's</span></span>
+<span><span class="co"># trial count, so it needs a named numeric: ids -&gt; trial counts.</span></span>
 <span><span class="va">trial_counts</span> <span class="op">&lt;-</span> <span class="va">responses</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">trait</span> <span class="op">==</span> <span class="st">"TRUST"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">subject</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
@@ -1680,15 +1705,19 @@ reference is simulated at 300:</p>
 <span>        iter <span class="op">=</span> <span class="fl">1000L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="co">#&gt; per-producer: median z = 0.35, range [-1.69, 2.30], n above 1.96 = 2/20</span></span>
 <span></span>
-<span><span class="co"># Group-mean CI (effective n_trials = 300 x 20 = 6000):</span></span>
+<span><span class="co"># Per-producer z is the noisy view. The group-mean CI averages 20</span></span>
+<span><span class="co"># masks, so its effective trial count is 300 trials x 20 producers</span></span>
+<span><span class="co"># = 6000:</span></span>
 <span><span class="va">group_ci</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">rowMeans</a></span><span class="op">(</span><span class="va">sm_trust</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">group_ci</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="st">"TRUST_group"</span></span>
-<span><span class="va">group_n</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>TRUST_group <span class="op">=</span> <span class="fl">6000L</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="../reference/infoval.html">infoval</a></span><span class="op">(</span><span class="va">group_ci</span>, <span class="va">noise_matrix</span>, <span class="va">group_n</span>, iter <span class="op">=</span> <span class="fl">1000L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/infoval.html">infoval</a></span><span class="op">(</span><span class="va">group_ci</span>, <span class="va">noise_matrix</span>,</span>
+<span>        <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>TRUST_group <span class="op">=</span> <span class="fl">6000L</span><span class="op">)</span>,</span>
+<span>        iter <span class="op">=</span> <span class="fl">1000L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="co">#&gt; group-mean CI z = 11.39</span></span>
 <span></span>
-<span><span class="co"># Face-mask lift on per-producer z:</span></span>
+<span><span class="co"># Restricting infoVal to the face oval lifts the median z, since</span></span>
+<span><span class="co"># background pixels no longer dilute the Frobenius norm:</span></span>
 <span><span class="fu"><a href="../reference/infoval.html">infoval</a></span><span class="op">(</span><span class="va">sm_trust</span>, <span class="va">noise_matrix</span>, <span class="va">trial_counts</span>,</span>
 <span>        mask <span class="op">=</span> <span class="fu"><a href="../reference/face_mask.html">face_mask</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">256L</span>, <span class="fl">256L</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>        iter <span class="op">=</span> <span class="fl">1000L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
@@ -1708,7 +1737,7 @@ reading the per-producer median as “weak signal”. Recommended report:
 </h3>
 <p>The Dominant vs Competent contrast yields spatially-localized,
 FWE-controlled clusters:</p>
-<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rel_cluster_test.html">rel_cluster_test</a></span><span class="op">(</span><span class="va">sm_dominant</span>, <span class="va">sm_competent</span>,</span>
 <span>                 img_dims          <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">256L</span>, <span class="fl">256L</span><span class="op">)</span>,</span>
 <span>                 cluster_threshold <span class="op">=</span> <span class="fl">2.0</span>,</span>
@@ -1730,7 +1759,7 @@ alpha = .05 are outlined in black.
 <p><code><a href="../reference/rel_dissimilarity.html">rel_dissimilarity()</a></code> complements the spatial picture with
 a single-number magnitude. Comparing a “similar” trait pair against a
 “dissimilar” one:</p>
-<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rel_dissimilarity.html">rel_dissimilarity</a></span><span class="op">(</span><span class="va">sm_trust</span>,    <span class="va">sm_friendly</span>,  n_boot <span class="op">=</span> <span class="fl">500L</span>, seed <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Euclidean = 16.81, 95% CI [19.26, 24.86], normalised = 0.0657</span></span>
 <span><span class="fu"><a href="../reference/rel_dissimilarity.html">rel_dissimilarity</a></span><span class="op">(</span><span class="va">sm_dominant</span>, <span class="va">sm_competent</span>, n_boot <span class="op">=</span> <span class="fl">500L</span>, seed <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span>
@@ -1746,7 +1775,7 @@ within-shape question; Euclidean is the how-far-apart question.</p>
 </h3>
 <p>Region-restricted ICC(3,1) on the same Trust signal matrix shows
 where producer agreement concentrates:</p>
-<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># rel_icc(sm_trust[face_mask(c(256L,256L), region = R), , drop = FALSE])</span></span>
 <span><span class="co">#&gt; region        n_pixels   ICC(3,1)   ICC(3,k)</span></span>
 <span><span class="co">#&gt; full           32,192     0.109      0.710</span></span>
@@ -1759,7 +1788,7 @@ where producer agreement concentrates:</p>
 weakest in the nose. The pattern aligns with the visible features of the
 published Trust group CI (Figure 1 of the paper). Region- restricted
 infoVal works as a sensitivity check on the same data:</p>
-<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># infoval(sm_trust, noise_matrix, tc, mask = face_mask(c(256L,256L), region = R), ...)</span></span>
 <span><span class="co">#&gt; region   median z   range          n above 1.96</span></span>
 <span><span class="co">#&gt; full     +0.51      [-1.81, +3.13]      4/20</span></span>
@@ -1768,36 +1797,38 @@ infoVal works as a sensitivity check on the same data:</p>
 <p>Eye and mouth regions both replicate the full-face median; the eye
 region’s per-producer range is narrower, suggesting producers agree on
 direction in the eye region but the energy is modest.</p>
-<p>Region-restricted <strong>between-condition</strong> clusters
-(Trustworthy vs Dominant), zero-filling outside each region so clusters
-can only form within it:</p>
-<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
+<p>Region-restricted <strong>between-condition</strong> clusters:
+Trustworthy vs Dominant, in the eyes and mouth regions.
+<code><a href="../reference/rel_cluster_test.html">rel_cluster_test()</a></code> needs the full image grid to label
+connected components, so to restrict it to a region we
+<em>zero-fill</em> outside that region; clusters can then only form
+inside it.</p>
+<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">img_dims</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">256L</span>, <span class="fl">256L</span><span class="op">)</span></span>
 <span><span class="va">m_eyes</span>   <span class="op">&lt;-</span> <span class="fu"><a href="../reference/face_mask.html">face_mask</a></span><span class="op">(</span><span class="va">img_dims</span>, region <span class="op">=</span> <span class="st">"eyes"</span><span class="op">)</span></span>
 <span><span class="va">m_mouth</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/face_mask.html">face_mask</a></span><span class="op">(</span><span class="va">img_dims</span>, region <span class="op">=</span> <span class="st">"mouth"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># rel_cluster_test() needs the full image grid to label connected</span></span>
-<span><span class="co"># components, so we restrict by "blanking out" pixels outside the</span></span>
-<span><span class="co"># region: set them to zero. Clusters can then only form inside the</span></span>
-<span><span class="co"># kept region.</span></span>
-<span><span class="va">zero_fill</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">sm</span>, <span class="va">keep_pixels</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">out</span> <span class="op">&lt;-</span> <span class="va">sm</span></span>
-<span>  <span class="va">out</span><span class="op">[</span><span class="op">!</span><span class="va">keep_pixels</span>, <span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
-<span>  <span class="va">out</span></span>
-<span><span class="op">}</span></span>
+<span><span class="co"># --- Eyes region ---</span></span>
+<span><span class="co"># Copy each signal matrix and set the non-eyes pixels to zero.</span></span>
+<span><span class="va">sm_trust_eyes</span> <span class="op">&lt;-</span> <span class="va">sm_trust</span></span>
+<span><span class="va">sm_trust_eyes</span><span class="op">[</span><span class="op">!</span><span class="va">m_eyes</span>, <span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
 <span></span>
-<span><span class="co"># Eyes region.</span></span>
-<span><span class="va">sm_trust_eyes</span>    <span class="op">&lt;-</span> <span class="fu">zero_fill</span><span class="op">(</span><span class="va">sm_trust</span>,    <span class="va">m_eyes</span><span class="op">)</span></span>
-<span><span class="va">sm_dominant_eyes</span> <span class="op">&lt;-</span> <span class="fu">zero_fill</span><span class="op">(</span><span class="va">sm_dominant</span>, <span class="va">m_eyes</span><span class="op">)</span></span>
+<span><span class="va">sm_dominant_eyes</span> <span class="op">&lt;-</span> <span class="va">sm_dominant</span></span>
+<span><span class="va">sm_dominant_eyes</span><span class="op">[</span><span class="op">!</span><span class="va">m_eyes</span>, <span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
+<span></span>
 <span><span class="fu"><a href="../reference/rel_cluster_test.html">rel_cluster_test</a></span><span class="op">(</span><span class="va">sm_trust_eyes</span>, <span class="va">sm_dominant_eyes</span>,</span>
 <span>                 img_dims          <span class="op">=</span> <span class="va">img_dims</span>,</span>
 <span>                 cluster_threshold <span class="op">=</span> <span class="fl">2.0</span>,</span>
 <span>                 n_permutations    <span class="op">=</span> <span class="fl">1000L</span>,</span>
 <span>                 seed              <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Mouth region.</span></span>
-<span><span class="va">sm_trust_mouth</span>    <span class="op">&lt;-</span> <span class="fu">zero_fill</span><span class="op">(</span><span class="va">sm_trust</span>,    <span class="va">m_mouth</span><span class="op">)</span></span>
-<span><span class="va">sm_dominant_mouth</span> <span class="op">&lt;-</span> <span class="fu">zero_fill</span><span class="op">(</span><span class="va">sm_dominant</span>, <span class="va">m_mouth</span><span class="op">)</span></span>
+<span><span class="co"># --- Mouth region ---</span></span>
+<span><span class="va">sm_trust_mouth</span> <span class="op">&lt;-</span> <span class="va">sm_trust</span></span>
+<span><span class="va">sm_trust_mouth</span><span class="op">[</span><span class="op">!</span><span class="va">m_mouth</span>, <span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
+<span></span>
+<span><span class="va">sm_dominant_mouth</span> <span class="op">&lt;-</span> <span class="va">sm_dominant</span></span>
+<span><span class="va">sm_dominant_mouth</span><span class="op">[</span><span class="op">!</span><span class="va">m_mouth</span>, <span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
+<span></span>
 <span><span class="fu"><a href="../reference/rel_cluster_test.html">rel_cluster_test</a></span><span class="op">(</span><span class="va">sm_trust_mouth</span>, <span class="va">sm_dominant_mouth</span>,</span>
 <span>                 img_dims          <span class="op">=</span> <span class="va">img_dims</span>,</span>
 <span>                 cluster_threshold <span class="op">=</span> <span class="fl">2.0</span>,</span>
@@ -1833,7 +1864,7 @@ whitespace-delimited), so that’s the typical entry point if you
 replicate from their OSF repo. If you generate the pool yourself with
 <code>rcicr</code>, the captured return value can be cached as
 <code>.rds</code> for fast reloads (see step 1 below).</p>
-<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># 1a. Replicating Schmitz et al.: read the published noise_matrix.txt</span></span>
 <span><span class="co">#     directly. read_noise_matrix() autodetects the format.</span></span>
 <span><span class="va">noise</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_noise_matrix.html">read_noise_matrix</a></span><span class="op">(</span><span class="st">"data/noise_matrix.txt"</span><span class="op">)</span></span>

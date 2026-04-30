@@ -1481,84 +1481,112 @@ Unintelligent, Competent, Incompetent.
 
 ### 7.1 Setup: per-trait signal matrices
 
-Load the response data and the noise pool. The pattern below works for
-any 2IFC study with `subject`, `trial`, `stimulus`, `response` columns
-(the column names vary between datasets; rename to fit).
+**Step 1. Load the data.** One row per trial, with producer id,
+condition label, trial number, the noise pattern shown, and the
+producer’s response (`+1` if they chose the oriented version, `-1` if
+inverted).
 
 ``` r
 library(rcicrely)
 library(dplyr)
 
-# Trial-level data: one row per (subject, trial) pair.
 responses <- read.csv2("study1data.csv")
 glimpse(responses)
 #> $ subject  <int> ...           # producer id
-#> $ trait    <chr> "TRUST" ...    # condition label
+#> $ trait    <chr> "TRUST" ...   # condition label
 #> $ trial    <int> 1, 2, 3, ...
-#> $ stimulus <int> ...            # noise pattern shown on this trial
-#> $ response <int> +1 / -1        # +1 = oriented chosen, -1 = inverted
-
-# Pixels x pool-size matrix of noise patterns used at stimulus generation.
-noise_matrix <- read_noise_matrix("rcic_stimuli.Rdata", baseimage = "male")
-dim(noise_matrix)
-#> 65536 x 300
+#> $ stimulus <int> ...           # noise pattern shown on this trial
+#> $ response <int> +1 / -1
 ```
 
-Build the signal matrix for **one trait** (Trust). A producer’s raw mask
-is the sign-weighted average of the noise patterns they chose:
-
-> mask = (noise\[, chosen_stimuli\] %\*% chosen_responses) / n_trials
+**Step 2. Load the noise pool.** Each column of `noise_matrix` is one of
+the 300 noise patterns shown to producers across trials.
 
 ``` r
-# Filter to Trust trials, ordered by producer + trial number.
+noise_matrix <- read_noise_matrix("rcic_stimuli.Rdata", baseimage = "male")
+dim(noise_matrix)
+#> 65536 x 300              # 65,536 pixels (256 x 256), 300 noise patterns
+```
+
+**Step 3. Compute one producer’s raw mask, by hand.** A producer’s mask
+is the sign-weighted average of the noise patterns they chose: take the
+noise patterns the producer saw, multiply each by `+1` or `-1` according
+to their response, then average across trials.
+
+``` r
+# Pick one Trust producer and arrange their trials in order.
+one_producer <- responses %>%
+  filter(trait == "TRUST", subject == 18043) %>%
+  arrange(trial)
+
+chosen_noise   <- noise_matrix[, one_producer$stimulus]   # 65536 x 300
+sign_per_trial <- one_producer$response                    # +1 / -1, length 300
+
+mask_18043 <- (chosen_noise %*% sign_per_trial) / nrow(one_producer)
+# `mask_18043` is now a 65,536-element vector: this producer's raw mask.
+```
+
+**Step 4. Stack one column per producer into the Trust signal matrix.**
+Same calculation as Step 3, in a loop over the 20 Trust producers.
+
+``` r
 trust_trials <- responses %>%
   filter(trait == "TRUST") %>%
   arrange(subject, trial)
 
-producers <- unique(trust_trials$subject)             # 20 ids
-n_pixels  <- nrow(noise_matrix)
-sm_trust  <- matrix(NA_real_, nrow = n_pixels, ncol = length(producers))
-colnames(sm_trust) <- as.character(producers)
+producer_ids <- unique(trust_trials$subject)              # 20 ids
+sm_trust <- matrix(NA_real_,
+                   nrow = nrow(noise_matrix),
+                   ncol = length(producer_ids))
+colnames(sm_trust) <- as.character(producer_ids)
 
-# One column per producer: their raw mask.
-for (i in seq_along(producers)) {
-  this_producer <- trust_trials %>% filter(subject == producers[i])
-  sm_trust[, i] <- (noise_matrix[, this_producer$stimulus] %*%
-                      this_producer$response) / nrow(this_producer)
+for (i in seq_along(producer_ids)) {
+  this_producer  <- trust_trials %>% filter(subject == producer_ids[i])
+  chosen_noise   <- noise_matrix[, this_producer$stimulus]
+  sign_per_trial <- this_producer$response
+  sm_trust[, i]  <- (chosen_noise %*% sign_per_trial) /
+                      nrow(this_producer)
 }
+
+# Tag the matrix so `rcicrely` knows it carries a raw mask
+# (variance-based metrics warn if they think the input was
+# display-scaled; see §3.2).
 attr(sm_trust, "img_dims") <- c(256L, 256L)
 attr(sm_trust, "source")   <- "raw"
 ```
 
-Repeat the same block (lines 4 onwards) for `"DOMINANT"`, `"COMPETENT"`,
-and `"FRIENDLY"` to get `sm_dominant`, `sm_competent`, `sm_friendly`. To
-do all 10 traits in one pass, wrap the loop in a function:
+**Step 5. Repeat for the other traits the demo uses.** The fastest path
+is to copy the Step 4 block and change `"TRUST"` to `"DOMINANT"`,
+`"COMPETENT"`, and `"FRIENDLY"` (saving each result into `sm_dominant`,
+`sm_competent`, `sm_friendly`).
 
-``` r
-build_sm <- function(trait_label) {
-  sub <- responses %>%
-    filter(trait == trait_label) %>%
-    arrange(subject, trial)
-  ids <- unique(sub$subject)
-  m   <- matrix(NA_real_, nrow = n_pixels, ncol = length(ids))
-  colnames(m) <- as.character(ids)
-  for (i in seq_along(ids)) {
-    pr      <- sub %>% filter(subject == ids[i])
-    m[, i]  <- (noise_matrix[, pr$stimulus] %*% pr$response) / nrow(pr)
-  }
-  attr(m, "img_dims") <- c(256L, 256L)
-  attr(m, "source")   <- "raw"
-  m
-}
-
-signal_by_trait <- lapply(unique(responses$trait), build_sm)
-names(signal_by_trait) <- unique(responses$trait)
-
-sm_trust     <- signal_by_trait[["TRUST"]]
-sm_dominant  <- signal_by_trait[["DOMINANT"]]
-sm_competent <- signal_by_trait[["COMPETENT"]]
-sm_friendly  <- signal_by_trait[["FRIENDLY"]]
-```
+> **Compact version (optional).** If you want every trait in one go, the
+> same logic fits in a loop over `unique(responses$trait)`:
+>
+> ``` r
+> signal_by_trait <- list()
+> for (label in unique(responses$trait)) {
+>   trials <- responses %>%
+>     filter(trait == label) %>%
+>     arrange(subject, trial)
+>   ids <- unique(trials$subject)
+>   m   <- matrix(NA_real_, nrow = nrow(noise_matrix),
+>                 ncol = length(ids))
+>   colnames(m) <- as.character(ids)
+>   for (i in seq_along(ids)) {
+>     pr <- trials %>% filter(subject == ids[i])
+>     m[, i] <- (noise_matrix[, pr$stimulus] %*% pr$response) /
+>                  nrow(pr)
+>   }
+>   attr(m, "img_dims") <- c(256L, 256L)
+>   attr(m, "source")   <- "raw"
+>   signal_by_trait[[label]] <- m
+> }
+> sm_trust     <- signal_by_trait[["TRUST"]]
+> sm_dominant  <- signal_by_trait[["DOMINANT"]]
+> sm_competent <- signal_by_trait[["COMPETENT"]]
+> sm_friendly  <- signal_by_trait[["FRIENDLY"]]
+> ```
 
 ### 7.2 Within-condition reliability
 
@@ -1607,7 +1635,8 @@ trials per producer the trial-count-matched reference is simulated at
 300:
 
 ``` r
-# Trial count per producer, computed from the data (named numeric).
+# `infoval()` builds its chance reference for each producer's
+# trial count, so it needs a named numeric: ids -> trial counts.
 trial_counts <- responses %>%
   filter(trait == "TRUST") %>%
   count(subject) %>%
@@ -1617,15 +1646,19 @@ infoval(sm_trust, noise_matrix, trial_counts,
         iter = 1000L, seed = 1L)
 #> per-producer: median z = 0.35, range [-1.69, 2.30], n above 1.96 = 2/20
 
-# Group-mean CI (effective n_trials = 300 x 20 = 6000):
+# Per-producer z is the noisy view. The group-mean CI averages 20
+# masks, so its effective trial count is 300 trials x 20 producers
+# = 6000:
 group_ci <- matrix(rowMeans(sm_trust), ncol = 1)
 colnames(group_ci) <- "TRUST_group"
-group_n  <- c(TRUST_group = 6000L)
 
-infoval(group_ci, noise_matrix, group_n, iter = 1000L, seed = 1L)
+infoval(group_ci, noise_matrix,
+        c(TRUST_group = 6000L),
+        iter = 1000L, seed = 1L)
 #> group-mean CI z = 11.39
 
-# Face-mask lift on per-producer z:
+# Restricting infoVal to the face oval lifts the median z, since
+# background pixels no longer dilute the Frobenius norm:
 infoval(sm_trust, noise_matrix, trial_counts,
         mask = face_mask(c(256L, 256L)),
         iter = 1000L, seed = 1L)
@@ -1720,37 +1753,39 @@ Eye and mouth regions both replicate the full-face median; the eye
 region’s per-producer range is narrower, suggesting producers agree on
 direction in the eye region but the energy is modest.
 
-Region-restricted **between-condition** clusters (Trustworthy vs
-Dominant), zero-filling outside each region so clusters can only form
-within it:
+Region-restricted **between-condition** clusters: Trustworthy vs
+Dominant, in the eyes and mouth regions.
+[`rel_cluster_test()`](https://olivethree.github.io/rcicrely/reference/rel_cluster_test.md)
+needs the full image grid to label connected components, so to restrict
+it to a region we *zero-fill* outside that region; clusters can then
+only form inside it.
 
 ``` r
 img_dims <- c(256L, 256L)
 m_eyes   <- face_mask(img_dims, region = "eyes")
 m_mouth  <- face_mask(img_dims, region = "mouth")
 
-# rel_cluster_test() needs the full image grid to label connected
-# components, so we restrict by "blanking out" pixels outside the
-# region: set them to zero. Clusters can then only form inside the
-# kept region.
-zero_fill <- function(sm, keep_pixels) {
-  out <- sm
-  out[!keep_pixels, ] <- 0
-  out
-}
+# --- Eyes region ---
+# Copy each signal matrix and set the non-eyes pixels to zero.
+sm_trust_eyes <- sm_trust
+sm_trust_eyes[!m_eyes, ] <- 0
 
-# Eyes region.
-sm_trust_eyes    <- zero_fill(sm_trust,    m_eyes)
-sm_dominant_eyes <- zero_fill(sm_dominant, m_eyes)
+sm_dominant_eyes <- sm_dominant
+sm_dominant_eyes[!m_eyes, ] <- 0
+
 rel_cluster_test(sm_trust_eyes, sm_dominant_eyes,
                  img_dims          = img_dims,
                  cluster_threshold = 2.0,
                  n_permutations    = 1000L,
                  seed              = 1L)
 
-# Mouth region.
-sm_trust_mouth    <- zero_fill(sm_trust,    m_mouth)
-sm_dominant_mouth <- zero_fill(sm_dominant, m_mouth)
+# --- Mouth region ---
+sm_trust_mouth <- sm_trust
+sm_trust_mouth[!m_mouth, ] <- 0
+
+sm_dominant_mouth <- sm_dominant
+sm_dominant_mouth[!m_mouth, ] <- 0
+
 rel_cluster_test(sm_trust_mouth, sm_dominant_mouth,
                  img_dims          = img_dims,
                  cluster_threshold = 2.0,
